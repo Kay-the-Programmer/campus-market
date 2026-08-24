@@ -1,0 +1,323 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#e5eeff",
+                    "tertiary": "#006242",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "tertiary-container": "#007d55",
+                    "secondary": "#6b38d4",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-primary": "#ffffff",
+                    "primary": "#004ac6",
+                    "on-error": "#ffffff",
+                    "secondary-fixed": "#e9ddff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "inverse-surface": "#213145",
+                    "surface-tint": "#0053db",
+                    "surface-variant": "#d3e4fe",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-background": "#0b1c30",
+                    "on-surface": "#0b1c30",
+                    "surface": "#f8f9ff",
+                    "primary-container": "#2563eb",
+                    "on-tertiary-fixed": "#002113",
+                    "on-tertiary-container": "#bdffdb",
+                    "on-surface-variant": "#434655",
+                    "on-primary-container": "#eeefff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed": "#23005c",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary-fixed": "#00174b",
+                    "background": "#f8f9ff",
+                    "outline": "#737686",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-secondary-container": "#fffbff",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-container-low": "#eff4ff",
+                    "primary-fixed": "#dbe1ff",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c3c6d7",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-container": "#8455ef",
+                    "surface-bright": "#f8f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "stack-lg": "2rem",
+                    "margin-mobile": "1rem",
+                    "gutter": "1.5rem",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .modal-overlay {
+            background: rgba(11, 28, 48, 0.4);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-6 h-16 bg-surface shadow-sm">
+<div class="flex items-center gap-8">
+<span class="text-headline-md font-headline-md text-primary">CampusMarket</span>
+<div class="hidden md:flex gap-6">
+
+
+
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-variant/50">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant cursor-pointer active:scale-95 transition-transform p-2 rounded-full hover:bg-surface-variant/50">shopping_cart</button>
+<div class="w-8 h-8 rounded-full bg-cover bg-center" data-alt="A professional headshot of a friendly young college student with a bright smile, wearing a clean casual hoodie. The lighting is soft and natural, suggesting an outdoor campus setting with a slightly blurred academic building in the background. The overall aesthetic is trustworthy and modern." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC2qaeBRXjEGrHqMog1LMgrmBVux-7vphSC1vatcACng-VMSqQgvp_sbDth5mDy6quq-4qVyV3x3x31MF4yBPfJdEKzmI15zDLYhJBpxiL444keS_4gTAXKvpAa_EsksoxqOl30CPCCOg2O3LVWyymksEH-YUMv0V_8oiSGy6yrzARMF3kVc6ECjMaUO2dNKUR0vbcYl6IMsYpCwU5KhPIy5oTMQeoVBgJOIVnEfB_aZaMtGTF7dShI')"></div>
+</div>
+</nav>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-[calc(100vh-4rem)] w-64 bg-surface-container p-4 sticky top-16 shadow-lg">
+<div class="flex flex-col gap-6 flex-grow">
+<div class="flex items-center gap-3 p-2">
+<div class="w-10 h-10 rounded-full bg-cover bg-center" data-alt="A close-up portrait of Alex Rivers, a verified student seller. Alex has a warm, approachable look, wearing a simple blue t-shirt. The background is a clean, minimalist dorm room with soft morning light coming through a window, creating an atmosphere of reliability and youthfulness." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDGyFOTS-rWDFxNify4P8YuMDDe7AF6BnFmJTewW5_cDDm0-9PPoMMPsEJQrTdcDo7m1LsetwahuK_l1RSorv0qhv2uTSiHfAzRE1_pynPY-4W3lzN-XiODVcZdueCvi2FKYnJWTdrywyRJsmOhdi1b851Zl-eX8apwdd0dhtIXQjnH_gs2nhwwByFUhXpe5DjptE-UpqT7ADMR2O3FmhLF72QL-NrsJF7dvmmk1GLBZgjsC6Okm8Ql')"></div>
+<div>
+<p class="font-label-md text-label-md text-primary">Alex Rivers</p>
+<p class="text-xs text-on-surface-variant">Verified Student</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-md text-label-md">Browse</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-label-md text-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="font-label-md text-label-md">Saved Items</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg font-bold transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<button class="mt-4 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md shadow-md hover:bg-surface-tint transition-colors active:scale-[0.98]">
+                    Post New Item
+                </button>
+</div>
+<div class="mt-auto border-t border-outline-variant pt-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+                    Help Center
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg text-sm" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+                    Logout
+                </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-grow p-6 md:p-10 max-w-[1000px] mx-auto">
+<header class="mb-8">
+<h1 class="font-headline-lg text-headline-lg text-on-background mb-6">Deal History</h1>
+<!-- Tabs -->
+<div class="flex border-b border-outline-variant">
+<button class="px-8 py-4 text-primary border-b-2 border-primary font-label-md text-label-md">As Buyer</button>
+<button class="px-8 py-4 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors">As Seller</button>
+</div>
+</header>
+<!-- Deal List -->
+<div class="flex flex-col gap-4">
+<!-- Row 1: Sony WH-1000XM4 (Clickable for Modal Demo) -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between shadow-[0_4px_20px_0px_rgba(0,0,0,0.05)] border border-surface-container hover:shadow-[0_8px_30px_0px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all cursor-pointer" onclick="document.getElementById('deal-modal').classList.remove('hidden')">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A premium pair of black Sony WH-1000XM4 noise-canceling headphones resting on a minimalist white wooden desk. The lighting is soft and directional, highlighting the sleek matte finish of the headphones. The aesthetic is clean and high-end corporate, with a focus on product quality." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCPfPPhONpOgmjz1dq_NI4P8qyvbHlYV_8GlgbOwlMOCLy9VQphMauh-JV4Bp_Gub7dTN6aPxGzzjKdPOeq4lLLB80crZ01dZntJ6ykpTxZNDP2v1zAj-d5IUk2zshjrb95ChcJapTIOjlbGXayLDried5YTr2SVacG3yEAjbVEPXzkGCqBC-Et99xbDjqjJcSNizhGXCSiRBknZoy94ivmdB2JnKsuKO7hjiNUOuaNjyMVyj-u7lbv')"></div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Sony WH-1000XM4</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-body-sm text-on-surface-variant">Seller: Alex Rivers</span>
+<span class="material-symbols-outlined text-primary text-[14px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="text-right">
+<p class="text-body-sm text-on-surface-variant">Oct 24, 2023</p>
+<span class="inline-block px-3 py-1 mt-1 rounded-full bg-primary/10 text-primary font-label-md text-[12px]">Bought</span>
+</div>
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-label-md text-label-md">Completed</span>
+</div>
+</div>
+</div>
+<!-- Row 2: Retro City Cruiser -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between shadow-[0_4px_20px_0px_rgba(0,0,0,0.05)] border border-surface-container hover:shadow-[0_8px_30px_0px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A vintage-style teal cruiser bicycle with a brown leather seat and handlebars, leaning against a clean white brick wall. The scene is bathed in warm, golden afternoon sunlight, creating a nostalgic yet professional vibe. The bike is in excellent condition, appearing vibrant and inviting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAr50RY3CZza28PyS7ntEc3oGORUhYfX3TpYhfrGB1-WB61QWhXmgdYMIJ4fCRrki21Wkj28zMJ54lOfJCDToQxfpUmyzDLY5Xd_2kHARahfHkuazYcnclEUEMBjdwMwXAdZiXvJj3foMFxa8TLIKvlZw9HuUG9og8yJmPJEG4CD0gza4bhG7rq5GOwcTf6PCTXY3e0sX_As29zT66k6TbPuhTm9AigXPzo5Cil6Kx2cVoh5o-Rj1Wk')"></div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Retro City Cruiser</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-body-sm text-on-surface-variant">Buyer: Marcus Chen</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="text-right">
+<p class="text-body-sm text-on-surface-variant">Oct 15, 2023</p>
+<span class="inline-block px-3 py-1 mt-1 rounded-full bg-secondary/10 text-secondary font-label-md text-[12px]">Sold</span>
+</div>
+<div class="flex items-center gap-1 text-[#f59e0b]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-label-md">5.0</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Textbook Bundle -->
+<div class="bg-surface rounded-xl p-4 flex items-center justify-between shadow-[0_4px_20px_0px_rgba(0,0,0,0.05)] border border-surface-container hover:shadow-[0_8px_30px_0px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A stack of three thick university engineering textbooks piled neatly on a light-colored wooden table. The covers are colorful and modern. The background is a slightly blurred college library aisle, giving a scholarly and focused atmosphere. The lighting is bright and even." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDYmrC7vbhZ-r4MMJGEE4J5iNGYZ9jO03V6NuZoPYWAB9H_3xUEsemOm-E0WKNLP90n-dEaOrMfl2Q6cHTJ7CldaGy1fNoW8cJN9gUjs1ytqSOViHOGA7eyzkmEtXRuE3FPNqWQcGdX973uHRdElUDpfRPCryY-s2drgpknowGalPdhyOjWkXiwkZtqaJMJjJQbtp2bjDXn8fD1dvYrryPGveTjxy1N8lEPmc7g7RF0Nh3YAbXWw_MC')"></div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Textbook Bundle</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-body-sm text-on-surface-variant">Seller: Sarah Jenkins</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="text-right">
+<p class="text-body-sm text-on-surface-variant">Oct 10, 2023</p>
+<span class="inline-block px-3 py-1 mt-1 rounded-full bg-primary/10 text-primary font-label-md text-[12px]">Bought</span>
+</div>
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-label-md text-label-md">Completed</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Modal Overlay (Read-only Summary) -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center modal-overlay p-4 hidden" id="deal-modal">
+<div class="bg-surface w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+<!-- Header -->
+<div class="p-6 border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md">Deal Summary</h2>
+<button class="material-symbols-outlined hover:bg-surface-variant/50 p-2 rounded-full transition-colors" onclick="document.getElementById('deal-modal').classList.add('hidden')">close</button>
+</div>
+<!-- Modal Body -->
+<div class="p-6 space-y-6">
+<!-- Item Summary -->
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-xl">
+<div class="w-20 h-20 rounded-lg bg-cover bg-center shrink-0" data-alt="A detailed close-up of Sony WH-1000XM4 headphones, showing the delicate texture of the earcups and the gold Sony logo. The lighting emphasizes the high-quality materials and professional design. The setting is a clean, modern workspace." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAEdwHoEP_2HqEgZJoOwdX_1HWCUpjDe3IP6tMQNJLsnhOsxj18ff0btFV9oleYRjkQWu8rzd6U6EKl_ZNranQdJmEybSYc7RN-UdNDVl3WYmtmsn0vhUZmExBEfZjQfQ_LKV0x9sdAtyNpAryoCZFxwhPzAa71vihOoKOoT1OqMZhPtwogeFShDX5QdvOe6OSd9WGzv5kBzq6wkYaPPJNv5BgiulnvmJent9uvUhdVZahkNYaLVQQG')"></div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface">Sony WH-1000XM4</p>
+<p class="text-body-md text-primary font-bold mt-1">$185.00</p>
+</div>
+</div>
+<!-- Logistics Grid -->
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-1">
+<p class="text-label-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">event</span>
+                            Transaction Date
+                        </p>
+<p class="font-body-md text-on-surface">October 24, 2023</p>
+</div>
+<div class="space-y-1">
+<p class="text-label-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                            Meeting Location
+                        </p>
+<p class="font-body-md text-on-surface">Student Union, Lobby</p>
+</div>
+</div>
+<!-- Review Section -->
+<div class="pt-4 border-t border-outline-variant">
+<p class="text-label-md text-on-surface-variant mb-3">Review Received</p>
+<div class="bg-surface-variant/20 p-4 rounded-xl border border-surface-variant/50">
+<div class="flex items-center gap-1 mb-2 text-[#f59e0b]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="text-body-md text-on-surface italic">"Great condition as described. Alex was super communicative and arrived exactly on time at the Student Union. Highly recommend this seller!"</p>
+</div>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="p-6 bg-surface-container-low flex justify-end gap-3">
+<button class="px-6 py-2.5 rounded-lg border border-outline font-label-md text-label-md hover:bg-surface-variant transition-colors" onclick="document.getElementById('deal-modal').classList.add('hidden')">Close</button>
+<button class="px-6 py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-surface-tint shadow-md transition-all">View Invoice</button>
+</div>
+</div>
+</div>
+<script>
+        // Simple micro-interaction for clicking the modal overlay to close
+        window.onclick = function(event) {
+            const modal = document.getElementById('deal-modal');
+            if (event.target == modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+
+
+</body></html>

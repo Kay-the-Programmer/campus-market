@@ -1,0 +1,318 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CampusMarket | Browse Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-surface-variant": "#434655",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#6ffbbe",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "on-secondary-container": "#fffbff",
+                    "error-container": "#ffdad6",
+                    "secondary": "#6b38d4",
+                    "surface-variant": "#d3e4fe",
+                    "on-primary-fixed": "#00174b",
+                    "on-surface": "#0b1c30",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#007d55",
+                    "primary": "#004ac6",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#0053db",
+                    "primary-fixed": "#dbe1ff",
+                    "primary-container": "#2563eb",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-bright": "#f8f9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "outline-variant": "#c3c6d7",
+                    "surface-container-high": "#dce9ff",
+                    "on-primary": "#ffffff",
+                    "on-primary-container": "#eeefff",
+                    "on-error": "#ffffff",
+                    "secondary-container": "#8455ef",
+                    "secondary-fixed": "#e9ddff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "tertiary": "#006242",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-dim": "#cbdbf5",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-container": "#bdffdb",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-container-low": "#eff4ff",
+                    "surface": "#f8f9ff",
+                    "outline": "#737686",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed": "#23005c",
+                    "inverse-surface": "#213145",
+                    "background": "#f8f9ff",
+                    "on-background": "#0b1c30"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "stack-lg": "2rem",
+                    "gutter": "1.5rem",
+                    "stack-sm": "0.5rem",
+                    "margin-mobile": "1rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .listing-card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface shadow-sm transition-transform duration-300" id="main-header">
+<div class="flex flex-col gap-stack-sm px-margin-mobile py-stack-sm max-w-container-max mx-auto">
+<div class="flex justify-between items-center">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">CampusMarket</span>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-12 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-full text-body-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search textbooks, tutors, meals..." type="text">
+</div>
+</div>
+</header>
+<main class="pt-32 pb-24">
+<!-- Horizontal Category Chips -->
+<section class="mb-stack-md">
+<div class="flex overflow-x-auto no-scrollbar gap-2 px-margin-mobile py-2">
+<button class="flex-shrink-0 px-5 py-2 bg-primary text-on-primary rounded-full font-label-md text-label-md active:scale-95 transition-transform">All</button>
+<button class="flex-shrink-0 px-5 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-transform">Products</button>
+<button class="flex-shrink-0 px-5 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-transform">Services</button>
+<button class="flex-shrink-0 px-5 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-transform">Food</button>
+<button class="flex-shrink-0 px-5 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-transform">Textbooks</button>
+<button class="flex-shrink-0 px-5 py-2 bg-surface-container-highest text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-transform">Electronics</button>
+</div>
+</section>
+<!-- Active Filters & Filter Button -->
+<section class="px-margin-mobile flex items-center gap-2 mb-stack-md">
+<button class="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fixed text-on-primary-fixed rounded-lg font-label-sm text-label-sm">
+<span class="">Category: All</span>
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fixed text-on-primary-fixed rounded-lg font-label-sm text-label-sm">
+<span class="">Under K200</span>
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+<button class="ml-auto flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+                Filters
+            </button>
+</section>
+<!-- 2-Column Listing Grid -->
+<section class="px-margin-mobile grid grid-cols-2 gap-4">
+<!-- Listing Card 1: Product -->
+<div class="bg-surface rounded-xl overflow-hidden listing-card-shadow flex flex-col active:scale-[0.98] transition-transform">
+<div class="relative h-40 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A premium pair of noise-canceling headphones resting on a minimalist wooden desk. The lighting is soft and natural from a nearby window, creating a serene and high-end atmosphere. The image uses a clean, light-mode aesthetic with soft shadows and a professional, crisp focus on the product texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjEOBJx7ghyzmnfB88GlMGgS-ryswnpdGIYZR29uvWX2-C5_YgkNq3zKKbZy67-iwRBuxKNXrEENESDFO-nYhEtaRaqPlkzxShWuh2Pcl_AaCfteCiq8YE3h_XpEmEB1YIsVrwR975swoVPRKNr0lrrd3egFQpsJNhVnpsrZRWWQRzRTwb6t_b2TOgUIxedvM7eOgzHwVTrZOr2dxS19Vb2tqnH5NmHhy3z-4AjW-nS4aApWrgF5L2">
+<button class="absolute top-2 right-2 w-8 h-8 bg-surface/80 backdrop-blur-md rounded-full flex items-center justify-center text-error transition-all active:scale-90">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0;">favorite</span>
+</button>
+<div class="absolute top-2 left-2 flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px]">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Product</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1 mb-1">Sony XM4 Headphones</h3>
+<div class="text-primary font-headline-md text-headline-md mb-2">K1,800</div>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="">Main Campus</span>
+</div>
+</div>
+</div>
+<!-- Listing Card 2: Food -->
+<div class="bg-surface rounded-xl overflow-hidden listing-card-shadow flex flex-col active:scale-[0.98] transition-transform">
+<div class="relative h-40 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A delicious, steaming plate of homemade pasta with fresh basil and tomatoes, presented in a rustic ceramic bowl. The lighting is warm and appetizing, emphasizing a friendly community kitchen vibe. The background is slightly blurred to keep focus on the vibrant colors of the food, following a bright and inviting light-mode style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOFF2G6nQg2pTRavBRl9yxhQA4LHbDiVC7yKcIYcy4hx5pHPXPsLfQ6PJSgOpyMp4G3cMCs2laUiwKZyyVHS0WPyRjnI1NVJrVVO9TEVz_qy4pas04u3agwVMcgD1mlnKM33Zc6LVfHCgO3I9DBT3mEpcl7OWdDf455V3W_EvPQE7qepC3e0J1TyX-9dWL3YiIipAFmKb2gAV5vXiWfRrZsSebj3cOjECrTRg-Ukb2-APj0csKUOvM">
+<button class="absolute top-2 right-2 w-8 h-8 bg-surface/80 backdrop-blur-md rounded-full flex items-center justify-center text-error transition-all active:scale-90">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0;">favorite</span>
+</button>
+<div class="absolute top-2 left-2 flex items-center gap-1 bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-1 rounded-md backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px]">restaurant</span>
+<span class="font-label-sm text-label-sm">Food</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1 mb-1">Homemade Pasta Bowl</h3>
+<div class="text-primary font-headline-md text-headline-md mb-1">K45</div>
+<div class="bg-tertiary/10 text-tertiary px-2 py-0.5 rounded text-[11px] font-bold w-fit mb-2">Available until 7PM • 4 left</div>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="">Hall 4</span>
+</div>
+</div>
+</div>
+<!-- Listing Card 3: Service -->
+<div class="bg-surface rounded-xl overflow-hidden listing-card-shadow flex flex-col active:scale-[0.98] transition-transform">
+<div class="relative h-40 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A focused student providing math tutoring in a bright, modern campus library setting. White tables, large windows, and a friendly, educational atmosphere are visible. The image conveys trust and peer-to-peer reliability through clear lighting and a soft, professional aesthetic consistent with a modern corporate student app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaBkd_zKOy2cSVuimxKbOCzwzH-KJsh47qF-BjDHZFnjNTVXBwCXpn03mzNCaJxaZ59ZRcSEArO4CSFU4gHidn1zgxE3S9FTq56-j6IrL_j7u-R0Lrhqa8QufqFLaWTB4AonYhT8FMIGSC2H-diXnlo76E-HavPOUaD3KzgPVZp4eP5JOpnO1_9I_TjBdG1y4RSeYKmA-3diOy7eGnia3fyGHrP26jnKWD81hRIs_hP_Zmk5xPByAD">
+<button class="absolute top-2 right-2 w-8 h-8 bg-surface/80 backdrop-blur-md rounded-full flex items-center justify-center text-error transition-all active:scale-90">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0;">favorite</span>
+</button>
+<div class="absolute top-2 left-2 flex items-center gap-1 bg-secondary-fixed text-on-secondary-fixed-variant px-2 py-1 rounded-md backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px]">work</span>
+<span class="font-label-sm text-label-sm">Service</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1 mb-1">Calculus 101 Tutoring</h3>
+<div class="text-primary font-headline-md text-headline-md mb-2">K150/hr</div>
+<button class="w-full py-2 mb-2 bg-primary-container text-on-primary-container rounded-lg font-label-md text-label-md">Book Now</button>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="">Library Annex</span>
+</div>
+</div>
+</div>
+<!-- Listing Card 4: Product (Textbook) -->
+<div class="bg-surface rounded-xl overflow-hidden listing-card-shadow flex flex-col active:scale-[0.98] transition-transform">
+<div class="relative h-40 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A stack of clean, well-maintained academic textbooks on a bright white surface. The lighting is even and optimistic, creating a clear and high-clarity view of the book covers. The visual style is minimalist and organized, emphasizing trust and easy peer-to-peer exchange for a campus marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkgP8WkILkOj0eckHC11U8P4Qyuq_ZemprZ9yInQYCl9a4pH-I0fpLQ64z-Du_RSKOdA0kWrdO6vwqI9LbppWjBMsy354OgOXqme4xWlvCfCOnRCEhdtDLJcDr8yXJucozevIOBRahsyhVFe0vdKTT-SDuLz95RXzSYsCupbCX8pEB8ONNxZt6QKHyLrVmwmvYDe1716hRvIBsPoQyq4EZyIROJWJqE-ng0QFwgY7AuCWTG2lMig2N">
+<button class="absolute top-2 right-2 w-8 h-8 bg-surface/80 backdrop-blur-md rounded-full flex items-center justify-center text-error transition-all active:scale-90">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<div class="absolute top-2 left-2 flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md backdrop-blur-md">
+<span class="material-symbols-outlined text-[14px]">shopping_bag</span>
+<span class="font-label-sm text-label-sm">Product</span>
+</div>
+</div>
+<div class="p-3 flex flex-col flex-grow">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1 mb-1">Bio Fundamentals</h3>
+<div class="text-primary font-headline-md text-headline-md mb-2">K320</div>
+<div class="mt-auto flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="">North Gate</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB: Post a listing -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center active:scale-90 transition-transform z-50">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 bg-surface shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 rounded-t-xl">
+  <button class="flex flex-col items-center justify-center text-primary px-4 py-1 active:scale-90 transition-transform">
+    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+    <span class="font-label-md text-label-md">Home</span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform">
+    <span class="material-symbols-outlined">favorite</span>
+    <span class="font-label-md text-label-md">Saved</span>
+  </button>
+  <div class="relative -top-6">
+    <button class="w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform">
+      <span class="material-symbols-outlined text-[32px]">add</span>
+    </button>
+    <span class="absolute -bottom-6 left-1/2 -translate-x-1/2 font-label-md text-label-md text-on-surface-variant">Sell</span>
+  </div>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform relative">
+    <span class="material-symbols-outlined">chat_bubble</span>
+    <span class="font-label-md text-label-md">Messages</span>
+    <span class="absolute top-0 right-2 w-2 h-2 bg-error rounded-full"></span>
+  </button>
+  <button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform relative">
+    <span class="material-symbols-outlined">shopping_bag</span>
+    <span class="font-label-md text-label-md">Cart</span>
+    <span class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] font-bold px-1.5 rounded-full">2</span>
+  </button>
+</nav>
+<script>
+        // Subtle scroll animation for header
+        let lastScrollTop = 0;
+        const header = document.getElementById('main-header');
+        
+        window.addEventListener('scroll', () => {
+            let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                header.style.transform = 'translateY(-100%)';
+            } else {
+                header.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+        });
+
+        // Toggle heart icon fill logic
+        document.querySelectorAll('button').forEach(btn => {
+            const icon = btn.querySelector('.material-symbols-outlined');
+            if (icon && (icon.textContent === 'favorite')) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isFilled = icon.style.fontVariationSettings.includes("'FILL' 1");
+                    icon.style.fontVariationSettings = isFilled ? "'FILL' 0" : "'FILL' 1";
+                });
+            }
+        });
+
+        // Add ripple effect simulation on card click
+        document.querySelectorAll('.listing-card-shadow').forEach(card => {
+            card.addEventListener('click', () => {
+                // Future implementation for detail page navigation
+            });
+        });
+    </script>
+
+
+</body></html>

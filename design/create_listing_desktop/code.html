@@ -1,0 +1,391 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Create New Listing | CampusMarket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f8f9ff",
+                    "background": "#f8f9ff",
+                    "surface-variant": "#d3e4fe",
+                    "primary-container": "#2563eb",
+                    "on-tertiary-container": "#bdffdb",
+                    "on-primary-fixed": "#00174b",
+                    "secondary-container": "#8455ef",
+                    "on-tertiary-fixed": "#002113",
+                    "tertiary-container": "#007d55",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-background": "#0b1c30",
+                    "inverse-surface": "#213145",
+                    "primary": "#004ac6",
+                    "on-secondary-fixed": "#23005c",
+                    "on-primary-container": "#eeefff",
+                    "surface-container-low": "#eff4ff",
+                    "secondary-fixed": "#e9ddff",
+                    "on-secondary": "#ffffff",
+                    "surface-tint": "#0053db",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-bright": "#f8f9ff",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-primary": "#ffffff",
+                    "on-surface": "#0b1c30",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#6ffbbe",
+                    "surface-container-high": "#dce9ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-secondary-container": "#fffbff",
+                    "error": "#ba1a1a",
+                    "on-surface-variant": "#434655",
+                    "surface-container": "#e5eeff",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "on-error-container": "#93000a",
+                    "outline": "#737686",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "tertiary": "#006242",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "secondary": "#6b38d4",
+                    "outline-variant": "#c3c6d7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "0.5rem",
+                    "stack-md": "1rem",
+                    "gutter": "1.5rem",
+                    "margin-mobile": "1rem",
+                    "container-max": "1280px",
+                    "stack-lg": "2rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .photo-tile-hover:hover .overlay {
+            opacity: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-margin-mobile md:px-gutter py-stack-sm w-full bg-surface/80 backdrop-blur-md shadow-sm">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary">CampusMarket</span>
+<div class="hidden md:flex relative ml-8">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full w-80 focus:ring-2 focus:ring-primary/20 text-body-sm transition-all" placeholder="Search CampusMarket..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">chat_bubble</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="A high-quality professional portrait of a cheerful university student in a modern campus setting, soft natural lighting, shallow depth of field, vibrant collegiate atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdlbWywGCzFY28qCR0U443HuwpQ7soza0V5na6GxttT0RVNQvvaMArdJZhQlHU3gmS6_aLKxZVqbX2N6cXLga2dCgHZj1ubhQPOQQGoQNX4ulTIyPA1PkEsv2FX5qEgZuRQZ56MPuUeJBah3nztVoUmPxs1KzBdQYVLR6X--5eH_pCrLuba5uWKS8jU92YETgEovFMrAH-EfbJG7I90IUBRBgggSfgNG4yuM0WLptVA9J_tVK8PzuO">
+</div>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 p-stack-md border-r border-outline-variant/20 bg-surface">
+<div class="mb-stack-lg p-4 rounded-xl bg-surface-container-low flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up profile picture of a young male student, wearing a smart casual sweater, set against a blurred background of a modern university library. Warm, inviting lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL5rbTlxswdmLbXwKcKBSDx6kHwtr9Lxk34VCqOwLzBep93GZUAGeyUyQY0Y3q5sF9HY4lAxvDWxtI5BKROntFlma1dfPeGUVVacfHKnAfaFx7851FdClEsn76Id-TKHhN-LWCGg9ZqrtO0_xvpXmWVMLVj4EphAnXJHJnt3r23j9CpCqQBPE7VaP1roA7x1-AgPW-lWqFPFG4Zxss9KU8EXlfQaIzU_9BMvxHGNph-lvtcs8uj1mr">
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Alex Rivers</h3>
+<p class="text-[10px] uppercase tracking-wider text-primary font-bold">Verified Student</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">grid_view</span>
+<span class="font-body-md">Browse</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container font-semibold rounded-lg" href="#">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-body-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">shopping_bag</span>
+<span class="font-body-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">mail</span>
+<span class="font-body-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">settings</span>
+<span class="font-body-md">Settings</span>
+</a>
+</nav>
+<button class="mt-auto w-full py-3 px-4 bg-surface-container-highest text-primary font-bold rounded-xl transition-all active:scale-95 hover:bg-primary-fixed">
+                Switch to Buyer
+            </button>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 md:ml-64 p-margin-mobile md:p-gutter pb-32 max-w-4xl mx-auto">
+<header class="mb-stack-lg">
+<div class="flex items-center gap-4 mb-2"><button class="p-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-150 flex items-center justify-center border border-outline-variant/20"><span class="material-symbols-outlined text-primary">arrow_back</span></button><h1 class="font-headline-lg text-headline-lg text-on-background">Create New Listing</h1></div>
+<p class="text-on-surface-variant font-body-md">Turn your unused items, skills, or food into campus currency.</p>
+</header>
+<div class="space-y-stack-lg">
+<!-- Section 1: Type Selection -->
+<section>
+<h2 class="font-headline-sm text-headline-sm mb-4 text-on-surface">1. What are you offering?</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Product Selected -->
+<div class="relative p-6 border-2 rounded-xl cursor-pointer hover:shadow-md transition-all group bg-primary-container/5 border-primary">
+<div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 text-white shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">shopping_bag</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Product</h3>
+<p class="text-on-surface-variant text-body-sm">Books, electronics, fashion, or dorm essentials.</p>
+
+<div class="absolute top-4 right-4 w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white"><span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'wght' 700;">check</span></div></div>
+<!-- Service -->
+<div class="relative p-6 bg-surface-container-lowest border-2 border-outline-variant/30 rounded-xl cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group">
+<div class="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center mb-4 text-secondary-container">
+<span class="material-symbols-outlined">school</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Service</h3>
+<p class="text-on-surface-variant text-body-sm">Tutoring, cleaning, styling, or tech support.</p>
+</div>
+<!-- Food -->
+<div class="relative p-6 border-2 rounded-xl cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group bg-surface-container-lowest border-outline-variant/30">
+<div class="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center mb-4 text-tertiary-container">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Food</h3>
+<p class="text-on-surface-variant text-body-sm">Home-cooked meals, snacks, or bulk groceries.</p>
+</div>
+</div>
+</section>
+<!-- Section 2: Basic Information -->
+<section class="bg-surface-container-lowest p-gutter rounded-xl shadow-sm border border-outline-variant/10">
+<h2 class="font-headline-sm text-headline-sm mb-6 text-on-surface">2. Basic Information</h2>
+<div class="space-y-6">
+<!-- Photos -->
+<div>
+<label class="font-label-md text-label-md mb-2 block text-on-surface">Photos</label>
+<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+<div class="aspect-square bg-primary-fixed/30 border-2 border-dashed border-primary/40 rounded-xl flex flex-col items-center justify-center text-primary cursor-pointer hover:bg-primary-fixed/50 transition-colors group">
+<span class="material-symbols-outlined text-3xl mb-1 group-hover:scale-110 transition-transform">add_circle</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Add Photos</span>
+</div>
+<div class="aspect-square bg-surface-container rounded-xl border border-outline-variant/30"></div>
+<div class="aspect-square bg-surface-container rounded-xl border border-outline-variant/30"></div>
+<div class="aspect-square bg-surface-container rounded-xl border border-outline-variant/30"></div>
+<div class="aspect-square bg-surface-container rounded-xl border border-outline-variant/30"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-2 italic">Add up to 5 clear photos of your product.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">What are you listing?</label>
+<input class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. MacBook Pro M2, Psychology Textbook" type="text">
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Category</label>
+<select class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+<option>Select Category</option>
+<option>Electronics</option>
+<option>Academic Materials</option>
+<option>Clothing &amp; Accessories</option>
+<option>Dorm Furniture</option>
+</select>
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Price in K</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-on-surface-variant">K</span>
+<input class="w-full pl-8 pr-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="0.00" type="number">
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Tell buyers more about it...</label>
+<textarea class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Describe the item's features, flaws, or why you're selling it..." rows="4"></textarea>
+</div>
+</div>
+</section>
+<!-- Section 3: Product Details -->
+<section class="bg-surface-container-lowest p-gutter rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">info</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">3. Product Details</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Condition</label>
+<select class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+<option>Select Condition</option>
+<option>New (Never used)</option>
+<option>Like New (Used once or twice)</option>
+<option>Good (Minor wear)</option>
+<option>Fair (Shows significant use)</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Brand (Optional)</label>
+<input class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="e.g. Apple, Nike, IKEA" type="text">
+</div>
+</div>
+</section>
+<!-- Section 4: Location -->
+<section class="bg-surface-container-lowest p-gutter rounded-xl shadow-sm border border-outline-variant/10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">4. Pickup Location</h2>
+</div>
+<div class="space-y-4">
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Campus Zone / Hostel</label>
+<select class="w-full px-4 py-3 bg-surface rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+<option>Select Pickup Location</option>
+<option>Main Campus Central</option>
+<option>Library Square</option>
+<option>Hall 4 (Female Residence)</option>
+<option>Hall 2 (Male Residence)</option>
+<option>Engineering Block Parking</option>
+</select>
+</div>
+<div class="h-48 rounded-xl bg-surface-container relative overflow-hidden group">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="A detailed map visualization of a modern university campus with highlighted zones, minimalist cartography style, featuring soft blues and grays, professional UI aesthetic." data-location="University Campus" style="background-image: url('https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg')"></div>
+<div class="absolute inset-0 bg-primary/10 pointer-events-none"></div>
+<div class="absolute bottom-3 left-3 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg text-body-sm font-semibold text-primary shadow-sm">
+                                Accurate map view enabled
+                            </div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Sticky Bottom Bar -->
+<div class="fixed bottom-0 left-0 right-0 md:left-64 bg-surface/95 backdrop-blur-md border-t border-outline-variant/20 p-4 z-50 shadow-[0_-4px_15px_rgba(0,0,0,0.05)]">
+<div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
+<div class="hidden sm:block">
+<p class="text-label-sm text-on-surface-variant">Draft saved at 14:32</p>
+</div>
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none px-8 h-12 rounded-xl font-label-md text-primary border-2 border-primary/20 hover:bg-primary/5 transition-all active:scale-95">
+                    Preview
+                </button>
+<button class="flex-1 sm:flex-none px-12 h-12 bg-primary text-white rounded-xl font-bold hover:bg-primary-container hover:shadow-lg hover:shadow-primary/25 transition-all active:scale-95">
+                    Publish Listing
+                </button>
+</div>
+</div>
+</div>
+<!-- Mobile Bottom Navigation (Hidden on Desktop) -->
+<nav class="md:hidden fixed bottom-0 w-full z-[60] flex justify-around items-center h-16 bg-surface px-4 pb-safe border-t border-outline-variant/10 hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-90" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-90" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-sm text-label-sm">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:opacity-80 transition-transform active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+<span class="font-label-sm text-label-sm">Sell</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:opacity-80 transition-transform active:scale-90" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for form focus and selection states
+        document.querySelectorAll('input, select, textarea').forEach(element => {
+            element.addEventListener('focus', () => {
+                element.parentElement.querySelector('label')?.classList.add('text-primary');
+            });
+            element.addEventListener('blur', () => {
+                element.parentElement.querySelector('label')?.classList.remove('text-primary');
+            });
+        });
+
+        // Simple Card Selection Toggle (Product is default as requested)
+        const typeCards = document.querySelectorAll('section:nth-of-type(1) > div > div');
+        typeCards.forEach(card => {
+            card.addEventListener('click', () => {
+                typeCards.forEach(c => {
+                    c.classList.remove('bg-primary-container/5', 'border-primary');
+                    c.classList.add('bg-surface-container-lowest', 'border-outline-variant/30');
+                    const check = c.querySelector('.absolute');
+                    if(check) check.remove();
+                });
+                card.classList.add('bg-primary-container/5', 'border-primary');
+                card.classList.remove('bg-surface-container-lowest', 'border-outline-variant/30');
+                
+                const checkMark = document.createElement('div');
+                checkMark.className = "absolute top-4 right-4 w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white";
+                checkMark.innerHTML = '<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: \'wght\' 700;">check</span>';
+                card.appendChild(checkMark);
+            });
+        });
+    </script>
+
+
+</body></html>

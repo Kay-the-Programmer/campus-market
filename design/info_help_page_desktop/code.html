@@ -1,0 +1,410 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Help Center - CampusMarket</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#d3e4fe",
+                    "secondary": "#6b38d4",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-secondary-fixed": "#23005c",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed": "#00174b",
+                    "on-secondary-container": "#fffbff",
+                    "error-container": "#ffdad6",
+                    "surface": "#f8f9ff",
+                    "secondary-fixed": "#e9ddff",
+                    "outline-variant": "#c3c6d7",
+                    "on-primary-container": "#eeefff",
+                    "on-surface": "#0b1c30",
+                    "tertiary-container": "#007d55",
+                    "error": "#ba1a1a",
+                    "primary-container": "#2563eb",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "inverse-primary": "#b4c5ff",
+                    "on-tertiary": "#ffffff",
+                    "surface-dim": "#cbdbf5",
+                    "primary": "#004ac6",
+                    "surface-variant": "#d3e4fe",
+                    "tertiary": "#006242",
+                    "secondary-container": "#8455ef",
+                    "on-tertiary-fixed": "#002113",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed": "#6ffbbe",
+                    "surface-bright": "#f8f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-surface": "#213145",
+                    "surface-container": "#e5eeff",
+                    "background": "#f8f9ff",
+                    "primary-fixed": "#dbe1ff",
+                    "on-surface-variant": "#434655",
+                    "surface-tint": "#0053db",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-container": "#bdffdb",
+                    "outline": "#737686",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#d0bcff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "margin-mobile": "1rem",
+                    "stack-lg": "2rem",
+                    "container-max": "1280px",
+                    "gutter": "1.5rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md smooth-scroll">
+<!-- TopNavBar (Shared Component Identity) -->
+<header class="w-full top-0 sticky z-50 bg-surface shadow-sm">
+<div class="flex justify-between items-center h-16 px-gutter max-w-container-max mx-auto">
+<div class="flex items-center gap-stack-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">CampusMarket</span>
+<div class="hidden md:flex items-center ml-8 gap-stack-lg">
+<nav class="flex gap-stack-md">
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-2 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">Explore</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-2 rounded-lg cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">Activity</a>
+<a class="text-primary font-bold border-b-2 border-primary px-3 py-2 cursor-pointer active:opacity-80 font-body-md text-body-md" href="#">Help Center</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-stack-md">
+<div class="hidden sm:flex items-center bg-surface-container-low rounded-full px-4 py-1.5">
+<span class="material-symbols-outlined text-outline-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-48" placeholder="Search help..." type="text">
+</div>
+<div class="flex gap-stack-sm text-primary">
+<span class="material-symbols-outlined cursor-pointer p-2 hover:bg-surface-container-low rounded-full">notifications</span>
+<span class="material-symbols-outlined cursor-pointer p-2 hover:bg-surface-container-low rounded-full">mail</span>
+<span class="material-symbols-outlined cursor-pointer p-2 hover:bg-surface-container-low rounded-full">account_circle</span>
+</div>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar (Shared Component Identity) -->
+<aside class="hidden md:flex h-screen w-64 fixed left-0 top-0 pt-16 bg-surface-container-low flex-col p-stack-md gap-stack-sm">
+<div class="flex items-center gap-3 px-2 py-4 mb-2">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary">Student Seller</p>
+<p class="text-xs text-on-surface-variant">Verified Member</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="font-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="font-label-md">Saved Items</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</nav>
+<button class="bg-primary-container text-on-primary-container py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 mb-4 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">add</span>
+                Post New Listing
+            </button>
+<div class="border-t border-outline-variant pt-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 bg-primary-container text-on-primary-container rounded-lg font-bold" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 bg-surface pb-20">
+<!-- Jump Menu / Sticky Tabs -->
+<div class="sticky top-16 z-40 bg-surface/80 backdrop-blur-md border-b border-surface-container-high">
+<div class="max-w-4xl mx-auto px-gutter">
+<div class="flex gap-stack-lg overflow-x-auto hide-scrollbar py-4">
+<a class="whitespace-nowrap font-label-md text-primary border-b-2 border-primary pb-1" href="#about">About CampusMarket</a>
+<a class="whitespace-nowrap font-label-md text-on-surface-variant hover:text-primary transition-colors pb-1" href="#how-it-works">How It Works</a>
+<a class="whitespace-nowrap font-label-md text-on-surface-variant hover:text-primary transition-colors pb-1" href="#safety-tips">Safety Tips</a>
+<a class="whitespace-nowrap font-label-md text-on-surface-variant hover:text-primary transition-colors pb-1" href="#faqs">FAQs</a>
+</div>
+</div>
+</div>
+<div class="max-w-4xl mx-auto px-gutter py-stack-lg space-y-24">
+<!-- Section 1: About -->
+<section class="scroll-mt-32" id="about">
+<div class="relative rounded-3xl overflow-hidden bg-primary-container p-stack-lg md:p-12 mb-12 shadow-lg">
+<!-- Glassy overlay -->
+<div class="absolute inset-0 bg-white/5 pointer-events-none"></div>
+<div class="relative z-10 text-center md:text-left">
+<div class="mb-6 flex justify-center md:justify-start">
+<div class="bg-white p-3 rounded-2xl shadow-md">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">storefront</span>
+</div>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-primary-container mb-4">Empowering the campus community through safe, student-to-student exchange.</h1>
+<p class="font-body-lg text-body-lg text-on-primary-container/90 max-w-2xl">We built CampusMarket to bridge the gap between dorm rooms and lecture halls, creating a frictionless secondary market where value stays within the student body.</p>
+</div>
+<div class="absolute -right-20 -bottom-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+</div>
+<div class="grid md:grid-cols-2 gap-stack-lg">
+<div class="p-stack-md bg-surface-container-low rounded-2xl border border-surface-container-high">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-3">Our Origins</h3>
+<p class="text-on-surface-variant leading-relaxed">CampusMarket began as a small discord server for a handful of seniors looking to sell their furniture before graduation. We quickly realized that students needed a more robust, secure, and centralized hub that didn't rely on generic social media platforms prone to spam and non-campus outsiders.</p>
+</div>
+<div class="p-stack-md bg-surface-container-low rounded-2xl border border-surface-container-high">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-3">Sustainable Future</h3>
+<p class="text-on-surface-variant leading-relaxed">Every textbook resold and every mini-fridge passed down contributes to a more sustainable campus ecosystem. Our goal is to minimize waste and maximize student savings by ensuring that every functional item finds a second life right here on campus grounds.</p>
+</div>
+</div>
+</section>
+<!-- Section 2: How It Works -->
+<section class="scroll-mt-32" id="how-it-works">
+<div class="text-center mb-12">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">How It Works</h2>
+<p class="text-on-surface-variant">Simple, secure, and student-focused commerce in four easy steps.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+<!-- Connecting Line (Desktop only) -->
+<div class="hidden md:block absolute top-16 left-0 w-full h-0.5 bg-surface-container-highest -z-10"></div>
+<!-- Step 1 -->
+<div class="group flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-white shadow-sm border-4 border-surface-container flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">add_a_photo</span>
+</div>
+<h4 class="font-label-md text-on-surface mb-2">1. List your item</h4>
+<p class="text-body-sm text-on-surface-variant">Take a few photos and set your price in seconds.</p>
+</div>
+<!-- Step 2 -->
+<div class="group flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-white shadow-sm border-4 border-surface-container flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">forum</span>
+</div>
+<h4 class="font-label-md text-on-surface mb-2">2. Chat with buyers</h4>
+<p class="text-body-sm text-on-surface-variant">Use our secure in-app messaging to negotiate details.</p>
+</div>
+<!-- Step 3 -->
+<div class="group flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-white shadow-sm border-4 border-surface-container flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">location_on</span>
+</div>
+<h4 class="font-label-md text-on-surface mb-2">3. Meet on campus</h4>
+<p class="text-body-sm text-on-surface-variant">Exchange items safely at designated student centers.</p>
+</div>
+<!-- Step 4 -->
+<div class="group flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-white shadow-sm border-4 border-surface-container flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-3xl">verified</span>
+</div>
+<h4 class="font-label-md text-on-surface mb-2">4. Complete deal</h4>
+<p class="text-body-sm text-on-surface-variant">Mark as sold and rate your experience for the community.</p>
+</div>
+</div>
+<div class="mt-12 overflow-hidden rounded-2xl aspect-video md:aspect-[21/9]">
+<img class="w-full h-full object-cover" data-alt="A bright, airy candid photograph of two diverse college students meeting outside a modern university library on a sunny day. They are smiling and shaking hands while one hands over a well-maintained camera in its original box. The background shows lush campus greenery and student traffic, evoking a sense of safety and community trust." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBu4BfvA8PifpN9coNG0rx0Mq-xel9EcF9Aj3lHblQCr48BtJfD6q3-RCsZDGmK2jKy9WNs8xjDlJjbVQD0pBfeF07uteDUiUrLTRwlSDecuao4rl7ZCYcNFJt8XPDwHwASFWnM5ic-zs3pU2XRlgWCmrkijOhEFHhMMY0Ff6_Pgc7IrNLcBaXge91i4m5DKI2KRBMsnJrGJ730XroVQZFnVCjeqvbklIbemM3rM0afvufMctOqSzu6">
+</div>
+</section>
+<!-- Section 3: Safety Tips -->
+<section class="scroll-mt-32" id="safety-tips">
+<div class="bg-surface-container-low rounded-3xl p-stack-lg border border-surface-container-high">
+<div class="flex items-center gap-3 mb-8">
+<div class="bg-primary text-on-primary w-12 h-12 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Community Safety Tips</h2>
+<p class="text-on-surface-variant text-body-sm">Your security is our top priority. Follow these guidelines for a safe trade.</p>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Tip 1 -->
+<div class="flex items-center gap-stack-md p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">meeting_room</span>
+</div>
+<p class="text-on-surface-variant font-body-md">Meet in public campus locations (e.g., <span class="font-bold text-on-surface">Student Union, Library</span>) during daylight hours.</p>
+</div>
+<!-- Tip 2 -->
+<div class="flex items-center gap-stack-md p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<p class="text-on-surface-variant font-body-md">Don't pay before seeing and inspecting the item in person. <span class="font-bold text-on-surface">Verify quality</span> first.</p>
+</div>
+<!-- Tip 3 -->
+<div class="flex items-center gap-stack-md p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">group</span>
+</div>
+<p class="text-on-surface-variant font-body-md">Bring a friend along or <span class="font-bold text-on-surface">let someone know</span> your exact meeting details and time.</p>
+</div>
+<!-- Tip 4 -->
+<div class="flex items-center gap-stack-md p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<div class="w-10 h-10 rounded-full bg-surface-container flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">psychology</span>
+</div>
+<p class="text-on-surface-variant font-body-md">Trust your instincts—if a deal feels off or too good to be true, <span class="font-bold text-on-surface">walk away</span>.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 4: Need more help? -->
+<section class="text-center py-stack-lg bg-surface-container rounded-3xl border border-surface-container-highest" id="faqs">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Still have questions?</h3>
+<p class="text-on-surface-variant mb-8 px-gutter">Our support team is active 24/7 to help resolve disputes or assist with platform navigation.</p>
+<div class="flex flex-wrap justify-center gap-4 px-gutter">
+<button class="bg-primary text-on-primary h-12 px-8 rounded-full font-bold hover:opacity-90 transition-opacity">Contact Support</button>
+<button class="bg-white text-primary border border-primary h-12 px-8 rounded-full font-bold hover:bg-surface-container-low transition-colors">Visit FAQ Database</button>
+</div>
+</section>
+</div>
+<!-- Footer-style bottom padding -->
+<footer class="mt-12 pt-8 border-t border-outline-variant px-gutter">
+<div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-on-surface-variant text-body-sm mb-12">
+<p>© 2024 CampusMarket Inc. Built for students, by students.</p>
+<div class="flex gap-stack-lg">
+<a class="hover:text-primary transition-colors" href="#">Terms</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">Community Guidelines</a>
+</div>
+</div>
+</footer>
+</main>
+</div>
+<!-- Mobile Bottom Navigation (Shared Component Identity) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface border-t border-surface-container-high px-4 py-2 flex justify-between items-center z-50">
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-label-sm">Home</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">search</span>
+<span class="text-[10px] font-label-sm">Explore</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+<span class="text-[10px] font-label-sm font-bold">Help</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">chat</span>
+<span class="text-[10px] font-label-sm">Inbox</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-label-sm">Account</span>
+</div>
+</nav>
+<script>
+        // Simple intersection observer for the jump menu active states
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.jump-menu-link'); // Added class to HTML above in my mind, but using query selector for a better dynamic experience
+
+            // Let's refine the jump menu links selection based on the structure
+            const menuLinks = document.querySelectorAll('a[href^="#"]');
+
+            const observerOptions = {
+                root: null,
+                threshold: 0.5,
+                rootMargin: "-64px 0px 0px 0px"
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        menuLinks.forEach(link => {
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('text-primary', 'border-b-2', 'border-primary');
+                                link.classList.remove('text-on-surface-variant');
+                            } else {
+                                link.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                                link.classList.add('text-on-surface-variant');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => observer.observe(section));
+        });
+    </script>
+</body></html>

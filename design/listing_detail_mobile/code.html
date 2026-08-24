@@ -1,0 +1,320 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CampusMarket | Sony WH-1000XM4</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#0053db",
+                    "primary-fixed": "#dbe1ff",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "primary-container": "#2563eb",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-primary-fixed": "#00174b",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "surface-dim": "#cbdbf5",
+                    "background": "#f8f9ff",
+                    "on-background": "#0b1c30",
+                    "surface-container": "#e5eeff",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "inverse-surface": "#213145",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-fixed": "#6ffbbe",
+                    "on-surface-variant": "#434655",
+                    "tertiary-container": "#007d55",
+                    "secondary-fixed": "#e9ddff",
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "surface": "#f8f9ff",
+                    "outline": "#737686",
+                    "outline-variant": "#c3c6d7",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#006242",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-secondary-fixed": "#23005c",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-container": "#eeefff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "secondary": "#6b38d4",
+                    "on-secondary-container": "#fffbff",
+                    "secondary-container": "#8455ef",
+                    "on-tertiary-fixed": "#002113",
+                    "surface-container-low": "#eff4ff",
+                    "primary": "#004ac6",
+                    "on-surface": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "on-tertiary-container": "#bdffdb",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#d3e4fe",
+                    "inverse-primary": "#b4c5ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "margin-mobile": "1rem",
+                    "container-max": "1280px",
+                    "stack-lg": "2rem",
+                    "gutter": "1.5rem"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .carousel-container {
+            scroll-snap-type: x mandatory;
+        }
+        .carousel-item {
+            scroll-snap-align: start;
+        }
+        
+        .shadow-soft {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: #f8f9ff;
+            color: #0b1c30;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="pb-24">
+<!-- Header Navigation (Hidden on Detail View as per Task) -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex justify-between items-center px-4 py-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface shadow-sm active:scale-95 transition-transform" onclick="history.back()">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface shadow-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface">share</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface shadow-sm active:scale-95 transition-transform" id="favorite-btn">
+<span class="material-symbols-outlined text-on-surface">favorite</span>
+</button>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="w-full">
+<!-- 1. Full-width image carousel -->
+<section class="relative w-full h-[400px] bg-surface-container overflow-hidden">
+<div class="carousel-container flex overflow-x-auto no-scrollbar w-full h-full" id="carousel">
+<div class="carousel-item min-w-full h-full relative">
+<img class="w-full h-full object-cover" data-alt="A professional studio product photograph of Sony WH-1000XM4 headphones in elegant matte black finish. The headphones are positioned diagonally on a clean, light-blue minimalist surface that reflects the modern CampusMarket aesthetic. High-key lighting highlights the soft leather ear pads and sleek metallic accents, creating a premium and trustworthy vibe suitable for a high-end campus marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOZEH3fv8k9b-5L8sku4gV3pGDFxZdD_5HcLRsheQG9GW-DKJ_j4uzJ1KBasmIoKlCltQhNKGuishfX06BFX86Et7OUg0JBgJPRZo7Nb6j8uJWIn1ux-8QWLgy5DKrLOhdu6xF6O6Oy0zyDKLkHS4yE-zniIDwl4t8ycNO4XbjAKuAE2VCgdf92_-v45ln6Zu5Vu5NzcHiTQA4G43euyAkVQ7XCcBlcX9-dzIhbfqslK7A-SfSmUrY">
+</div>
+<div class="carousel-item min-w-full h-full relative">
+<img class="w-full h-full object-cover" data-alt="A close-up detail shot of the Sony WH-1000XM4 headphone hinges and touch controls. The lighting is soft and natural, emphasizing the pristine 'like-new' condition of the hardware. The background is a blurred university library setting, subtly hinting at the student context while maintaining a sharp focus on the product's premium build quality and modern design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBe-wqkvEUMNEmQ9LBl-mvnewNze9jSn5ZMwd1O_xwZnguhlSQa5MeU4BaN-EOLm40ggkSMhc584WzM_RNLn7OYRMmh8QcTx2pG92vF1vqWdch6wuJZPcIG_LeWuCMdTnBo_1nP96QFTLH-7iKkP6mLvx8lcOy43S0wV3gslIAinnpy1-cycQm2hEyKqD7aJL1JXPlr_qPpgz3FgYWFcA2luRFY1EoE5KNK8Bj6u1jah42WwMrupr5o">
+</div>
+<div class="carousel-item min-w-full h-full relative">
+<img class="w-full h-full object-cover" data-alt="The Sony WH-1000XM4 headphones resting inside their original protective carrying case on a wooden study desk. Beside the case is the original charging cable and airplane adapter, showcasing a complete set. The composition is clean and organized, filmed in a bright, modern light-mode style that conveys reliability and careful ownership by a university student." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfLtTreWuX5RgdUi5yB5DYSDKVGNd3sfucFv9Hj5F4u2UVH_P9tukEG5n2VyqgY3VnrWJ32kDuwfI9wwPcm4tfLGD376uM1wNvegO-68IiCy7AB2xLvbpbQdLWzM7lzjGottPihB68-t0kgHvDMzCm815VSlTkK0W0ryJ_Rim4PLfWD4-5DVv6Vv_ZFgf793t8GiHHc67QqybOIiLnjyUlppZEYfgv0-eKviqgnd_9jHgsbjYRuctE">
+</div>
+</div>
+<!-- Dot Indicators -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-on-background/20 backdrop-blur-sm">
+<div class="w-2 h-2 rounded-full bg-white"></div>
+<div class="w-2 h-2 rounded-full bg-white/40"></div>
+<div class="w-2 h-2 rounded-full bg-white/40"></div>
+</div>
+</section>
+<!-- 2. Sticky/Prominent Section -->
+<section class="px-margin-mobile py-stack-md bg-surface shadow-soft rounded-b-xl relative z-10 -mt-2">
+<div class="flex justify-between items-start mb-2">
+<div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary text-label-sm mb-2">
+<span class="material-symbols-outlined text-[14px] mr-1" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Available
+                    </span>
+<h1 class="font-headline-md text-headline-md text-on-surface">Sony WH-1000XM4</h1>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-headline-md text-primary">K1,800</p>
+</div>
+</div>
+<!-- 3. Small Tag Row -->
+<div class="flex flex-wrap gap-2 mt-4">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container/10 text-primary border border-primary-container/20">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+<span class="text-label-md font-label-md">Product</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary-container/10 text-secondary border border-secondary-container/20">
+<span class="material-symbols-outlined text-[18px]">new_releases</span>
+<span class="text-label-md font-label-md">Like New</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+<span class="text-label-md font-label-md">Main Campus</span>
+</div>
+</div>
+</section>
+<!-- 4. Plain-text description section -->
+<section class="px-margin-mobile py-stack-lg border-b border-outline-variant">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-3">Description</h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                Selling my Sony XM4s as I've upgraded. These are in perfect condition, no scratches or scuffs. Battery life is still incredible (lasts about 30 hours). Comes with the original case, aux cable, and USB-C charging cable. Best noise cancelling headphones I've ever owned, perfect for studying in the library or long commutes. Firm on price.
+            </p>
+</section>
+<!-- 5. Seller info card -->
+<section class="px-margin-mobile py-stack-lg border-b border-outline-variant">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-4">Seller</h2>
+<a class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low border border-outline-variant active:scale-[0.98] transition-transform" href="#">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full overflow-hidden border-2 border-primary-fixed">
+<img class="w-full h-full object-cover" data-alt="A friendly and professional portrait of a male university student in his early 20s. He is wearing a clean, casual polo shirt and has a welcoming smile. The background is a bright, airy campus courtyard with blurred greenery and modern architecture. The photo is captured with soft, natural daylight, reflecting a high-trust, community-oriented peer-to-peer marketplace aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe9bs6aHcGWLvbooLBi1V6XLIvUbuhe8qzsdfU5SJsX_kuci5L1HKNapXmf0UTZ29pt0o26TVwmIM1j4MSkS-tqY1UU7_SxNR-nVJ3MBgVGjiFXOzieEEE0greUS11RQ-nfWBroiWTnwJGQb62qILo-HelBW6lP9Q8mYTiD44sLen9h6yG5xp0f2rTMwkkEm7sUl1TDRRxqQb1nkPcmvosgf2tuWsxwABvsbuKImLrErhGls7WcvSY">
+</div>
+<div>
+<div class="flex items-center gap-1">
+<h3 class="font-label-md text-label-md text-on-surface">John Doe</h3>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-amber-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-body-sm font-body-sm">4.8 (24 reviews)</span>
+</div>
+<p class="text-label-sm font-label-sm text-outline mt-0.5">Member since 2022</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</a>
+</section>
+<!-- 8. Similar Listings -->
+<section class="py-stack-lg">
+<div class="px-margin-mobile flex justify-between items-end mb-4">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Similar Listings</h2>
+<a class="text-primary text-label-md font-label-md" href="#">View all</a>
+</div>
+<div class="flex overflow-x-auto no-scrollbar gap-4 px-margin-mobile pb-4">
+<!-- Card 1 -->
+<div class="min-w-[200px] bg-surface rounded-xl shadow-soft overflow-hidden active:scale-95 transition-transform">
+<div class="relative h-32">
+<img class="w-full h-full object-cover" data-alt="Apple AirPods Pro 2nd Gen lying on a clean white surface with their charging case open. Minimalist, modern lighting with soft shadows. The overall aesthetic is clean, professional, and fits perfectly within a premium campus marketplace app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBke16TxrriLwSyYAxBFc0Wyk_cR9ZZnNZDecon1LFEFSm0KrDtVmE7P9o_iVbs8tYvDmBToNbHCddXOdEG9UG62w5BH5Fp4R9xR9uAfEgFoo0vJUokYsg1YQCoEoIF1Su09WpRHCu8pWQR8WswlwsGqWgtNzkuyu3RtJV9KgAaNaCsQ5KmzCMDYcgTTt8M968IUiO1rAIWc0mjt9fYGXbRlOljebAV3O4WRw-hidBSERJogZcDqEbq">
+<div class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[10px] font-bold text-primary">PRODUCT</div>
+</div>
+<div class="p-3">
+<h4 class="font-label-md text-label-md text-on-surface truncate">Apple AirPods</h4>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">K450</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="min-w-[200px] bg-surface rounded-xl shadow-soft overflow-hidden active:scale-95 transition-transform">
+<div class="relative h-32">
+<img class="w-full h-full object-cover" data-alt="A sleek, silver MacBook Air M2 placed on a minimalist desk environment. The screen is off, reflecting a soft glow from a nearby window. The photography is high-end, clean, and highlights the slim profile of the laptop, following the modern corporate design guidelines." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWKCFYZ0d3g0t1lyWDCp3ppH5aYoPaDq0Evtu0AsZefXJ85wdfx342ZkjVoAtZfgb2XlC1a0eisHyWzeITIH0z00Q0zxmqikx5uYRu3BL4em2-8aHKOd5UDZxVHNvRnKpto81d6GWmaArbN_S4rI89BBAXos7DAB2mvRsZx2HMB6hKH7XVPKhKdowsE3Tbkq-m_VKkLDO7PVOrNF20iQrvRjyS-PKDkj0ZeDZ6BsQChfC47BGL_L7z">
+<div class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[10px] font-bold text-primary">PRODUCT</div>
+</div>
+<div class="p-3">
+<h4 class="font-label-md text-label-md text-on-surface truncate">MacBook Air</h4>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">K8,500</p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="min-w-[200px] bg-surface rounded-xl shadow-soft overflow-hidden active:scale-95 transition-transform">
+<div class="relative h-32">
+<img class="w-full h-full object-cover" data-alt="A professional-grade Blue Yeti microphone on a desk setup. The focus is sharp on the metal grille and gain knobs. The background is a soft-focus dorm room with warm ambient lighting, suggesting a student podcasting or streaming setup." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCysupBQe_y2CgCZ_hjhHL0eVhpcSBIurK396bL9S1hnQdR0zz2OhLf0E0jFdthiM_30a7xIORy35fHNSjsgRxlH_88-lKJuERtFKIOYDqQ4dvgDFSDkcClg3T5y5aE5kmpAsD14yNt0oL0BqWafIfGSZM1Is_JdhSyGgdDDY4XEVTsgNiKanNdf5RhTxzRR7z--KDH5P-FtnuDFWKmYj0s7Yq1w9E4jyNFdOovRjwh5sFbbARjhq75">
+<div class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-[10px] font-bold text-primary">PRODUCT</div>
+</div>
+<div class="p-3">
+<h4 class="font-label-md text-label-md text-on-surface truncate">Blue Yeti Mic</h4>
+<p class="font-headline-sm text-headline-sm text-primary mt-1">K950</p>
+</div>
+</div>
+</div>
+</section>
+<!-- 7. 'Report this listing' link -->
+<section class="px-margin-mobile py-stack-lg mb-10">
+<button class="flex items-center gap-2 text-error font-label-md text-label-md mx-auto opacity-70 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[20px]">flag</span>
+                Report this listing
+            </button>
+</section>
+</main>
+<!-- 6. Primary sticky bottom bar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant/30 px-margin-mobile py-4 flex gap-4 items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+<button class="w-12 h-12 flex items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant active:scale-90 transition-transform">
+<span class="material-symbols-outlined">bookmark</span>
+</button>
+<button class="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl bg-primary-container text-white font-label-md text-label-md shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined">chat</span>
+            Chat with Seller
+        </button>
+</nav>
+<script>
+        // Simple Interaction logic
+        const favoriteBtn = document.getElementById('favorite-btn');
+        let isFavorited = false;
+        
+        favoriteBtn.addEventListener('click', () => {
+            isFavorited = !isFavorited;
+            const icon = favoriteBtn.querySelector('.material-symbols-outlined');
+            if (isFavorited) {
+                icon.style.fontVariationSettings = "'FILL' 1";
+                icon.classList.add('text-error');
+                icon.innerText = 'favorite';
+            } else {
+                icon.style.fontVariationSettings = "'FILL' 0";
+                icon.classList.remove('text-error');
+                icon.innerText = 'favorite';
+            }
+        });
+
+        // Carousel Dot Update Simulation
+        const carousel = document.getElementById('carousel');
+        const dots = document.querySelectorAll('.absolute.bottom-4 .w-2');
+        
+        carousel.addEventListener('scroll', () => {
+            const scrollIndex = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+            dots.forEach((dot, index) => {
+                if(index === scrollIndex) {
+                    dot.classList.remove('bg-white/40');
+                    dot.classList.add('bg-white');
+                } else {
+                    dot.classList.add('bg-white/40');
+                    dot.classList.remove('bg-white');
+                }
+            });
+        });
+    </script>
+</body></html>

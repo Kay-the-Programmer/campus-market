@@ -1,0 +1,396 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Support &amp; Contact | CampusMarket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#cbdbf5",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "on-error": "#ffffff",
+                    "on-secondary-fixed": "#23005c",
+                    "tertiary-fixed": "#6ffbbe",
+                    "on-surface": "#0b1c30",
+                    "surface-container-high": "#dce9ff",
+                    "tertiary": "#006242",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-fixed": "#dbe1ff",
+                    "on-tertiary-container": "#bdffdb",
+                    "on-surface-variant": "#434655",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#e5eeff",
+                    "outline-variant": "#c3c6d7",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f8f9ff",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#2563eb",
+                    "surface": "#f8f9ff",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-secondary-container": "#fffbff",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-primary-container": "#eeefff",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed": "#00174b",
+                    "inverse-surface": "#213145",
+                    "primary": "#004ac6",
+                    "tertiary-container": "#007d55",
+                    "surface-tint": "#0053db",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-variant": "#d3e4fe",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-tertiary-fixed": "#002113",
+                    "error": "#ba1a1a",
+                    "outline": "#737686",
+                    "surface-bright": "#f8f9ff",
+                    "secondary": "#6b38d4",
+                    "secondary-container": "#8455ef",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "secondary-fixed": "#e9ddff",
+                    "on-background": "#0b1c30"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "1.5rem",
+                    "margin-mobile": "1rem",
+                    "stack-sm": "0.5rem",
+                    "container-max": "1280px",
+                    "stack-lg": "2rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-xl": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .faq-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease;
+        }
+        .faq-item.active .faq-content {
+            max-height: 200px;
+            padding-top: 1rem;
+        }
+        .faq-item.active .chevron-icon {
+            transform: rotate(180deg);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-40 flex justify-between items-center px-gutter h-16 bg-surface shadow-sm">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">CampusMarket</h1>
+<div class="hidden md:flex gap-6">
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-1 rounded-lg" href="#">Browse</a>
+<a class="text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-1 rounded-lg" href="#">Categories</a>
+<a class="text-primary font-bold border-b-2 border-primary px-3 py-1" href="#">Support</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container border-none rounded-full text-body-sm w-64 focus:ring-2 focus:ring-primary" placeholder="Search marketplace..." type="text">
+</div>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low rounded-full transition-colors">notifications</button>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low rounded-full transition-colors">person</button>
+</div>
+</header>
+<!-- SideNavBar (Hidden on Mobile) -->
+<nav class="hidden lg:flex flex-col fixed left-0 top-16 h-[calc(100vh-64px)] w-64 p-4 gap-4 bg-surface-container-low shadow-md z-30">
+<div class="flex items-center gap-3 px-2 mb-4">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional close-up portrait of a university student with a friendly expression, set against a blurred modern campus library background with soft natural sunlight. The image uses a clean, bright, and modern aesthetic with vibrant blues and soft whites to match the CampusMarket brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0ZnM0C7EsxkPYsp-Zo5qkw5Rw1kctow_j3ODYRVFwfD26aajdN-pTDfQuz1e2SiiFn3mefdhMAIYBDP2Ra-COoIhVpY_NjGAnHj786tBu-jkpWVMDyD9Q1aqSyaPqURqAH17fp6JE8dbt7U_RoQNfqbvRt5iWRwa9o2Lrvq63kTR5oBaIy1qzcx4VAXAn_81JUa8mUVjFWqXYhcfDM5OwiNnU1tYJzXD7DWc7GJN3Nm4V20npHDPI">
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Alex Rivera</p>
+<p class="text-[10px] text-outline uppercase tracking-wider">Marketplace Manager</p>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">sell</span>
+<span class="font-label-md text-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="font-label-md text-label-md">Saved Items</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">mail</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg font-bold transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help Center</span>
+</a>
+</div>
+<div class="mt-auto">
+<button class="w-full bg-primary hover:bg-primary-container text-white font-label-md text-label-md py-3 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Post New Item
+            </button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 pb-12 px-6 md:px-12 max-w-7xl mx-auto">
+<!-- Header Section -->
+<section class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Support &amp; Contact</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                Need a hand with your transaction or found a bug? We're here to ensure your campus trade experience is seamless and safe.
+            </p>
+</section>
+<!-- Two Column Layout: FAQ and Contact Form -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-12">
+<!-- FAQ Accordion Section -->
+<div class="xl:col-span-7">
+<div class="flex items-center gap-3 mb-8">
+<div class="p-2 bg-primary-container rounded-lg text-on-primary-container">
+<span class="material-symbols-outlined">quiz</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Frequently Asked Questions</h3>
+</div>
+<div class="space-y-4">
+<!-- FAQ Item 1 -->
+<div class="faq-item group bg-white rounded-xl shadow-sm border border-outline-variant/30 hover:border-primary/30 transition-all">
+<button class="w-full px-6 py-5 text-left flex items-center justify-between" onclick="toggleFaq(this)">
+<span class="font-label-md text-on-surface group-hover:text-primary transition-colors">How do I report a scam or suspicious listing?</span>
+<span class="material-symbols-outlined chevron-icon transition-transform duration-300 text-outline">expand_more</span>
+</button>
+<div class="faq-content px-6">
+<p class="text-body-md text-on-surface-variant pb-6 leading-relaxed">
+                                Safety is our priority. Click the 'Report' flag icon on any listing to notify our moderation team immediately. Provide a brief description of why you're flagging it, and we'll investigate within 4 hours.
+                            </p>
+</div>
+</div>
+<!-- FAQ Item 2 -->
+<div class="faq-item group bg-white rounded-xl shadow-sm border border-outline-variant/30 hover:border-primary/30 transition-all">
+<button class="w-full px-6 py-5 text-left flex items-center justify-between" onclick="toggleFaq(this)">
+<span class="font-label-md text-on-surface group-hover:text-primary transition-colors">What are the recommended campus pickup locations?</span>
+<span class="material-symbols-outlined chevron-icon transition-transform duration-300 text-outline">expand_more</span>
+</button>
+<div class="faq-content px-6">
+<p class="text-body-md text-on-surface-variant pb-6 leading-relaxed">
+                                We recommend well-lit, public areas with high student traffic. The Student Union Lobby, Campus Security Plaza, and the main library entrance are verified 'Safe Zones' equipped with 24/7 surveillance cameras.
+                            </p>
+</div>
+</div>
+<!-- FAQ Item 3 -->
+<div class="faq-item group bg-white rounded-xl shadow-sm border border-outline-variant/30 hover:border-primary/30 transition-all">
+<button class="w-full px-6 py-5 text-left flex items-center justify-between" onclick="toggleFaq(this)">
+<span class="font-label-md text-on-surface group-hover:text-primary transition-colors">How do I edit or delete my listing?</span>
+<span class="material-symbols-outlined chevron-icon transition-transform duration-300 text-outline">expand_more</span>
+</button>
+<div class="faq-content px-6">
+<p class="text-body-md text-on-surface-variant pb-6 leading-relaxed">
+                                Navigate to 'My Listings' in the sidebar. Click on the item you wish to modify and select 'Edit' or 'Archive'. Archived items are hidden from search results but remain in your history.
+                            </p>
+</div>
+</div>
+<!-- FAQ Item 4 -->
+<div class="faq-item group bg-white rounded-xl shadow-sm border border-outline-variant/30 hover:border-primary/30 transition-all">
+<button class="w-full px-6 py-5 text-left flex items-center justify-between" onclick="toggleFaq(this)">
+<span class="font-label-md text-on-surface group-hover:text-primary transition-colors">Is there a fee for selling on CampusMarket?</span>
+<span class="material-symbols-outlined chevron-icon transition-transform duration-300 text-outline">expand_more</span>
+</button>
+<div class="faq-content px-6">
+<p class="text-body-md text-on-surface-variant pb-6 leading-relaxed">
+                                CampusMarket is 100% free for verified students. We do not take a commission on your sales. Our mission is to keep campus commerce local and affordable.
+                            </p>
+</div>
+</div>
+</div>
+<!-- Support Image Illustration -->
+<div class="mt-12 rounded-3xl overflow-hidden relative h-64 shadow-xl">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/80 to-transparent z-10"></div>
+<div class="absolute inset-0 z-20 flex flex-col justify-center px-8 text-white">
+<h4 class="font-headline-sm text-headline-sm mb-2">Need Live Assistance?</h4>
+<p class="text-body-md max-w-xs opacity-90">Our community managers are available for in-person support at the Student Center every Wednesday from 2 PM to 5 PM.</p>
+</div>
+<img class="w-full h-full object-cover" data-alt="A brightly lit, minimalist university student center with groups of students collaborating on laptops in a modern lounge area. The space features large floor-to-ceiling windows, light wood textures, and vibrant blue accents. The atmosphere is productive, friendly, and clean, reflecting a high-end corporate yet approachable campus design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCV8neDTB6og6hfBNICiMbLeEKKbOcJJFt8yQBzT9HlCeKc6ZlkL-U8jkaYmKCpzNwJM50E1LuDZW5Gn69DjXFgUunVXGbqMDcgAsX9nH3LuO2p1P-aTunjGp_9RBFIHHKm3rpxeFt_5vReuS6ZYsZ69XelsMtttw6LjxD3L___SrpfLZsUFvbddu9nXDNWtR8H_S8XkACP5cuQdRzO72ZSC-vXgNAsiVtrjBXs4bB2H3yR3TKf0JAi">
+</div>
+</div>
+<!-- Contact Form Section -->
+<div class="xl:col-span-5">
+<div class="glass-panel p-8 rounded-3xl shadow-xl shadow-primary/5">
+<div class="flex items-center gap-3 mb-8">
+<div class="p-2 bg-secondary-container rounded-lg text-on-secondary-container">
+<span class="material-symbols-outlined">send</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Send us a Message</h3>
+</div>
+<form class="space-y-6" onsubmit="event.preventDefault(); alert('Message sent successfully!');">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Full Name</label>
+<input class="w-full h-12 px-4 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none text-body-md" placeholder="Alex Rivera" type="text">
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">University Email</label>
+<input class="w-full h-12 px-4 bg-surface-container-low border border-outline-variant text-outline cursor-not-allowed rounded-xl text-body-md" readonly="" type="email" value="alex.rivera@campus.edu">
+<p class="text-[11px] text-outline ml-1 italic">Email is locked to your verified campus account.</p>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Subject</label>
+<div class="relative">
+<select class="w-full h-12 px-4 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none text-body-md appearance-none">
+<option>Account Issue</option>
+<option>Bug Report</option>
+<option>Report a Scam</option>
+<option>Feature Request</option>
+<option>Other</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">Message</label>
+<textarea class="w-full p-4 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none text-body-md resize-none" placeholder="How can we help you today?" rows="4"></textarea>
+</div>
+<div class="pt-4">
+<button class="w-full h-12 bg-primary hover:bg-primary-container text-white font-bold rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-[0.98]" type="submit">
+                                Send Message
+                                <span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</form>
+<div class="mt-8 pt-8 border-t border-outline-variant/30 grid grid-cols-2 gap-4">
+<div class="text-center">
+<p class="text-[10px] uppercase font-bold text-outline tracking-widest mb-1">Response Time</p>
+<p class="font-label-md text-on-surface">&lt; 24 Hours</p>
+</div>
+<div class="text-center border-l border-outline-variant/30">
+<p class="text-[10px] uppercase font-bold text-outline tracking-widest mb-1">Status</p>
+<div class="flex items-center justify-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></div>
+<p class="font-label-md text-on-surface">Systems Live</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Safety Badge Grid (Bento Style) -->
+<section class="mt-24">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-8 text-center">Safety &amp; Verification</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-4 text-4xl">verified_user</span>
+<h5 class="font-label-md text-on-surface mb-2">ID Verification</h5>
+<p class="text-body-sm text-on-surface-variant">Every user is verified via .edu email to ensure a safe student-only network.</p>
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-4 text-4xl">encrypted</span>
+<h5 class="font-label-md text-on-surface mb-2">Secure Chats</h5>
+<p class="text-body-sm text-on-surface-variant">All communications are encrypted and monitored for scam keywords.</p>
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-4 text-4xl">stars</span>
+<h5 class="font-label-md text-on-surface mb-2">Peer Ratings</h5>
+<p class="text-body-sm text-on-surface-variant">Our transparent rating system helps you choose reliable trading partners.</p>
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-4 text-4xl">emergency</span>
+<h5 class="font-label-md text-on-surface mb-2">Fast Response</h5>
+<p class="text-body-sm text-on-surface-variant">Report issues and get assistance within hours, not days.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Mobile Bottom NavBar (Visible only on mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40 h-16 flex items-center justify-around px-4">
+<button class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-[10px]">Explore</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+<span class="text-[10px] font-bold">Support</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-outline">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px]">Profile</span>
+</button>
+</nav>
+<script>
+        function toggleFaq(button) {
+            const faqItem = button.parentElement;
+            const isActive = faqItem.classList.contains('active');
+            
+            // Close all other items
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Open clicked item if it wasn't active
+            if (!isActive) {
+                faqItem.classList.add('active');
+            }
+        }
+    </script>
+</body></html>

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: campusmarket-db
+    environment:
+      POSTGRES_DB: campusmarket
+      POSTGRES_USER: campusmarket
+      POSTGRES_PASSWORD: campusmarket
+    ports:
+      # Host port 5433: 5432 is commonly taken by another local Postgres.
+      # Containers still reach the DB as postgres:5432 over the compose network.
+      - "5433:5432"
+    volumes:
+      - campusmarket-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusmarket -d campusmarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    container_name: campusmarket-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/campusmarket
+      SPRING_DATASOURCE_USERNAME: campusmarket
+      SPRING_DATASOURCE_PASSWORD: campusmarket
+      # Dev-only: surfaces verification/reset tokens in API responses so the
+      # email-driven flows are testable without a mail provider.
+      CAMPUSMARKET_EXPOSE_DEV_TOKENS: "true"
+      CAMPUSMARKET_CORS_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      # Optional: paste a Firebase service-account key's JSON contents (as one
+      # line) into a .env file at the repo root as CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON
+      # to enable "Continue with Google" and push notifications. Left unset, both
+      # are simply disabled - notifications still appear in-app, they just do not
+      # reach devices, and everything else works the same.
+      CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON: "${CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON:-}"
+      CAMPUSMARKET_UPLOADS_DIR: /app/uploads
+      # Optional: move listing/promo image uploads to a Google Cloud Storage
+      # bucket instead of the local volume below. Set both:
+      #   CAMPUSMARKET_GCS_BUCKET - the bucket name (not a full URL)
+      #   CAMPUSMARKET_GCS_CREDENTIALS_JSON - a service-account key's JSON
+      #     contents (as one line); can be the same key used for Firebase
+      #     above if that service account also has Storage Object Admin on
+      #     this bucket
+      # The bucket needs public read so served URLs work without a signed
+      # request: Cloud Console -> bucket -> Permissions -> Grant Access ->
+      # principal "allUsers", role "Storage Object Viewer" (or equivalently
+      # `gcloud storage buckets add-iam-policy-binding gs://BUCKET
+      # --member=allUsers --role=roles/storage.objectViewer`). Left unset,
+      # uploads are written to local disk instead - everything else works
+      # the same.
+      CAMPUSMARKET_GCS_BUCKET: "${CAMPUSMARKET_GCS_BUCKET:-}"
+      CAMPUSMARKET_GCS_CREDENTIALS_JSON: "${CAMPUSMARKET_GCS_CREDENTIALS_JSON:-}"
+      # Preferred over pasting the key JSON above: point at a mounted key file
+      # instead. GcsConfig leaves credentials to the client library when
+      # gcs-credentials-json is blank, and the library reads this path. Keeping
+      # a private key in a gitignored file beats inlining it in an env var,
+      # where it lands in shell history and `docker inspect` output.
+      GOOGLE_APPLICATION_CREDENTIALS: "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+    volumes:
+      - campusmarket-uploads:/app/uploads
+      # The service-account key, when one is in use. `:ro` because the API only
+      # ever reads it. Harmless when the file is absent and GCS is unconfigured
+      # - Compose creates an empty placeholder and nothing reads it.
+      - ./backend/gcs-key.json:/app/gcs-key.json:ro
+    ports:
+      - "8080:8080"
+
+volumes:
+  campusmarket-pgdata:
+  campusmarket-uploads:

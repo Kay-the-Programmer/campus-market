@@ -1,0 +1,360 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>My Listings | CampusMarket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#f8f9ff",
+                    "secondary-container": "#8455ef",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "outline-variant": "#c3c6d7",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-primary-fixed": "#00174b",
+                    "primary-container": "#2563eb",
+                    "surface-container-low": "#eff4ff",
+                    "surface": "#f8f9ff",
+                    "on-surface-variant": "#434655",
+                    "inverse-primary": "#b4c5ff",
+                    "on-secondary-container": "#fffbff",
+                    "secondary": "#6b38d4",
+                    "surface-container": "#e5eeff",
+                    "tertiary-container": "#007d55",
+                    "on-tertiary-container": "#bdffdb",
+                    "on-error-container": "#93000a",
+                    "on-background": "#0b1c30",
+                    "inverse-surface": "#213145",
+                    "surface-tint": "#0053db",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-tertiary-fixed": "#002113",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-fixed": "#6ffbbe",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "on-secondary-fixed": "#23005c",
+                    "outline": "#737686",
+                    "surface-variant": "#d3e4fe",
+                    "on-surface": "#0b1c30",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "on-primary-container": "#eeefff",
+                    "secondary-fixed": "#e9ddff",
+                    "primary": "#004ac6",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "surface-container-high": "#dce9ff",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#d3e4fe"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "1.5rem",
+                    "container-max": "1280px",
+                    "margin-mobile": "1rem",
+                    "stack-lg": "2rem",
+                    "stack-sm": "0.5rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Inter"],
+                    "label-md": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1;
+        }
+        .listing-row:hover .quick-actions { opacity: 1; }
+        .tab-active { color: #004ac6; border-bottom: 2px solid #004ac6; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-surface shadow-sm">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary font-bold">CampusMarket</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex items-center bg-surface-container rounded-full px-4 py-2 w-96 border border-outline-variant">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full" placeholder="Search my listings..." type="text">
+</div>
+<div class="flex items-center gap-4">
+<button class="transition-all duration-200 active:scale-95 text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="transition-all duration-200 active:scale-95 text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a friendly university student smiling, set against a blurred campus background. The lighting is soft and natural, emphasizing a trustworthy and approachable personality. The image has a clean, high-resolution aesthetic consistent with a modern corporate marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW9cT76phr9V87Rgq_vlWMLRM0X74yljkBHojAjTlvnz5KJ9MKStOrA0JrV_ORkosNK-Yzwtq95HXmXPmlIOiTjWcJkYaWeGQvcB--5g9eiX4xbJrI_9XNPwVrzXIGp6-13fIF6wCOk_opExiSzVg9EBuieRMigIk44_NCIhjSGiRtTam4teR1XCJtzAHWVwKFoet1sEC0w88Zpoo0YhJssUYmAhcpu23IbBLM5WcNbBlX0iFNxG5p">
+</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 p-4 gap-2 z-40 bg-surface-container-low mt-16">
+<div class="mb-6 px-4 pt-4">
+<h2 class="font-headline-sm text-headline-sm text-primary">Seller Hub</h2>
+<p class="text-label-sm text-outline">Marketplace Manager</p>
+</div>
+<nav class="flex flex-col gap-1 flex-grow">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-md">Browse</span>
+</a>
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 font-bold transition-all duration-200 active:scale-98 shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-label-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-label-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md">Settings</span>
+</a>
+</nav>
+<button class="bg-primary text-on-primary font-label-md py-3 px-4 rounded-xl flex items-center justify-center gap-2 mb-8 hover:bg-primary-container transition-all active:scale-95 shadow-lg">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            Post New Item
+        </button>
+<div class="border-t border-outline-variant pt-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-2 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md">Help Center</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-2 hover:bg-surface-variant rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 px-gutter pb-12 min-h-screen bg-surface-dim">
+<div class="max-w-container-max mx-auto">
+<div class="flex justify-between items-end mb-8">
+<div class="flex items-center">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-all active:scale-95 text-on-surface-variant mr-4 flex items-center justify-center">
+  <span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button><h1 class="font-headline-xl text-headline-xl mb-2 text-on-background">My Listings</h1>
+
+</div>
+</div>
+<!-- Horizontal Tab Bar -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm mb-8 overflow-hidden">
+<div class="flex border-b border-surface-variant px-6">
+<button class="px-6 py-4 font-label-md transition-colors tab-active" onclick="switchTab('active')">Active (12)</button>
+<button class="px-6 py-4 font-label-md hover:text-primary transition-colors border-b-2 text-on-surface-variant border-transparent" onclick="switchTab('reserved')">Reserved (2)</button>
+<button class="px-6 py-4 font-label-md hover:text-primary transition-colors border-b-2 text-on-surface-variant border-transparent" onclick="switchTab('sold')">Sold (45)</button>
+<button class="px-6 py-4 font-label-md text-on-surface-variant hover:text-primary transition-colors border-b-2 border-transparent" onclick="switchTab('drafts')">Drafts (0)</button>
+</div>
+<!-- Listing Rows Container -->
+<div class="divide-y divide-surface-variant" id="listing-container">
+<!-- Listing Row 1 (Active) -->
+<div class="listing-row flex items-center gap-6 p-6 hover:bg-surface-container-low transition-colors group" style="transform: translateX(0px); transition: 0.2s ease-out;">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A high-quality studio photograph of a modern ergonomic mechanical keyboard with RGB lighting on a clean desk surface. The image is crisp, bright, and uses a soft-focus background to emphasize the product details. Minimalist aesthetic with vibrant accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_YGOrgg-UtLqLqDnoevwZAyqTOr6qmSepaqIrjoWNV1EspQeHtF4RytLAS9Tp5GGIsGBqhtP5ULkoaUwGXhPSXjklWrIMS6VagfxDbNBkEsxSDmow73oOs_IpVNbEEErt3koHWtIOE30D-J0lOpfydcEgVQZbF0vdpYEXcWZUh8UzC2Uaho6hg0JOGk3P78TxVNABYov6tqF3xLy8Agm_ibZlsmN4p8rZGjwUq60SbXPlxem5KNmg">
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Mechanical Keyboard - Keychron K2</h3>
+<span class="px-2 py-0.5 rounded-full text-label-sm font-semibold bg-primary-fixed text-on-primary-fixed-variant">Active</span>
+</div>
+<p class="text-headline-md text-primary font-bold">$75.00</p>
+</div>
+<div class="flex items-center gap-8 text-on-surface-variant mr-4">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+<span class="text-label-sm">124</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="text-label-sm">18</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat">chat</span>
+<span class="text-label-sm">5</span>
+</div>
+</div>
+<div class="relative group/menu">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+<!-- Context Menu Mockup -->
+<div class="absolute right-0 top-10 w-48 bg-surface-container-highest shadow-xl rounded-lg hidden group-hover/menu:block z-10 py-2 border border-outline-variant">
+<a class="block px-4 py-2 text-label-md hover:bg-primary hover:text-on-primary transition-colors" href="#">Edit Listing</a>
+<a class="block px-4 py-2 text-label-md hover:bg-primary hover:text-on-primary transition-colors" href="#">Mark as Sold</a>
+<a class="block px-4 py-2 text-label-md hover:bg-primary hover:text-on-primary transition-colors" href="#">Boost Post</a>
+<a class="block px-4 py-2 text-label-md text-error hover:bg-error hover:text-on-error transition-colors" href="#">Delete</a>
+</div>
+</div>
+</div>
+<!-- Listing Row 2 (Reserved) -->
+<div class="listing-row flex items-center gap-6 p-6 hover:bg-surface-container-low transition-colors group" style="transform: translateX(0px); transition: 0.2s ease-out;">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A lifestyle shot of a pair of high-end noise-canceling headphones resting on an open textbook in a brightly lit library setting. The atmosphere is academic and modern, with soft sunlight streaming through large windows. Professional corporate photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAePzPeBcRutDUtRj33SUdT3fiBoDXXoBgppZkmYIseMg_cwpYUSHSeO06FUkHc6NxfjAJT6jbEjOQWhgtTdfC9Y4baxxlbpf3DtDK1OmSSG4-iwyU0Njv2nrBn_WNdZwycNuVwfDrPR085nfAMPs_jc97zUfZaZrUlx9Q1sauF3cXtXPXWc26PFmTyci_V-CLsIBsbd1-sJIvNUC13cfZ0OlHvPdhhRcdC7Ssq6BiZndjVRSkMsw0I">
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Sony WH-1000XM4 Headphones</h3>
+<span class="px-2 py-0.5 rounded-full text-label-sm font-semibold bg-[#ffecd1] text-[#935600]">Reserved</span>
+</div>
+<p class="text-headline-md text-primary font-bold">$180.00</p>
+</div>
+<div class="flex items-center gap-8 text-on-surface-variant mr-4">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+<span class="text-label-sm">89</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="text-label-sm">12</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat">chat</span>
+<span class="text-label-sm">3</span>
+</div>
+</div>
+<div class="relative">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Listing Row 3 (Sold) -->
+<div class="listing-row flex items-center gap-6 p-6 hover:bg-surface-container-low transition-colors group">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container grayscale opacity-70">
+<img class="w-full h-full object-cover" data-alt="A detailed photo of an introductory calculus textbook with a clean white cover, placed on a wooden study desk. The lighting is bright and even, conveying a sense of academic success. The overall tone is professional and focused." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlaHME3QiolV2L71urmZx5ub58yNd3xeH3eKc_Btpbi75FeN6un9XGA9NV0j9CKYhk_52fhS9HDW1e80UnTj-Kd1DeYw7L8bG2NnnXWRN6uymQKfJbiL9eRBAF2mte5J4hoC8bzZHvQB7OV8SezmRd2vh5MeCEoPEiJI2ZALkzc2qaeiilHQ95TotXTe80LHTqRfRk2guSbtRpeGrLDbx4TwJch-FGkjgtxnBxcPL_RgEPRxlQmWK8">
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant">Calculus: Early Transcendentals</h3>
+<span class="px-2 py-0.5 rounded-full text-label-sm font-semibold bg-outline-variant text-on-surface-variant">Sold</span>
+</div>
+<p class="text-headline-md text-outline font-bold">$40.00</p>
+</div>
+<div class="flex items-center gap-8 text-outline mr-4">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+<span class="text-label-sm">256</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="text-label-sm">45</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat">chat</span>
+<span class="text-label-sm">14</span>
+</div>
+</div>
+<div class="relative">
+<button class="p-2 rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default, shown for Drafts) -->
+<div class="hidden p-20 flex flex-col items-center justify-center text-center" id="empty-state">
+<div class="w-48 h-48 mb-6 bg-surface-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[80px] text-outline-variant" data-icon="edit_note">edit_note</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-2">No drafts yet</h3>
+<p class="text-body-md text-on-surface-variant mb-8 max-w-sm">You haven't saved any listings to your drafts. Start creating one now to save for later.</p>
+<button class="bg-primary text-on-primary font-label-md py-3 px-8 rounded-full hover:bg-primary-container transition-all active:scale-95 shadow-md flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                        Create Listing
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        function switchTab(tab) {
+            const container = document.getElementById('listing-container');
+            const emptyState = document.getElementById('empty-state');
+            const buttons = document.querySelectorAll('button[onclick^="switchTab"]');
+            
+            // Update Tab UI
+            buttons.forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.remove('text-primary');
+                btn.classList.add('text-on-surface-variant');
+                btn.classList.add('border-transparent');
+            });
+            
+            event.currentTarget.classList.add('tab-active');
+            event.currentTarget.classList.remove('text-on-surface-variant');
+            event.currentTarget.classList.remove('border-transparent');
+
+            if (tab === 'drafts') {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                container.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                // Normally here you would filter the list items based on the state
+            }
+        }
+
+        // Quick micro-interaction for rows
+        document.querySelectorAll('.listing-row').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.style.transform = 'translateX(4px)';
+                row.style.transition = 'all 0.2s ease-out';
+            });
+            row.addEventListener('mouseleave', () => {
+                row.style.transform = 'translateX(0px)';
+            });
+        });
+    </script>
+
+
+</body></html>

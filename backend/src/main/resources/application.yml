@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: campusmarket-api
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/campusmarket}
+    username: ${SPRING_DATASOURCE_USERNAME:campusmarket}
+    password: ${SPRING_DATASOURCE_PASSWORD:campusmarket}
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate must never mutate it.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+  servlet:
+    multipart:
+      # Comfortably above the ~8MB service-level cap in ImageStorageService -
+      # that check should produce the friendly error, not a container-level
+      # rejection with no body.
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+campusmarket:
+  # Dev convenience: return verification / password-reset tokens in API responses
+  # so the flows are exercisable without a mail provider. MUST be false in prod.
+  expose-dev-tokens: ${CAMPUSMARKET_EXPOSE_DEV_TOKENS:false}
+  cors-origins: ${CAMPUSMARKET_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  session-ttl-days: 14
+  verification-token-ttl-minutes: 1440
+  reset-token-ttl-minutes: 30
+  resend-cooldown-seconds: 60
+  max-failed-logins: 5
+  login-lockout-minutes: 15
+  uploads-dir: ${CAMPUSMARKET_UPLOADS_DIR:uploads}
+  # Firebase service-account key JSON (the whole file contents, not a path).
+  # Blank disables "Continue with Google" without affecting anything else.
+  firebase-credentials-json: ${CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON:}
+  # Blank keeps image uploads on local disk (uploads-dir above). Set both to
+  # move them to Cloud Storage - see the note beside this var in
+  # docker-compose.yml for the one-time bucket setup that requires.
+  gcs-bucket: ${CAMPUSMARKET_GCS_BUCKET:}
+  gcs-credentials-json: ${CAMPUSMARKET_GCS_CREDENTIALS_JSON:}
+
+logging:
+  level:
+    com.campusmarket: INFO

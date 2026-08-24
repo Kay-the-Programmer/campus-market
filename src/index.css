@@ -1,0 +1,419 @@
+@import "tailwindcss";
+
+/* ============================================================
+   CAMPUS MARKETPLACE DESIGN SYSTEM — DESIGN.MD TOKENS
+   ============================================================ */
+@theme {
+  /* Surface Tones */
+  --color-surface:                  #f8f9ff;
+  --color-surface-dim:              #cbdbf5;
+  --color-surface-bright:           #f8f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #eff4ff;
+  --color-surface-container:        #e5eeff;
+  --color-surface-container-high:   #dce9ff;
+  --color-surface-container-highest:#d3e4fe;
+
+  /* On-Surface Text */
+  --color-on-surface:               #0b1c30;
+  --color-on-surface-variant:       #434655;
+  --color-inverse-surface:          #213145;
+  --color-inverse-on-surface:       #eaf1ff;
+
+  /* Outlines */
+  --color-outline:                  #737686;
+  --color-outline-variant:          #c3c6d7;
+
+  /* Primary — Product Blue */
+  --color-surface-tint:             #0053db;
+  --color-primary:                  #004ac6;
+  --color-on-primary:               #ffffff;
+  --color-primary-container:        #2563eb;
+  --color-on-primary-container:     #eeefff;
+  --color-inverse-primary:          #b4c5ff;
+  --color-primary-fixed:            #dbe1ff;
+  --color-primary-fixed-dim:        #b4c5ff;
+  --color-on-primary-fixed:         #00174b;
+  --color-on-primary-fixed-variant: #003ea8;
+
+  /* Secondary — Service Purple */
+  --color-secondary:                #6b38d4;
+  --color-on-secondary:             #ffffff;
+  --color-secondary-container:      #8455ef;
+  --color-on-secondary-container:   #fffbff;
+  --color-secondary-fixed:          #e9ddff;
+  --color-secondary-fixed-dim:      #d0bcff;
+  --color-on-secondary-fixed:       #23005c;
+  --color-on-secondary-fixed-variant:#5516be;
+
+  /* Tertiary — Food Green */
+  --color-tertiary:                 #006242;
+  --color-on-tertiary:              #ffffff;
+  --color-tertiary-container:       #007d55;
+  --color-on-tertiary-container:    #bdffdb;
+  --color-tertiary-fixed:           #6ffbbe;
+  --color-tertiary-fixed-dim:       #4edea3;
+  --color-on-tertiary-fixed:        #002113;
+  --color-on-tertiary-fixed-variant:#005236;
+
+  /* Error */
+  --color-error:                    #ba1a1a;
+  --color-on-error:                 #ffffff;
+  --color-error-container:          #ffdad6;
+  --color-on-error-container:       #93000a;
+
+  /* Background */
+  --color-background:               #f8f9ff;
+  --color-on-background:            #0b1c30;
+  --color-surface-variant:          #d3e4fe;
+
+  /* Typography — Inter across all levels */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============================================================
+   SCROLLBAR UTILITIES
+   ============================================================ */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ============================================================
+   BASE BODY
+   ============================================================ */
+body {
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   TYPOGRAPHY SCALE (from DESIGN.md)
+   ============================================================ */
+.headline-xl {
+  font-family: var(--font-sans);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 48px;
+  letter-spacing: -0.02em;
+}
+.headline-lg {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+  letter-spacing: -0.02em;
+}
+.headline-lg-mobile {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+.headline-md {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+.headline-sm {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 28px;
+}
+.body-md {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+.body-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+.label-md {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.label-sm {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* ============================================================
+   ELEVATION / AMBIENT CARD SHADOWS (from DESIGN.md)
+   y:4 blur:20 spread:0 opacity:0.05 color:#000
+   ============================================================ */
+.shadow-card {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+}
+.shadow-card-hover {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.10);
+}
+.shadow-modal {
+  box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* ============================================================
+   BUTTON PRIMITIVES — 48px touch target (from DESIGN.md)
+   ============================================================ */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  padding: 0 1.25rem;
+  border-radius: 0.5rem; /* 8px per spec */
+  background-color: var(--color-primary-container); /* #2563eb */
+  color: var(--color-on-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.20);
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 100ms ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary);
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.28);
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  padding: 0 1.25rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-primary-fixed); /* #dbe1ff light blue ghost */
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  border: 1px solid var(--color-primary-fixed-dim);
+  transition: background-color 150ms ease, transform 100ms ease;
+  cursor: pointer;
+}
+.btn-secondary:hover { background-color: var(--color-primary-fixed-dim); }
+.btn-secondary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 48px;
+  padding: 0 1.25rem;
+  border-radius: 0.5rem;
+  background-color: transparent;
+  color: var(--color-primary-container);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--color-outline-variant);
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+.btn-ghost:hover { background-color: var(--color-surface-container-low); }
+
+/* ============================================================
+   CARD PRIMITIVE
+   ============================================================ */
+.card {
+  background-color: var(--color-surface-container-lowest); /* #fff */
+  border-radius: 1rem; /* rounded-2xl — Feature elements */
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.card:hover {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.10);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   CATEGORY CHIP PRIMITIVES — Pill shape (from DESIGN.md)
+   ============================================================ */
+.chip-product {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 10px;
+  border-radius: 9999px; /* full pill */
+  background-color: rgba(37, 99, 235, 0.10);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.20);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+.chip-service {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background-color: rgba(132, 85, 239, 0.10);
+  color: #6b38d4;
+  border: 1px solid rgba(132, 85, 239, 0.20);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+.chip-food {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background-color: rgba(0, 125, 85, 0.10);
+  color: #005236;
+  border: 1px solid rgba(0, 125, 85, 0.20);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+/* ============================================================
+   INPUT PRIMITIVE (from DESIGN.md)
+   1px border #c3c6d7, 8px radius, Blue focus 2px glow
+   ============================================================ */
+.input-base {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem; /* 8px */
+  border: 1px solid var(--color-outline-variant); /* #c3c6d7 */
+  background-color: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.input-base:hover {
+  border-color: var(--color-outline);
+}
+.input-base:focus {
+  border-color: var(--color-primary-container); /* #2563eb */
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* ============================================================
+   RANGE SLIDER — two-thumb price filter
+   ============================================================
+   Two native range inputs stacked over one track. Native beats a custom
+   pointer implementation here because it inherits keyboard support, focus
+   handling and touch targets for free.
+
+   The inputs ignore pointer events so clicks fall through to whichever
+   thumb is nearer; only the thumbs themselves are clickable. Without this
+   the top input would swallow every press on the bottom one's thumb. */
+.range-input {
+  position: absolute;
+  inset-inline: 0;
+  width: 100%;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+.range-input::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  background-color: var(--color-surface-container-lowest);
+  border: 2px solid var(--color-primary-container); /* #2563eb */
+  box-shadow: 0 1px 4px rgba(11, 28, 48, 0.2);
+  cursor: grab;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  background-color: var(--color-surface-container-lowest);
+  border: 2px solid var(--color-primary-container);
+  box-shadow: 0 1px 4px rgba(11, 28, 48, 0.2);
+  cursor: grab;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.range-input::-webkit-slider-thumb:hover { transform: scale(1.12); }
+.range-input::-moz-range-thumb:hover     { transform: scale(1.12); }
+.range-input:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.12); }
+.range-input:active::-moz-range-thumb     { cursor: grabbing; transform: scale(1.12); }
+/* Focus ring lives on the thumb, since the input itself is invisible. */
+.range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+}
+.range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+}
+
+/* ============================================================
+   MICRO-ANIMATIONS
+   ============================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 200ms ease forwards; }
+.animate-slide-up { animation: slideUp 250ms ease forwards; }
+
+/* Feed card entrance. Short and subtle on purpose - long enough to feel
+   responsive, short enough that a fast scroll never waits on it. */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-card-in { animation: cardIn 180ms ease-out both; }
+
+/* Cart confirmation. A quick scale pulse says "that worked" without firing a
+   toast on every single add. */
+@keyframes cartBump {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+.animate-cart-bump { animation: cartBump 400ms ease-out; }
+
+/* Motion is decoration here; anyone who has asked the OS to reduce it gets
+   the finished state immediately. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-in { animation: none; }
+  .animate-cart-bump { animation: none; }
+}

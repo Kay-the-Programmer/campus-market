@@ -1,0 +1,441 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Saved Items | CampusMarket</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8f9ff;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .bell-active {
+      font-variation-settings: 'FILL' 1 !important;
+      color: #004ac6 !important;
+    }
+    /* Custom scrollbar for better UI */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c3c6d7;
+      border-radius: 10px;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "background": "#f8f9ff",
+                  "error-container": "#ffdad6",
+                  "outline-variant": "#c3c6d7",
+                  "error": "#ba1a1a",
+                  "on-tertiary-fixed-variant": "#005236",
+                  "tertiary-fixed-dim": "#4edea3",
+                  "inverse-primary": "#b4c5ff",
+                  "on-tertiary-fixed": "#002113",
+                  "tertiary": "#006242",
+                  "secondary-container": "#8455ef",
+                  "surface-container-lowest": "#ffffff",
+                  "on-secondary-fixed": "#23005c",
+                  "on-primary": "#ffffff",
+                  "tertiary-fixed": "#6ffbbe",
+                  "surface-container-high": "#dce9ff",
+                  "surface": "#f8f9ff",
+                  "on-background": "#0b1c30",
+                  "secondary-fixed-dim": "#d0bcff",
+                  "on-secondary-fixed-variant": "#5516be",
+                  "on-surface": "#0b1c30",
+                  "inverse-on-surface": "#eaf1ff",
+                  "secondary": "#6b38d4",
+                  "on-surface-variant": "#434655",
+                  "surface-container-low": "#eff4ff",
+                  "on-error": "#ffffff",
+                  "primary-fixed-dim": "#b4c5ff",
+                  "on-primary-container": "#eeefff",
+                  "on-error-container": "#93000a",
+                  "on-tertiary": "#ffffff",
+                  "surface-container": "#e5eeff",
+                  "secondary-fixed": "#e9ddff",
+                  "primary": "#004ac6",
+                  "primary-container": "#2563eb",
+                  "tertiary-container": "#007d55",
+                  "surface-container-highest": "#d3e4fe",
+                  "surface-tint": "#0053db",
+                  "on-tertiary-container": "#bdffdb",
+                  "on-secondary": "#ffffff",
+                  "surface-variant": "#d3e4fe",
+                  "surface-bright": "#f8f9ff",
+                  "on-primary-fixed": "#00174b",
+                  "on-primary-fixed-variant": "#003ea8",
+                  "inverse-surface": "#213145",
+                  "outline": "#737686",
+                  "surface-dim": "#cbdbf5",
+                  "on-secondary-container": "#fffbff",
+                  "primary-fixed": "#dbe1ff"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "stack-lg": "2rem",
+                  "stack-md": "1rem",
+                  "margin-mobile": "1rem",
+                  "gutter": "1.5rem",
+                  "stack-sm": "0.5rem",
+                  "container-max": "1280px"
+          },
+          "fontFamily": {
+                  "headline-md": ["Inter"],
+                  "headline-xl": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "body-sm": ["Inter"],
+                  "body-md": ["Inter"],
+                  "headline-lg": ["Inter"],
+                  "label-sm": ["Inter"],
+                  "label-md": ["Inter"],
+                  "headline-sm": ["Inter"],
+                  "headline-lg-mobile": ["Inter"]
+          },
+          "fontSize": {
+                  "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                  "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                  "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                  "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                  "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                  "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                  "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                  "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                  "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                  "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar Anchor -->
+<aside class="flex flex-col h-screen p-stack-md border-r border-outline-variant bg-surface-container-low dark:bg-surface-container-lowest h-full w-64 fixed left-0 top-0 z-40 hidden md:flex">
+<div class="mb-stack-lg px-2">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Student Hub</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">University Campus</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-body-md text-body-md">Browse</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-body-md text-body-md">My Listings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary-container text-on-primary-container font-semibold rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+<span class="font-body-md text-body-md">Saved Items</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-body-md text-body-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-body-md text-body-md">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+<button class="mt-auto w-full bg-primary text-on-primary font-label-md text-label-md py-3 rounded-lg flex items-center justify-center gap-2 active:translate-x-1 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+      Post New Item
+    </button>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="md:ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar Anchor -->
+<header class="flex justify-between items-center px-gutter py-stack-sm w-full sticky top-0 z-50 bg-surface dark:bg-surface shadow-sm docked full-width">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">CampusMarket</span>
+</div>
+<div class="flex-1 max-w-xl mx-8 hidden sm:block">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary-container text-body-md transition-all" placeholder="Search saved items..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low transition-colors duration-200 rounded-full" data-icon="notifications">notifications</button>
+<div class="h-10 w-10 rounded-full overflow-hidden border border-outline-variant bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a friendly university student with a bright, welcoming expression, wearing a navy blue collegiate sweatshirt. The lighting is soft and even against a clean, off-white background, embodying the professional yet approachable atmosphere of a premium marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbdWNQOInTE0KWboUE772goOkAx_AeB0d0q3xrlPbPiWjcvygUQl2yImZ6kY5AzG8yYf7x-pF3qpqtrh-SkpN21cHTMVyd76TNya-TLU--Z5_NwawuPbxYe3oGjoVFdUdxEo3CIoPrgzzfz3y0t9pM7cAkyiNW5ON-xJ5XqwCQbriTlBG0NXQZxYFjDT5zjYFThs27hZFnD8dSoHMGimQg0rjCGQuyvpZkJwV1-YsTAblwHE9ERN_f">
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-gutter max-w-container-max mx-auto w-full">
+<!-- Header Section -->
+<div class="flex items-end justify-between mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Saved Items</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">You have <span class="font-bold text-primary">5 items</span> on your wishlist</p>
+</div>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="sort">sort</span>
+            Recently Added
+          </button>
+</div>
+</div>
+<!-- Listing Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="listings-grid">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col">
+<div class="relative h-56 w-full">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A pair of premium noise-canceling headphones resting on a minimalist oak desk with soft natural sunlight streaming through a campus library window. The image features a high-end corporate aesthetic with clean lines, soft shadows, and a professional blue-toned color correction to match the brand identity." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBnugutD034tRkc0k6Sf32go34AHWyJ0ZHb7PmPymVCe1y2TLX7HivtYJd1vUfiwGbCD16iUvJawKzV4jLcPH35fNGenL9mIifbuqJVkUBROvo8W1en4L9Mzgr0n4QWL3bSHQRraDvsRIguz9QIKXbYdMPECVHf7nM23GHlEptyRD4aeJncRnf0VzWvySgY9z00uZ5lHWmtTisRg0yUQnawNArM8tvsiC5eo90kZvUj1W7OQk1KSGmt')"></div>
+<!-- Badges & Actions -->
+<div class="absolute top-3 right-3 flex flex-col gap-2">
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors" onclick="toggleBell(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-error hover:bg-error-container transition-colors" onclick="removeItem(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+<div class="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-primary font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+              Verified Seller
+            </div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Sony WH-1000XM4</h3>
+<span class="font-headline-sm text-headline-sm text-primary">$180</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">North Campus Library</span>
+</div>
+<div class="mt-auto flex justify-between items-center border-t border-outline-variant pt-3">
+<span class="font-body-sm text-body-sm text-outline">Posted 2 days ago</span>
+<button class="text-primary font-label-md text-label-md hover:underline">View Details</button>
+</div>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col">
+<div class="relative h-56 w-full">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A vintage-style city cruiser bicycle in a vibrant emerald green, parked against a white brick campus wall. The lighting is crisp and midday, creating high-contrast shadows. The style is soft minimalist with a focus on product clarity and youthful campus energy." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA5Z-BKc7Yb7010V-g6H7eTo1UxlOaoSMrUfMHUUI3r4FJRuqdnRw3RyunFsc8-Xquy5hd_ujar9n5yEflo7WSZYS9Ylrsbd8MgRS35Pz6E3-Efr9HnpA0rN-HpoZBUxNCLrN7CeFz0rC2KpccTqf5rPGbpZMUn5Tab1n0EpctUe_cgJZGO6RgkQxSwzw3isZbf5ADFxUOqyVuF8WgCgQRI3jensMKNp3H_bUPmke_HKaoCk0jW5fSS')"></div>
+<div class="absolute top-3 right-3 flex flex-col gap-2">
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors bell-active" onclick="toggleBell(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-error hover:bg-error-container transition-colors" onclick="removeItem(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Retro City Cruiser</h3>
+<span class="font-headline-sm text-headline-sm text-primary">$120</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Student Union</span>
+</div>
+<div class="mt-auto flex justify-between items-center border-t border-outline-variant pt-3">
+<span class="font-body-sm text-body-sm text-outline">Posted 1 day ago</span>
+<button class="text-primary font-label-md text-label-md hover:underline">View Details</button>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col">
+<div class="relative h-56 w-full">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A stack of clean, well-maintained university textbooks including advanced calculus and biology, neatly organized on a study table. The composition uses a shallow depth of field, highlighting the book titles. The color palette is professional and calm with soft blues and greys." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB0mAndG_QC_yd0NXVhWaJavQ3okZ-J7o7ZyfmaaBwM5nsvBrbXb_-6V1aooqMauLFoc3nG9yLBrDGvfWXhmVMyjpLCxrw9mh51jt84yp4BafJQfmcKlmrCb9Sra4eVxgjIy_sfBRZle71W01Kn1X_8vM0mPUrlBigJbgocneUxD7KdCfZC2KnTtA1iyoR2zTy5i9PGccntWxUiLd37WR6IounxmdYmMwfkT6BUWWHtOrEElqQmHgba')"></div>
+<div class="absolute top-3 right-3 flex flex-col gap-2">
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors" onclick="toggleBell(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-error hover:bg-error-container transition-colors" onclick="removeItem(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Textbook Bundle</h3>
+<span class="font-headline-sm text-headline-sm text-primary">$45</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Science Building</span>
+</div>
+<div class="mt-auto flex justify-between items-center border-t border-outline-variant pt-3">
+<span class="font-body-sm text-body-sm text-outline">Posted 5 days ago</span>
+<button class="text-primary font-label-md text-label-md hover:underline">View Details</button>
+</div>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col">
+<div class="relative h-56 w-full">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A modern ergonomic office chair in light grey mesh, shown in a bright student apartment studio with large windows and lush green plants. The aesthetic is soft minimalist and clean, suggesting a productive and reliable student workspace." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBE2JruQGlxRCZ42VJH7lP2r1OL-LurVd8Xj7IkFWfkyRZF0QrWNXRX0twiMl3EizOPloJ8MHS5Phbdpk-D9-gDMgjtmX_J4EQEL7rKI8HY66b7qzOob584gsQeNtxZaxzl2YAxWFHtO3_rpcms1F3qHsDhMyrh_Phj39NnBTPuE9CH8wbMx7haZln-GBnmO3DIGQ8O1ZxlwtUhARTDGMFvtwtZSUHOH-NqQCjwULtb3mDGsirFiZQG')"></div>
+<div class="absolute top-3 right-3 flex flex-col gap-2">
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors" onclick="toggleBell(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-error hover:bg-error-container transition-colors" onclick="removeItem(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Desk Chair</h3>
+<span class="font-headline-sm text-headline-sm text-primary">$60</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Off-Campus Housing</span>
+</div>
+<div class="mt-auto flex justify-between items-center border-t border-outline-variant pt-3">
+<span class="font-body-sm text-body-sm text-outline">Posted 3 days ago</span>
+<button class="text-primary font-label-md text-label-md hover:underline">View Details</button>
+</div>
+</div>
+</article>
+<!-- Card 5 -->
+<article class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group flex flex-col">
+<div class="relative h-56 w-full">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A high-performance gaming keyboard with subtle blue LED backlighting on a professional gamer's dark desk. The lighting is low-key with sharp focus on the keycaps. The style is modern corporate but tech-focused, using the brand's primary blue as the light source." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC9h7b9nccbk45uPwDF5EtGaiWhlPcbBPhecuD_-pFglbGT928OlKVaZTJOp6lcOGE4ceGOULMTE7PKbU9rThUEicbOLu9HfpnZCgYmzqrqsEF88VTpjug9TDNOMrl9OcpRX2lC6fkWBKWJ9Rt1qhJkc-cgNwoST9tgZPWGw81_8KRPblr3FYppICaXIQRFU1IOseiZ39IDIoiSqrqQF3p9PpJLf-I3uab4Uu9CHFLlphbAH3CFJNW2')"></div>
+<div class="absolute top-3 right-3 flex flex-col gap-2">
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors" onclick="toggleBell(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-sm text-error hover:bg-error-container transition-colors" onclick="removeItem(this)">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate">Mechanical Keyboard</h3>
+<span class="font-headline-sm text-headline-sm text-primary">$75</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+<span class="font-body-sm text-body-sm">Engineering Hall</span>
+</div>
+<div class="mt-auto flex justify-between items-center border-t border-outline-variant pt-3">
+<span class="font-body-sm text-body-sm text-outline">Posted 6 days ago</span>
+<button class="text-primary font-label-md text-label-md hover:underline">View Details</button>
+</div>
+</div>
+</article>
+</div>
+<!-- Empty State Section (Hidden by default, shown when items are zero) -->
+<div class="hidden flex-col items-center justify-center py-20 text-center animate-in fade-in duration-500" id="empty-state">
+<div class="w-64 h-64 mb-8">
+
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">No saved items yet</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-8 max-w-sm">Items you save while browsing will appear here for easy access and price drop notifications.</p>
+<button class="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-all active:scale-95">
+          Browse listings
+        </button>
+</div>
+</div>
+<!-- Sticky Mobile Footer Shell Logic (only visible on mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface shadow-lg flex justify-around items-center py-stack-sm z-50 border-t border-outline-variant">
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="text-[10px] font-medium">Browse</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+<span class="text-[10px]">Saved</span>
+</a>
+<div class="relative -top-6">
+<button class="bg-primary text-on-primary w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="text-[10px] font-medium">Chat</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+</main>
+<script>
+    function toggleBell(btn) {
+      const icon = btn.querySelector('.material-symbols-outlined');
+      const isActive = btn.classList.toggle('bell-active');
+      
+      if(isActive) {
+        icon.style.fontVariationSettings = "'FILL' 1";
+        // Simple notification feedback
+        showToast("Notifications enabled for price drops!");
+      } else {
+        icon.style.fontVariationSettings = "'FILL' 0";
+        showToast("Notifications disabled.");
+      }
+    }
+
+    function removeItem(btn) {
+      const card = btn.closest('article');
+      card.style.transform = 'scale(0.9)';
+      card.style.opacity = '0';
+      
+      setTimeout(() => {
+        card.remove();
+        checkEmptyState();
+      }, 300);
+    }
+
+    function checkEmptyState() {
+      const grid = document.getElementById('listings-grid');
+      const emptyState = document.getElementById('empty-state');
+      const countDisplay = document.querySelector('p.font-body-md span');
+      
+      const itemCount = grid.children.length;
+      countDisplay.textContent = `${itemCount} items`;
+      
+      if (itemCount === 0) {
+        grid.style.display = 'none';
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-24 right-8 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-lg shadow-xl z-[100] animate-in slide-in-from-bottom-5 duration-300';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 500);
+      }, 3000);
+    }
+  </script>
+</body></html>

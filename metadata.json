@@ -1,0 +1,6 @@
+{
+  "name": "CampusMarket",
+  "description": "Student-to-student campus marketplace for textbooks, electronics, services, and food with verified campus currency and safety tips.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

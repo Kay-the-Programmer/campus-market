@@ -1,0 +1,25 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+backend/uploads/
+
+# Service-account keys - never commit
+*gcs-key.json
+*service-account*.json
+
+# Maven build output
+target/
+
+# Vite build output (dist/ above covers the frontend; this is belt-and-braces
+# for anywhere a build lands outside the repo root)
+*.local
+
+# Editor / OS noise
+.idea/
+.vscode/
+Thumbs.db
