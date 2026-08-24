@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Listing, ViewType, SellerProfile, AuthSession, AddToCartOptions,
   SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES,
@@ -20,7 +20,6 @@ import { SellScreen } from './components/SellScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { SavedScreen } from './components/SavedScreen';
 import { MessagesScreen } from './components/MessagesScreen';
-import { AdminScreen } from './components/AdminScreen';
 import { SupportScreen } from './components/SupportScreen';
 import { CartScreen } from './components/CartScreen';
 import { DealsScreen } from './components/DealsScreen';
@@ -29,7 +28,36 @@ import { MyListingsScreen } from './components/MyListingsScreen';
 import { OrdersScreen } from './components/OrdersScreen';
 import { BecomeSellerModal } from './components/shared/BecomeSellerModal';
 import { canSell } from './components/nav/navShared';
-import { LegalScreen } from './components/LegalScreen';
+
+/*
+ * Split out of the main bundle.
+ *
+ * The admin console is reachable by a handful of accounts and pulls in the
+ * listing manager, promo editor and offers editor behind it; the legal pages
+ * are long, static, and read once if ever. Everyone was paying for all of it
+ * on first load to render a feed that needs none of it.
+ *
+ * The rest of the screens stay eager on purpose - they are what an ordinary
+ * session actually moves between, and a spinner between the feed and a listing
+ * would be a worse trade than the bytes.
+ */
+const AdminScreen = lazy(() =>
+  import('./components/AdminScreen').then((m) => ({ default: m.AdminScreen })));
+const LegalScreen = lazy(() =>
+  import('./components/LegalScreen').then((m) => ({ default: m.LegalScreen })));
+
+/**
+ * Shown while a split screen's chunk is in flight.
+ *
+ * <p>Deliberately plain. On a fast connection it is visible for a few frames,
+ * and anything more elaborate would flash - the cost of a skeleton that
+ * disappears immediately is worse than a spinner nobody sees.
+ */
+const ScreenLoading: React.FC = () => (
+  <div className="min-h-[60vh] flex items-center justify-center" role="status" aria-label="Loading">
+    <div className="w-8 h-8 rounded-full border-2 border-[#e5eeff] border-t-[#2563eb] animate-spin" />
+  </div>
+);
 import { NotFoundScreen } from './components/NotFoundScreen';
 import { DetailSkeleton, DetailUnavailable } from './components/DetailSkeleton';
 import { RoleSwitcherBar } from './components/RoleSwitcherBar';
@@ -1281,15 +1309,17 @@ export default function App() {
             )}
 
             {currentView === 'admin' && (
-              <AdminScreen
-                currentUser={currentUser}
-                activeTab={activeAdminTab}
-                onTabChange={setActiveAdminTab}
-                onNavigateToSell={() => { setEditingListing(null); handleNavigate('sell'); }}
-                onViewListing={handleSelectListing}
-                onEditListing={handleEditListing}
-                onExitAdmin={() => handleNavigate('browse')}
-              />
+              <Suspense fallback={<ScreenLoading />}>
+                <AdminScreen
+                  currentUser={currentUser}
+                  activeTab={activeAdminTab}
+                  onTabChange={setActiveAdminTab}
+                  onNavigateToSell={() => { setEditingListing(null); handleNavigate('sell'); }}
+                  onViewListing={handleSelectListing}
+                  onEditListing={handleEditListing}
+                  onExitAdmin={() => handleNavigate('browse')}
+                />
+              </Suspense>
             )}
 
             {currentView === 'support' && (
@@ -1368,9 +1398,11 @@ export default function App() {
             )}
 
             {currentView === 'legal' && (
-              <LegalScreen
-                onBack={handleBack}
-              />
+              <Suspense fallback={<ScreenLoading />}>
+                <LegalScreen
+                  onBack={handleBack}
+                />
+              </Suspense>
             )}
 
             {currentView === 'notFound' && (

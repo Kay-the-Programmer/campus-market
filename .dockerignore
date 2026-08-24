@@ -1,0 +1,15 @@
+# Never let a local build or a secret reach the image context.
+node_modules
+dist
+build
+backend
+design
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+.idea
+.vscode
+*.md

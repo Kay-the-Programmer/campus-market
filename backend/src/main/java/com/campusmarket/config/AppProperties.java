@@ -33,6 +33,26 @@ public class AppProperties {
     private int loginLockoutMinutes = 15;
 
     /**
+     * Per-IP throttling, enforced by {@link com.campusmarket.security.RateLimitFilter}.
+     * Off by default so a local run is never throttled mid edit-reload-retry;
+     * the production compose file turns it on.
+     */
+    private boolean rateLimitEnabled = false;
+
+    /**
+     * Requests per minute per IP to {@code /api/auth/*}. Low on purpose - these
+     * endpoints send mail, create accounts and mint sessions, and no honest
+     * person signs in twenty times a minute.
+     */
+    private int rateLimitAuthPerMinute = 20;
+
+    /**
+     * Requests per minute per IP for every other write. Loose enough not to
+     * interrupt someone listing items quickly, tight enough to stop a script.
+     */
+    private int rateLimitWritePerMinute = 120;
+
+    /**
      * Where uploaded listing and promo images are written on disk. Relative
      * paths resolve against the working directory - {@code /app} in the
      * container image, which is why the Docker Compose file mounts a volume

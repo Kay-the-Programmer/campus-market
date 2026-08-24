@@ -1,0 +1,60 @@
+# Edge configuration: TLS, static app, API proxy, security headers.
+#
+# SITE_ADDRESS is the domain (e.g. campusmarket.example.com). Caddy reads it
+# at startup and fetches a certificate for it automatically. Setting it to
+# something like :80 instead keeps everything below working over plain HTTP,
+# which is what the staging/no-domain case wants.
+
+{$SITE_ADDRESS} {
+	encode gzip zstd
+
+	header {
+		# Two years, and preload-eligible. Only meaningful once the site is
+		# reachable over HTTPS - browsers ignore it on a plain-HTTP response.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		# Caddy advertises itself by default; there is no reason to tell a
+		# scanner which server and version it is talking to.
+		-Server
+	}
+
+	# Content-Security-Policy, set apart from the block above because it is the
+	# one header here that can break the app rather than just harden it.
+	#
+	# 'unsafe-inline' for styles is load-bearing: Tailwind injects inline style
+	# attributes and the Google Fonts stylesheet is external. Scripts get no
+	# such exemption - Vite bundles everything, including the Firebase SDK, so
+	# 'self' is genuinely sufficient there.
+	#
+	# The googleapis/gstatic entries cover fonts, Firebase auth and messaging,
+	# and images served from a GCS bucket. Verify "Continue with Google" end to
+	# end after any change here: the popup flow is the first thing a too-tight
+	# policy breaks, and it fails silently in the console rather than loudly.
+	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com https://lh3.googleusercontent.com; connect-src 'self' https://*.googleapis.com https://*.google.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+
+	# The API. Same origin as the app by design - that removes the CORS
+	# preflight entirely, and is what lets the session cookie work without
+	# cross-origin credential handling.
+	handle /api/* {
+		reverse_proxy api:8080 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# The SPA. try_files is what makes a hard refresh on /orders/abc123 serve
+	# index.html instead of 404ing - the router only ever sees the URL after
+	# the app has loaded.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

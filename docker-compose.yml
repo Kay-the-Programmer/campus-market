@@ -1,3 +1,15 @@
+# Base stack: safe by default.
+#
+# Nothing here publishes a port to the host and nothing here enables a dev
+# convenience. Those live in docker-compose.override.yml, which Compose loads
+# automatically for local work and which the production command never includes:
+#
+#   local  ->  docker compose up -d --build
+#   VPS    ->  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# That asymmetry is the point. A single file serving both environments is what
+# let dev-only settings ship, and no amount of care in one file fixes it.
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,11 +17,10 @@ services:
     environment:
       POSTGRES_DB: campusmarket
       POSTGRES_USER: campusmarket
-      POSTGRES_PASSWORD: campusmarket
-    ports:
-      # Host port 5433: 5432 is commonly taken by another local Postgres.
-      # Containers still reach the DB as postgres:5432 over the compose network.
-      - "5433:5432"
+      # No default. The :? form makes Compose refuse to start when this is
+      # unset rather than quietly falling back to a guessable password - the
+      # behaviour you want for the credential guarding every user record.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - campusmarket-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,6 +28,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+    # Container logs are the only record of what happened; uncapped they are
+    # also a way to fill the disk and take the host down with them.
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   api:
     build:
@@ -28,18 +45,14 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/campusmarket
       SPRING_DATASOURCE_USERNAME: campusmarket
-      SPRING_DATASOURCE_PASSWORD: campusmarket
-      # Dev-only: surfaces verification/reset tokens in API responses so the
-      # email-driven flows are testable without a mail provider.
-      CAMPUSMARKET_EXPOSE_DEV_TOKENS: "true"
-      CAMPUSMARKET_CORS_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      CAMPUSMARKET_UPLOADS_DIR: /app/uploads
       # Optional: paste a Firebase service-account key's JSON contents (as one
       # line) into a .env file at the repo root as CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON
       # to enable "Continue with Google" and push notifications. Left unset, both
       # are simply disabled - notifications still appear in-app, they just do not
       # reach devices, and everything else works the same.
       CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON: "${CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON:-}"
-      CAMPUSMARKET_UPLOADS_DIR: /app/uploads
       # Optional: move listing/promo image uploads to a Google Cloud Storage
       # bucket instead of the local volume below. Set both:
       #   CAMPUSMARKET_GCS_BUCKET - the bucket name (not a full URL)
@@ -68,8 +81,21 @@ services:
       # ever reads it. Harmless when the file is absent and GCS is unconfigured
       # - Compose creates an empty placeholder and nothing reads it.
       - ./backend/gcs-key.json:/app/gcs-key.json:ro
-    ports:
-      - "8080:8080"
+    healthcheck:
+      # Actuator exposes health only (see application.yml). wget rather than
+      # curl because the JRE alpine image ships busybox, not curl.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # Generous: a cold JVM plus Flyway migrations against an empty database
+      # is comfortably slower than the interval above, and a start_period that
+      # is too tight restarts the container mid-migration.
+      start_period: 90s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
 volumes:
   campusmarket-pgdata:

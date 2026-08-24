@@ -11,6 +11,9 @@ meetup coordination instead of centralised payments.
 Docker Desktop must be running. The API image builds Maven and the JDK inside the
 container, so no local Java install is needed.
 
+Copy `.env.example` to `.env` first — `POSTGRES_PASSWORD` is required, and Compose
+refuses to start without it rather than defaulting to something guessable.
+
 ```bash
 docker compose up -d --build
 ```
@@ -37,6 +40,38 @@ To wipe the database and reseed from scratch:
 ```bash
 docker compose down -v && docker compose up -d --build
 ```
+
+## Deploying
+
+Compose is split in three, and the split is load-bearing: dev conveniences that
+would be dangerous in production live in a file the production command never
+loads.
+
+| File | Loaded when | Holds |
+|---|---|---|
+| `docker-compose.yml` | always | Postgres and the API. No published ports, no dev flags. |
+| `docker-compose.override.yml` | bare `docker compose` only | Published ports, dev tokens, verbose errors, rate limiting off. |
+| `docker-compose.prod.yml` | named explicitly | Caddy, TLS, restart policies, rate limiting on. |
+
+On the VPS, set `POSTGRES_PASSWORD` and `SITE_ADDRESS` (the bare domain, no scheme)
+in `.env`, point that domain's DNS at the box, then:
+
+```bash
+npm run prod:up
+```
+
+Caddy fetches and renews the TLS certificate on its own, serves the built frontend,
+and proxies `/api` to the API container. App and API share an origin, so there is no
+CORS configuration to get wrong.
+
+**Type the production command, never a bare `docker compose up`.** On the VPS a bare
+`up` silently pulls in `docker-compose.override.yml`, which publishes the database
+port and turns password-reset tokens back on in API responses. `npm run prod:up`
+exists so that command is one word instead of a long one worth mistyping.
+
+Database backups are not automatic. `scripts/backup-db.sh` is a nightly `pg_dump`
+intended for cron — read the header, set `BACKUP_REMOTE`, and restore one dump into
+a scratch database before trusting it.
 
 ## Demo accounts
 

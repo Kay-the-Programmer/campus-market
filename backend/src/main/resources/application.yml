@@ -35,7 +35,31 @@ spring:
 server:
   port: 8080
   error:
-    include-message: always
+    # Raw exception text is useful at a terminal and free reconnaissance on a
+    # public API - SQL constraint names, class names, fragments of a query.
+    # Defaults closed; the dev compose file sets it back to "always".
+    #
+    # Safe to withhold because it is not what the frontend reads: every handled
+    # failure carries a deliberate "error" field from GlobalExceptionHandler,
+    # and api.ts uses that, never Spring's "message".
+    include-message: ${SERVER_ERROR_INCLUDE_MESSAGE:never}
+
+# Health only. The default exposure is wider than it looks and includes
+# endpoints worth nobody's attention on a public host; /actuator/health is all
+# the container healthcheck needs.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      # No component breakdown - "UP" is the answer, and the database and disk
+      # detail underneath it is not for unauthenticated callers.
+      show-details: never
+  info:
+    env:
+      enabled: false
 
 campusmarket:
   # Dev convenience: return verification / password-reset tokens in API responses
@@ -48,6 +72,11 @@ campusmarket:
   resend-cooldown-seconds: 60
   max-failed-logins: 5
   login-lockout-minutes: 15
+  # Per-IP throttling (RateLimitFilter). The account lockout above is per
+  # account and does nothing about signup floods or address enumeration.
+  rate-limit-enabled: ${CAMPUSMARKET_RATE_LIMIT_ENABLED:false}
+  rate-limit-auth-per-minute: 20
+  rate-limit-write-per-minute: 120
   uploads-dir: ${CAMPUSMARKET_UPLOADS_DIR:uploads}
   # Firebase service-account key JSON (the whole file contents, not a path).
   # Blank disables "Continue with Google" without affecting anything else.

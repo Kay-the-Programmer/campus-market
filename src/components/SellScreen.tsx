@@ -5,7 +5,16 @@ import {
   Camera, Tag, DollarSign, FileText, Layers, Clock, Wheat, ImageOff,
   CalendarClock, DoorOpen,
 } from 'lucide-react';
-import { AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory } from '../types';
+import { AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, ListingCondition } from '../types';
+
+/**
+ * What the condition dropdown can actually be set to.
+ *
+ * <p>'N/A' is a real {@link ListingCondition} but belongs to services, which
+ * have no condition to report. It is excluded here so the form's state cannot
+ * hold a value the select never offers.
+ */
+type SellableCondition = Exclude<ListingCondition, 'N/A'>;
 import { api } from '../services/api';
 import { DetailScreen } from './DetailScreen';
 import { Modal } from './shared/Modal';
@@ -157,7 +166,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Product
-  const [condition, setCondition] = useState(
+  const [condition, setCondition] = useState<SellableCondition>(
     editingListing?.condition && editingListing.condition !== 'N/A' ? editingListing.condition : 'Like New',
   );
   const [brand, setBrand] = useState(editingListing?.brand ?? '');
@@ -727,7 +736,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                         <label className="block text-sm font-semibold text-slate-700 mb-1.5">Condition</label>
                         <select
                           value={condition}
-                          onChange={(e) => setCondition(e.target.value)}
+                          onChange={(e) => setCondition(e.target.value as SellableCondition)}
                           disabled={isSoldListing}
                           className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-60 appearance-none"
                         >
@@ -1179,7 +1188,21 @@ export const SellScreen: React.FC<SellScreenProps> = ({
               onSelectSimilar={() => { }}
               onOpenChat={() => { }}
               onViewSellerProfile={() => { }}
-              currentUser={currentUser ?? { id: 'me', name: 'You', email: '', avatar: '', role: 'customer', hasActiveListings: false }}
+              // Stand-in for the preview only: DetailScreen wants a real session
+              // and the seller may not have one loaded while drafting. Nothing
+              // here is authorisation - the preview is inert, and every action
+              // it renders is a no-op above.
+              currentUser={currentUser ?? {
+                id: 'me',
+                name: 'You',
+                email: '',
+                avatar: '',
+                role: 'customer',
+                accountType: 'SELLER',
+                sellerApprovalStatus: 'APPROVED',
+                canSell: true,
+                hasActiveListings: false,
+              }}
               onOpenAuthModal={() => { }}
               embedded
             />

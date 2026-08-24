@@ -1,0 +1,41 @@
+# Local development. Loaded automatically by a bare `docker compose up`, and
+# never by the production command, which names its files explicitly.
+#
+# Everything here is either a convenience that must not ship or a port that
+# must not be open on a public host.
+
+services:
+  postgres:
+    environment:
+      # Fine here, and the reason this file exists: the base compose refuses to
+      # start without POSTGRES_PASSWORD, which would otherwise mean keeping a
+      # .env around just to run the thing locally.
+      POSTGRES_PASSWORD: campusmarket
+    ports:
+      # Host port 5433: 5432 is commonly taken by another local Postgres.
+      # Containers still reach the DB as postgres:5432 over the compose network.
+      #
+      # Bound to loopback explicitly. Docker's default is 0.0.0.0, and it writes
+      # its own iptables rules that bypass UFW - so an unqualified mapping is
+      # reachable from the network even on a machine you thought was firewalled.
+      - "127.0.0.1:5433:5432"
+
+  api:
+    environment:
+      SPRING_DATASOURCE_PASSWORD: campusmarket
+      # Returns verification and password-reset tokens in API responses so the
+      # email-driven flows are testable without a mail provider. Catastrophic
+      # in production - anyone who knows an email address could reset that
+      # account - which is why it lives here and nowhere else.
+      CAMPUSMARKET_EXPOSE_DEV_TOKENS: "true"
+      # Vite dev server origins. In production the app and API share an origin
+      # behind Caddy, so no CORS entry is needed at all.
+      CAMPUSMARKET_CORS_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      # Full exception text in error responses. Useful at a terminal, free
+      # reconnaissance for anyone probing a public API.
+      SERVER_ERROR_INCLUDE_MESSAGE: "always"
+      # Off locally: the per-IP limiter would otherwise throttle a rapid
+      # edit-reload-retry cycle against the auth screens.
+      CAMPUSMARKET_RATE_LIMIT_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
