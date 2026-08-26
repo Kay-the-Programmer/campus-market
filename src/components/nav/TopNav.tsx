@@ -211,7 +211,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           </button>
 
           {/* Search - the dominant element of the row */}
-          <div ref={searchWrapRef} className="flex-1 min-w-0 relative">
+          <div ref={searchWrapRef} data-onboarding="nav-search" className="flex-1 min-w-0 relative">
             <form onSubmit={submitSearch}>
               <div className="relative">
                 <Search className="w-4 h-4 text-[#737686] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -256,6 +256,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* Sell - a labelled call to action on desktop, never buried */}
           <button
             onClick={() => go('sell')}
+            data-onboarding="nav-sell"
             className={`hidden lg:flex shrink-0 items-center gap-1.5 h-10 px-4 rounded-xl text-white font-bold text-sm transition-all duration-150 active:scale-[0.98] ${isSeller
               ? 'bg-[#007d55] hover:bg-[#006242] shadow-[0_4px_14px_0_rgba(0,125,85,0.24)]'
               : 'bg-[#2563eb] hover:bg-[#004ac6] shadow-[0_4px_14px_0_rgba(37,99,235,0.24)]'
@@ -272,16 +273,16 @@ export const TopNav: React.FC<TopNavProps> = ({
                 someone is waiting on is time-sensitive, and a menu you have to
                 open first is a poor place for anything with a deadline. */}
             {!isGuest && (
-              <button onClick={() => go('orders')} className={iconBtn} title="Orders" aria-label="Orders">
+              <button onClick={() => go('orders')} data-onboarding="nav-orders" className={iconBtn} title="Orders" aria-label="Orders">
                 <Package className="w-5 h-5" />
                 {countBadge(openOrdersCount)}
               </button>
             )}
-            <button onClick={() => go('messages')} className={iconBtn} title="Messages" aria-label="Messages">
+            <button onClick={() => go('messages')} data-onboarding="nav-messages" className={iconBtn} title="Messages" aria-label="Messages">
               <MessageSquare className="w-5 h-5" />
               {countBadge(unreadMessagesCount)}
             </button>
-            <button onClick={() => go('saved')} className={iconBtn} title="Saved" aria-label="Saved">
+            <button onClick={() => go('saved')} data-onboarding="nav-saved" className={iconBtn} title="Saved" aria-label="Saved">
               <Heart className="w-5 h-5" />
               {countBadge(savedCount)}
             </button>
@@ -351,12 +352,13 @@ export const TopNav: React.FC<TopNavProps> = ({
               </div>
             ) : (
               <>
-                <div className="hidden lg:block">
+                <div className="hidden lg:block" data-onboarding="nav-account">
                   <AccountMenu currentUser={currentUser} onNavigate={onNavigate} onLogout={onLogout} />
                 </div>
                 <button
                   onClick={() => onNavigate('profile')}
                   className="lg:hidden"
+                  data-onboarding="nav-account"
                   aria-label="Profile"
                 >
                   {currentUser.avatar ? (

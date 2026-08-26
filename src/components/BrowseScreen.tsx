@@ -13,7 +13,6 @@ import { getRecentlyViewed } from '../services/recentlyViewed';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
-import { FirstVisitGuide } from './browse/FirstVisitGuide';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 
@@ -1044,7 +1043,6 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
         {/* Shown on the unfiltered feed only: someone who has already typed a
             search or picked a category is past needing the introduction. */}
-        {!searchQuery.trim() && coreType === 'All' && !categoryId && <FirstVisitGuide />}
 
         {/* ═════════════════════ SPECIAL OFFERS ═════════════════════ */}
         {/* Real listings an admin has promoted - priced, buyable, and shown
@@ -1146,7 +1144,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           edge and appeared to vanish behind the results. No z-index can escape
           a clip, so the control moves out of the scroller instead.
         */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4" data-onboarding="feed-zones">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
           <span className="shrink-0 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
             Zone

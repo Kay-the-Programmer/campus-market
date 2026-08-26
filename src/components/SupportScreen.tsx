@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AuthSession, FAQItem } from '../types';
 import { useToast } from './shared/ToastProvider';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 /**
  * Help-page copy, kept here rather than fetched.
@@ -65,6 +66,7 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({
   currentUser,
 }) => {
   const toast = useToast();
+  const onboarding = useOnboarding();
   const [activeFaqId, setActiveFaqId] = useState<string | null>(FAQS[0].id);
   /*
    * The signed-in person, or empty for a guest to fill in.
@@ -192,6 +194,25 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({
           <p className="text-sm text-slate-500 mt-1">
             Simple, secure, and student-focused commerce in four easy steps.
           </p>
+
+          {/*
+            The guided tour is dismissible for good, which is right - and leaves
+            no way back to it. Someone who skipped it on day one and now wants
+            it looks for it here, on the page they came to for help.
+          */}
+          {onboarding && (
+            <button
+              onClick={() => {
+                onboarding.restart();
+                toast.info('It will pick up from the top of the app.', {
+                  title: 'Tour restarted',
+                });
+              }}
+              className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-700 underline underline-offset-2"
+            >
+              Replay the guided tour
+            </button>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
             <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">

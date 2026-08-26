@@ -27,6 +27,8 @@ import { NotificationsScreen } from './components/NotificationsScreen';
 import { MyListingsScreen } from './components/MyListingsScreen';
 import { OrdersScreen } from './components/OrdersScreen';
 import { BecomeSellerModal } from './components/shared/BecomeSellerModal';
+import { OnboardingProvider } from './hooks/useOnboarding';
+import { OnboardingHost } from './components/onboarding/OnboardingHost';
 import { canSell } from './components/nav/navShared';
 
 /*
@@ -296,6 +298,15 @@ export default function App() {
     hasActiveListings: false
   });
 
+  /**
+   * True once the server has answered "who is this?", either way.
+   *
+   * Onboarding waits on it. Every visitor starts as the guest placeholder
+   * above, so a tour that starts on first paint teaches a signed-in seller the
+   * guest flow for the second it takes the session to arrive.
+   */
+  const [sessionResolved, setSessionResolved] = useState(false);
+
   /** Buyer tried to reach Sell - offer the in-place upgrade instead. */
   const [isBecomeSellerOpen, setIsBecomeSellerOpen] = useState(false);
 
@@ -435,6 +446,10 @@ export default function App() {
       }
     } catch (e) {
       console.error('Failed to load session from server', e);
+    } finally {
+      // Resolved covers "no session", not just "a session": a guest whose
+      // request 401s has still been identified, and is owed the guest tour.
+      setSessionResolved(true);
     }
     return null;
   };
@@ -1078,6 +1093,13 @@ export default function App() {
   };
 
   return (
+    <OnboardingProvider
+      user={currentUser}
+      view={currentView}
+      cartCount={cartCount}
+      savedCount={savedListings.length}
+      ready={sessionResolved}
+    >
     <div className="min-h-screen bg-[#f8f9ff] text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* Dev/Test RBAC Role Banner & Instant Tester Switcher */}
       <RoleSwitcherBar
@@ -1478,6 +1500,11 @@ export default function App() {
           }
         }}
       />
+
+      {/* Last child on purpose: it draws over the chrome it points at, and the
+          modals above it own the screen outright while they are open. */}
+      {!isAuthModalOpen && !isBecomeSellerOpen && <OnboardingHost />}
     </div>
+    </OnboardingProvider>
   );
 }

@@ -81,6 +81,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     return (
       <button
         onClick={() => go(view)}
+        // Matches the desktop bar's names, so an onboarding step anchors to
+        // whichever of the pair is actually laid out at this width.
+        data-onboarding={`nav-${view}`}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         className={`${tabBase} ${active ? activeColor : 'text-[#737686] hover:text-[#434655]'}`}
@@ -111,6 +114,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <div className="relative -top-5 flex flex-col items-center">
           <button
             onClick={() => go('sell')}
+            data-onboarding="nav-sell"
             aria-label="Sell an item"
             className={`w-14 h-14 rounded-full text-white flex items-center justify-center shadow-[0_6px_20px_0_rgba(0,0,0,0.18)] transition-all duration-150 active:scale-95 ring-4 ring-white ${
               isSeller ? 'bg-[#007d55] hover:bg-[#006242]' : 'bg-[#2563eb] hover:bg-[#004ac6]'
