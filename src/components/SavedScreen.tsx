@@ -174,11 +174,15 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
           </div>
         ) : (
           <div className="space-y-5">
-            {sortedListings.map((item) => {
+            {sortedListings.map((item, itemIndex) => {
               const unavailable = !item.isAvailable;
               return (
               <div
                 key={item.id}
+                // The first card, not the whole list: a wishlist runs taller
+                // than a phone screen, and a highlight around all of it points
+                // at nothing in particular.
+                data-onboarding={itemIndex === 0 ? 'saved-first' : undefined}
                 onClick={() => onSelectListing(item)}
                 className={`bg-white rounded-3xl border shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer group ${
                   unavailable ? 'border-[#c3c6d7]' : 'border-[#e5eeff]'

@@ -566,7 +566,10 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
         )}
 
         {/* Status tabs */}
-        <div className="flex items-center gap-1 sm:gap-6 border-b border-[#c3c6d7]/60 mb-1 overflow-x-auto no-scrollbar">
+        <div
+          data-onboarding="listings-tabs"
+          className="flex items-center gap-1 sm:gap-6 border-b border-[#c3c6d7]/60 mb-1 overflow-x-auto no-scrollbar"
+        >
           {TABS.map((t) => (
             <button
               key={t.key}

@@ -112,6 +112,59 @@ describe('selectDueStep', () => {
   });
 });
 
+describe('page flows', () => {
+  /** Every journey out of the way, so the page tips are what is left. */
+  const journeysDone = (): OnboardingProgress =>
+    ['marketplace-basics', 'account-next-steps', 'seller-setup'].reduce(
+      (acc, id) => ({
+        ...acc,
+        [id]: { version: 1, stepIndex: 99, status: 'skipped' as const, updatedAt: 0 },
+      }),
+      {} as OnboardingProgress,
+    );
+
+  const pageOf = (view: OnboardingContext['view'], user: AuthSession = seller) =>
+    selectDueStep(ctxFor(user, { view }), journeysDone());
+
+  it('has a step for every page a trade passes through', () => {
+    expect(pageOf('detail')?.step.id).toBe('detail-action');
+    expect(pageOf('cart')?.step.id).toBe('cart-per-seller');
+    expect(pageOf('orders')?.step.id).toBe('orders-actions');
+    expect(pageOf('messages')?.step.id).toBe('messages-thread');
+    expect(pageOf('sell')?.step.id).toBe('sell-type');
+    expect(pageOf('my-listings')?.step.id).toBe('listings-status');
+    expect(pageOf('saved')?.step.id).toBe('saved-move');
+  });
+
+  it('shows a page tip only on its own page', () => {
+    expect(pageOf('browse')).toBeNull();
+  });
+
+  it('keeps page tips behind the journeys', () => {
+    // Nothing seen yet: the marketplace tour wins even while standing on Sell.
+    const due = selectDueStep(ctxFor(seller, { view: 'sell' }), {});
+    expect(due?.flow.id).toBe('marketplace-basics');
+  });
+
+  it('does not offer the selling pages to an account that cannot list', () => {
+    expect(pageOf('sell', buyer)).toBeNull();
+    expect(pageOf('my-listings', buyer)).toBeNull();
+  });
+
+  it('leaves the listing page alone for a guest, who has no buttons there', () => {
+    expect(pageOf('detail', guest)).toBeNull();
+  });
+
+  it('marks the data-dependent anchors so an empty page teaches nothing', () => {
+    // The host holds these back until the anchor exists, rather than falling
+    // back to a centred card over an empty screen.
+    expect(pageOf('orders')?.step.requiresTarget).toBe(true);
+    expect(pageOf('saved')?.step.requiresTarget).toBe(true);
+    expect(pageOf('messages')?.step.requiresTarget).toBe(true);
+    expect(pageOf('cart')?.step.requiresTarget).toBe(true);
+  });
+});
+
 describe('advanced / skipped', () => {
   it('marks a flow done on the last step', () => {
     const p = advanced({}, sellerFlow, 1);

@@ -212,6 +212,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({
     <button
       onClick={() => { setError(null); setConfirmOpen(true); }}
       disabled={!canCheckout}
+      data-onboarding="cart-checkout"
       className={`py-3.5 bg-[#2563eb] text-white rounded-2xl font-semibold hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 ${className}`}
     >
       {busy ? (

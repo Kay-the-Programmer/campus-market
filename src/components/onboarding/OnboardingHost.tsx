@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import type { StepPlacement } from '../../services/onboarding';
@@ -10,7 +10,8 @@ const CARD_WIDTH = 300;
 
 interface Rect { top: number; left: number; width: number; height: number }
 
-function measure(target?: string): Rect | null {
+/** The laid-out element for a target, or null when none of them is visible. */
+function findTarget(target?: string): Element | null {
   if (!target || typeof document === 'undefined') return null;
   /*
    * All matches, not the first. The same destination exists twice in the
@@ -22,12 +23,45 @@ function measure(target?: string): Rect | null {
   const els = document.querySelectorAll(`[data-onboarding="${CSS.escape(target)}"]`);
   for (const el of Array.from(els)) {
     const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
-    return { top: r.top, left: r.left, width: r.width, height: r.height };
+    if (r.width > 0 && r.height > 0) return el;
   }
   // Nothing laid out: the step falls back to a centred card rather than
   // pointing at nothing.
   return null;
+}
+
+/**
+ * Viewport rect for the ring, clamped to what is actually on screen.
+ *
+ * <p>Some anchors are whole regions rather than controls - a saved list, a
+ * photo grid - and on a phone those run taller than the screen. An unclamped
+ * ring around one is a border with no visible relationship to anything, and
+ * pushes the card past the fold. Clamping keeps the highlight on the part the
+ * reader can see.
+ */
+function measure(el: Element | null): Rect | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return null;
+
+  const vh = window.innerHeight;
+  const top = Math.max(r.top, 8);
+  const bottom = Math.min(r.bottom, vh - 8);
+  if (bottom <= top) return null; // Scrolled out of sight entirely.
+
+  /*
+   * A highlight taller than about a third of the screen has stopped being a
+   * highlight - and it leaves nowhere for the card to sit, so the card ends up
+   * on top of the very thing being pointed at. Ringing the top of a tall
+   * anchor says the same thing and leaves room to explain it.
+   */
+  const maxHeight = Math.max(160, vh * 0.38);
+  return {
+    top,
+    left: r.left,
+    width: r.width,
+    height: Math.min(bottom - top, maxHeight),
+  };
 }
 
 /**
@@ -37,27 +71,35 @@ function measure(target?: string): Rect | null {
  * edge would otherwise put half the card off screen, and on a phone almost
  * every nav target is near an edge.
  */
-function place(rect: Rect, placement: StepPlacement): React.CSSProperties {
+function place(rect: Rect, placement: StepPlacement, cardHeight: number): React.CSSProperties {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const clampLeft = (l: number) => Math.max(12, Math.min(l, vw - CARD_WIDTH - 12));
+  const clampTop = (t: number) => Math.max(12, Math.min(t, vh - cardHeight - 12));
+
+  /*
+   * The card's real height, measured, rather than an assumed one. The copy
+   * runs from two lines to five, and a saved item is a banner card the height
+   * of a phone: guessing put the card off the bottom of the screen on the very
+   * pages where the anchor was biggest.
+   */
+  const above = rect.top - OFFSET - cardHeight;
+  const below = rect.top + rect.height + OFFSET;
+  const fitsAbove = above >= 12;
+  const fitsBelow = below + cardHeight <= vh - 12;
 
   switch (placement) {
-    case 'top':
-      return { top: Math.max(12, rect.top - OFFSET), left: clampLeft(rect.left), transform: 'translateY(-100%)' };
     case 'left':
-      return { top: Math.min(rect.top, vh - 180), left: Math.max(12, rect.left - OFFSET - CARD_WIDTH) };
+      return { top: clampTop(rect.top), left: Math.max(12, rect.left - OFFSET - CARD_WIDTH) };
     case 'right':
-      return { top: Math.min(rect.top, vh - 180), left: clampLeft(rect.left + rect.width + OFFSET) };
+      return { top: clampTop(rect.top), left: clampLeft(rect.left + rect.width + OFFSET) };
+    case 'top':
+      // A sticky action bar sits near the top of the viewport on a phone, so
+      // "above it" is often off screen. Preference first, then whatever fits.
+      return { top: fitsAbove ? above : clampTop(fitsBelow ? below : above), left: clampLeft(rect.left) };
     case 'bottom':
-    default: {
-      const below = rect.top + rect.height + OFFSET;
-      // Not enough room underneath - flip above rather than run off the fold.
-      if (below > vh - 160) {
-        return { top: Math.max(12, rect.top - OFFSET), left: clampLeft(rect.left), transform: 'translateY(-100%)' };
-      }
-      return { top: below, left: clampLeft(rect.left) };
-    }
+    default:
+      return { top: fitsBelow ? below : clampTop(fitsAbove ? above : below), left: clampLeft(rect.left) };
   }
 }
 
@@ -80,6 +122,8 @@ export const OnboardingHost: React.FC = () => {
   const target = due?.step.target;
 
   const [rect, setRect] = useState<Rect | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardHeight, setCardHeight] = useState(190);
 
   /*
    * Measured after paint and re-measured on anything that can move the anchor.
@@ -89,15 +133,50 @@ export const OnboardingHost: React.FC = () => {
   useLayoutEffect(() => {
     if (!target) { setRect(null); return; }
 
-    const update = () => setRect(measure(target));
+    /*
+     * Bring the anchor on screen, once per step.
+     *
+     * Half of these targets - the zone filter under a feed, the publish button
+     * at the foot of a long form - sit below the fold on a phone. Explaining
+     * something the reader would have to go looking for is the one failure
+     * mode an anchored tooltip has that a plain card does not.
+     *
+     * It rides along with the measurement rather than running on its own,
+     * because the screen a step points at is usually still mounting when the
+     * step opens: an attempt made once, up front, finds nothing and never
+     * happens again. The flag keeps it to a single scroll, so a reader who
+     * scrolls away from the highlight is not dragged back to it.
+     */
+    let scrolled = false;
+
+    const update = () => {
+      const el = findTarget(target);
+      if (el && !scrolled) {
+        const r = el.getBoundingClientRect();
+        if (r.top < 0 || r.bottom > window.innerHeight) {
+          scrolled = true;
+          /*
+           * Instant, not smooth. A smooth scroll is silently dropped in more
+           * than one engine - it was dropped in the browser this was tested
+           * in - and a highlight that never arrives is a worse trade than one
+           * that arrives without an animation. It also spares anyone who has
+           * asked for reduced motion a lurch they did not start.
+           */
+          el.scrollIntoView({ block: 'center' });
+        }
+      }
+      setRect(measure(el));
+    };
+
     update();
 
-    // A target inside a lazily-mounted screen appears a frame or two late.
-    const retry = window.setTimeout(update, 250);
+    // A target inside a lazily-mounted screen appears a frame or two late, and
+    // the scroll above lands a few frames after that.
+    const retries = [120, 350, 700, 1200].map((ms) => window.setTimeout(update, ms));
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
     return () => {
-      window.clearTimeout(retry);
+      retries.forEach(window.clearTimeout);
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
@@ -117,15 +196,29 @@ export const OnboardingHost: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [due, onKeyDown]);
 
+  // The card is laid out before it is placed, so its height is known one paint
+  // late. Placement reads this on the next render, which is why it starts at a
+  // sane default rather than zero.
+  useLayoutEffect(() => {
+    const h = cardRef.current?.getBoundingClientRect().height;
+    if (h && Math.abs(h - cardHeight) > 1) setCardHeight(h);
+  });
+
   if (!due || !next || !skip) return null;
 
   const { step, index, total } = due;
+  const anchored = rect !== null;
+
+  // Waits for a page with something on it rather than teaching an empty one.
+  // The step is not consumed - it is still due the next time round.
+  if (step.requiresTarget && !anchored) return null;
+
   const isLast = index === total - 1;
   const cta = step.cta ?? (isLast ? 'Got it' : 'Next');
-  const anchored = rect !== null;
 
   const card = (
     <div
+      ref={cardRef}
       role="dialog"
       aria-modal="false"
       aria-labelledby="onboarding-title"
@@ -192,8 +285,14 @@ export const OnboardingHost: React.FC = () => {
         the target with a very large outer shadow. One layer, no seams, and no
         four-rectangle mask to keep in sync with the rect.
       */}
+      {/*
+        No transition on the geometry. The ring is re-measured on every scroll
+        and resize, and animating each of those made it lag the thing it is
+        supposed to be pointing at - visibly on a phone, where the address bar
+        collapsing fires a stream of them.
+      */}
       <div
-        className="absolute rounded-2xl transition-all duration-150"
+        className="absolute rounded-2xl"
         style={{
           top: rect.top - RING_PAD,
           left: rect.left - RING_PAD,
@@ -202,7 +301,7 @@ export const OnboardingHost: React.FC = () => {
           boxShadow: '0 0 0 9999px rgba(33,49,69,0.45), 0 0 0 2px #2563eb inset',
         }}
       />
-      <div className="absolute" style={place(rect, step.placement ?? 'bottom')}>
+      <div className="absolute" style={place(rect, step.placement ?? 'bottom', cardHeight)}>
         <div className="relative">{card}</div>
       </div>
     </div>

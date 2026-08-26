@@ -521,7 +521,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
             <section>
               <h2 className="text-lg font-bold text-slate-900 mb-1">What are you offering?</h2>
               <p className="text-sm text-slate-500 mb-4">Pick one to unlock the rest of the form.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" data-onboarding="sell-type">
                 {OFFERINGS.map(({ type, icon, label, desc }) => {
                   const selected = offeringType === type;
                   const a = ACCENT[type];
@@ -560,7 +560,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
             <div className="space-y-6 sm:space-y-8 animate-fade-in">
 
               {/* ── Photos ── */}
-              <section ref={photosRef} className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-slate-900/5 scroll-mt-32">
+              <section ref={photosRef} data-onboarding="sell-photos" className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-slate-900/5 scroll-mt-32">
                 <div className="flex items-center gap-2 mb-4">
                   <Camera className="w-4 h-4 text-slate-400" />
                   <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Photos</h2>
@@ -1085,6 +1085,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                   type="button"
                   onClick={handleSubmit as any}
                   disabled={isSubmitting || processingPhotos || !canPublish}
+                  data-onboarding="sell-publish"
                   className={`h-11 sm:h-12 px-6 sm:px-8 rounded-xl font-bold text-sm shadow-lg transition-all duration-200 flex items-center gap-2 ${canPublish
                     ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'

@@ -53,6 +53,17 @@ export interface OnboardingStep {
    */
   target?: string;
   placement?: StepPlacement;
+  /**
+   * Hold the step back until its target is actually on screen.
+   *
+   * <p>For anchors that only exist once there is data behind them - an order
+   * card, a saved item, an open thread. The centred fallback is right for a
+   * control hidden by a breakpoint, and wrong here: explaining the buttons on
+   * an order to someone looking at an empty Orders page teaches nothing and
+   * spends the one time they were willing to read a tip. The step stays due,
+   * and appears the next time they open that page with something on it.
+   */
+  requiresTarget?: boolean;
   /** Extra gate on top of the flow's audience, evaluated per render. */
   when?: (ctx: OnboardingContext) => boolean;
   /** Label on the advance button. Defaults to Next / Got it. */
@@ -197,8 +208,184 @@ const sellerSetup: OnboardingFlow = {
   ],
 };
 
+/*
+ * Page flows.
+ *
+ * The three above are journeys - they follow a person across screens. These
+ * are the opposite: one or two lines that only make sense while you are
+ * standing on a particular page, and are worthless anywhere else.
+ *
+ * They sit below the journeys in priority on purpose. Someone still being told
+ * how the marketplace works should not have that interrupted by a note about
+ * the photo grid; the page tip is still there the next time they open Sell.
+ */
+
+/** Shorthand for the shape every page flow shares. */
+function pageFlow(
+  id: string,
+  view: ViewType | ViewType[],
+  priority: number,
+  steps: OnboardingStep[],
+  audience: (ctx: OnboardingContext) => boolean = () => true,
+): OnboardingFlow {
+  const views = Array.isArray(view) ? view : [view];
+  return {
+    id,
+    version: 1,
+    priority,
+    audience: (ctx) => !isAdmin(ctx) && views.includes(ctx.view) && audience(ctx),
+    steps,
+  };
+}
+
+const detailPage = pageFlow(
+  'page-detail',
+  'detail',
+  10,
+  [
+    {
+      id: 'detail-action',
+      title: 'Nothing is charged here',
+      body: 'Adding to cart or requesting a booking tells the seller you want it. No card, no payment - you settle in person.',
+      target: 'detail-primary',
+      placement: 'top',
+    },
+    {
+      id: 'detail-chat',
+      title: 'Ask before you commit',
+      body: 'Still available? Will you meet at Upschool? Chat first - it is the same seller you will be handing money to.',
+      target: 'detail-chat',
+      placement: 'top',
+      cta: 'Got it',
+    },
+  ],
+  // A guest sees a sign-in prompt where these buttons are, so both steps would
+  // point at controls that are not there and describe an action they cannot take.
+  (ctx) => !isGuest(ctx),
+);
+
+const cartPage = pageFlow('page-cart', 'cart', 11, [
+  {
+    id: 'cart-per-seller',
+    title: 'One order per seller',
+    body: 'Checking out splits the basket by seller and opens a thread with each of them. Nothing leaves your account.',
+    target: 'cart-checkout',
+    requiresTarget: true,
+    placement: 'top',
+    cta: 'Got it',
+  },
+]);
+
+const sellPage = pageFlow(
+  'page-sell',
+  'sell',
+  12,
+  [
+    {
+      id: 'sell-type',
+      title: 'Pick what it is first',
+      body: 'Product, service or food. The rest of the form changes to match - a tutoring slot and a desk fan do not need the same fields.',
+      target: 'sell-type',
+      placement: 'bottom',
+    },
+    {
+      id: 'sell-photos',
+      title: 'Photos do the selling',
+      body: 'The first one is the cover. A real photo of the actual item beats a catalogue picture every time.',
+      target: 'sell-photos',
+      placement: 'bottom',
+    },
+    {
+      id: 'sell-publish',
+      title: 'Publish when it is ready',
+      body: 'Anything still missing is listed next to the button. Save a draft if you want to finish it later.',
+      target: 'sell-publish',
+      placement: 'top',
+      cta: 'Got it',
+    },
+  ],
+  (ctx) => ctx.user.canSell,
+);
+
+const ordersPage = pageFlow('page-orders', 'orders', 13, [
+  {
+    id: 'orders-actions',
+    title: 'Answer, then arrange',
+    body: 'Accept or decline from here, and settle the handover in the chat. An order left pending is what makes people give up on a seller.',
+    target: 'orders-actions',
+    requiresTarget: true,
+    placement: 'top',
+    cta: 'Got it',
+  },
+]);
+
+const messagesPage = pageFlow('page-messages', 'messages', 14, [
+  {
+    id: 'messages-thread',
+    title: 'One thread per deal',
+    body: 'Every order opens its own conversation, with the listing pinned to the top of it so neither of you loses track of which item this is.',
+    target: 'messages-thread',
+    requiresTarget: true,
+    placement: 'bottom',
+  },
+  {
+    /*
+     * Second, and target-gated: on a phone the list and the conversation are
+     * different screens, so the composer does not exist until a thread is
+     * opened. The step waits rather than pointing at the list it is not about.
+     */
+    id: 'messages-arrange',
+    title: 'Agree the handover here',
+    body: 'Place, time, and what you are bringing. Keep it in the thread - a screenshot of what was agreed is worth having.',
+    target: 'messages-composer',
+    requiresTarget: true,
+    placement: 'top',
+    cta: 'Got it',
+  },
+]);
+
+const myListingsPage = pageFlow(
+  'page-my-listings',
+  'my-listings',
+  15,
+  [
+    {
+      id: 'listings-status',
+      title: 'Keep the status honest',
+      body: 'Reserved while someone is on their way, Sold once it is gone. Stale listings are the top complaint on campus boards.',
+      target: 'listings-tabs',
+      placement: 'bottom',
+      cta: 'Got it',
+    },
+  ],
+  (ctx) => ctx.user.canSell,
+);
+
+const savedPage = pageFlow('page-saved', 'saved', 16, [
+  {
+    id: 'saved-move',
+    title: 'Saving is not holding',
+    body: 'A saved item is still on sale to everyone else. If you want it, message the seller.',
+    target: 'saved-first',
+    requiresTarget: true,
+    placement: 'bottom',
+    cta: 'Got it',
+  },
+]);
+
 /** Every flow the engine knows about, in registration order. */
-export const FLOWS: OnboardingFlow[] = [marketplaceBasics, accountNextSteps, sellerSetup];
+export const FLOWS: OnboardingFlow[] = [
+  marketplaceBasics,
+  accountNextSteps,
+  sellerSetup,
+  detailPage,
+  cartPage,
+  sellPage,
+  ordersPage,
+  messagesPage,
+  myListingsPage,
+  savedPage,
+];
 
 // Persistence
 

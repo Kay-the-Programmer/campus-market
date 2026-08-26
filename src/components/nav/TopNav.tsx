@@ -319,7 +319,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           <div className="flex lg:hidden items-center shrink-0">
             {!isGuest && (
               <>
-                <button onClick={() => go('orders')} className={iconBtn} aria-label="Orders">
+                <button onClick={() => go('orders')} data-onboarding="nav-orders" className={iconBtn} aria-label="Orders">
                   <Package className="w-5 h-5" />
                   {countBadge(openOrdersCount)}
                 </button>

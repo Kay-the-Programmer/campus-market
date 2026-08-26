@@ -594,9 +594,12 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                 {visibleThreads.length === 0 ? (
                   <p className="text-xs text-[#737686] text-center py-10 px-4">No conversations match this view.</p>
                 ) : (
-                  visibleThreads.map((t) => (
+                  visibleThreads.map((t, threadIndex) => (
                     <div
                       key={t.id}
+                      // Anchor for the onboarding step about threads. The first
+                      // row only - on a phone the list is the whole screen.
+                      data-onboarding={threadIndex === 0 ? 'messages-thread' : undefined}
                       onClick={() => selectThread(t.id)}
                       className={`px-4 py-3 cursor-pointer transition-all duration-150 flex items-center space-x-3 border-l-[3px] ${thread?.id === t.id
                           ? 'bg-[#eff4ff] border-l-[#2563eb]'
@@ -760,7 +763,11 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                   )}
 
                   {/* Input bar */}
-                  <form onSubmit={sendReply} className="shrink-0 p-4 sm:p-5 bg-white border-t border-[#e5eeff]">
+                  <form
+                    onSubmit={sendReply}
+                    data-onboarding="messages-composer"
+                    className="shrink-0 p-4 sm:p-5 bg-white border-t border-[#e5eeff]"
+                  >
                     <div className="flex items-end gap-2 bg-[#f8f9ff] p-2 rounded-2xl border border-[#e5eeff] focus-within:ring-2 focus-within:ring-[#2563eb]/30 focus-within:border-[#2563eb] transition-all">
                       <textarea
                         ref={textareaRef}

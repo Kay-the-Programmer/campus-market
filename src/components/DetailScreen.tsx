@@ -738,6 +738,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                       <button
                         onClick={primaryAction.onClick}
                         disabled={primaryAction.disabled}
+                        data-onboarding="detail-primary"
                         className={`w-full h-14 rounded-xl text-white font-bold text-sm shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${primaryAction.color}`}
                       >
                         {primaryAction.icon}
@@ -748,6 +749,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                         <button
                           onClick={secondaryAction.onClick}
                           disabled={secondaryAction.disabled}
+                          data-onboarding="detail-chat"
                           className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           {secondaryAction.icon}
@@ -1160,6 +1162,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     <button
                       onClick={primaryAction.onClick}
                       disabled={primaryAction.disabled}
+                      data-onboarding="detail-primary"
                       className={`flex-1 h-12 rounded-xl text-white font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${primaryAction.color}`}
                     >
                       {primaryAction.icon}
@@ -1171,6 +1174,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     <button
                       onClick={secondaryAction.onClick}
                       disabled={secondaryAction.disabled}
+                      data-onboarding="detail-chat"
                       className="flex-1 h-12 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {secondaryAction.icon}

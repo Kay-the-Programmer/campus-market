@@ -573,6 +573,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
     return (
       <div
         className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-[#e5eeff]"
+        data-onboarding="orders-actions"
         onClick={(e) => e.stopPropagation()}
       >
         {order.availableActions.map((action) => {
