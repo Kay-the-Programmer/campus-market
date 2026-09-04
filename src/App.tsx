@@ -1100,37 +1100,23 @@ export default function App() {
       savedCount={savedListings.length}
       ready={sessionResolved}
     >
-    <div className="min-h-screen bg-[#f8f9ff] text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Dev/Test RBAC Role Banner & Instant Tester Switcher */}
-      <RoleSwitcherBar
+      <div className="min-h-screen bg-[#f8f9ff] text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
+        {/* Dev/Test RBAC Role Banner & Instant Tester Switcher */}
+        {/* <RoleSwitcherBar
         currentUser={currentUser}
         onSessionChange={handleSessionChange}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
-      />
+      /> */}
 
-      {/*
+        {/*
         Two entirely separate shells rather than one bar that mutates. Admin gets
         a desaturated sidebar tool; everyone else gets the shopping chrome. They
         never blend, so the current mode is unmistakable (design principle 4).
         items-start keeps the sidebar at its own height so it can stick.
       */}
-      <div className="flex flex-1 items-start">
-        {currentUser.role === 'admin' && (
-          <AdminSidebar
-            activeTab={activeAdminTab}
-            onTabChange={(tab) => { setActiveAdminTab(tab); handleNavigate('admin'); }}
-            onExitAdmin={handleLogout}
-            currentUser={currentUser}
-            pendingReports={pendingReports}
-            pendingSellers={pendingSellers}
-            heldOrders={heldOrders}
-            unreadChats={unreadMessages}
-          />
-        )}
-
-        <div className="flex-1 min-w-0 min-h-screen flex flex-col">
-          {currentUser.role === 'admin' ? (
-            <AdminHeader
+        <div className="flex flex-1 items-start">
+          {currentUser.role === 'admin' && (
+            <AdminSidebar
               activeTab={activeAdminTab}
               onTabChange={(tab) => { setActiveAdminTab(tab); handleNavigate('admin'); }}
               onExitAdmin={handleLogout}
@@ -1140,371 +1126,385 @@ export default function App() {
               heldOrders={heldOrders}
               unreadChats={unreadMessages}
             />
-          ) : (
-            <TopNav
-              currentView={currentView}
-              onNavigate={handleNavigate}
-              onOpenAuthModal={() => setIsAuthModalOpen(true)}
-              onLogout={handleLogout}
-              currentUser={currentUser}
-              savedCount={savedListings.length}
-              cartCount={cartCount}
-              unreadMessagesCount={unreadMessages}
-              unreadNotificationsCount={unreadNotifications}
-              searchQuery={feedQuery}
-              onSearchChange={setFeedQuery}
-              feedType={feedType}
-              onFeedTypeChange={setFeedType}
-              categoryId={feedCategoryId}
-              onCategoryChange={setFeedCategoryId}
-              categories={navCategories}
-              onSubmitSearch={handleSubmitSearch}
-              onOpenListingById={handleOpenListingById}
-              onSearchCategory={handleSearchCategory}
-            />
           )}
 
-          {/* Main Content Area */}
-          <main className="flex-1">
-            {currentView === 'search' && (
-              <SearchScreen
-                filters={searchFilters}
-                onFiltersChange={(next) => { setSearchFilters(next); syncSearchUrl(next); }}
-                onSelectListing={handleSelectListing}
-                onToggleSave={handleToggleSave}
-                onBack={handleBack}
+          <div className="flex-1 min-w-0 min-h-screen flex flex-col">
+            {currentUser.role === 'admin' ? (
+              <AdminHeader
+                activeTab={activeAdminTab}
+                onTabChange={(tab) => { setActiveAdminTab(tab); handleNavigate('admin'); }}
+                onExitAdmin={handleLogout}
                 currentUser={currentUser}
-                onAddToCart={handleAddToCart}
-                listings={listings}
-                onGoHome={() => handleNavigate('browse')}
+                pendingReports={pendingReports}
+                pendingSellers={pendingSellers}
+                heldOrders={heldOrders}
+                unreadChats={unreadMessages}
               />
-            )}
-
-            {currentView === 'browse' && (
-              <BrowseScreen
-                listings={listings}
-                onSelectListing={handleSelectListing}
-                onToggleSave={handleToggleSave}
-                onNavigateToSell={() => handleNavigate('sell')}
-                onAddToCart={handleAddToCart}
-                onOpenChat={handleOpenChat}
+            ) : (
+              <TopNav
+                currentView={currentView}
+                onNavigate={handleNavigate}
+                onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                onLogout={handleLogout}
                 currentUser={currentUser}
+                savedCount={savedListings.length}
+                cartCount={cartCount}
+                unreadMessagesCount={unreadMessages}
+                unreadNotificationsCount={unreadNotifications}
                 searchQuery={feedQuery}
                 onSearchChange={setFeedQuery}
                 feedType={feedType}
                 onFeedTypeChange={setFeedType}
                 categoryId={feedCategoryId}
                 onCategoryChange={setFeedCategoryId}
+                categories={navCategories}
+                onSubmitSearch={handleSubmitSearch}
+                onOpenListingById={handleOpenListingById}
+                onSearchCategory={handleSearchCategory}
               />
             )}
 
-            {/* A shared link lands here with nothing loaded yet. The page has
-                to say so - it used to render as a blank band between the nav
-                and the footer for as long as the fetch took. */}
-            {currentView === 'detail' && !selectedListing && (
-              detailUnreachable ? (
-                <DetailUnavailable
-                  onRetry={() => { setDetailUnreachable(false); loadServerListings(); }}
+            {/* Main Content Area */}
+            <main className="flex-1">
+              {currentView === 'search' && (
+                <SearchScreen
+                  filters={searchFilters}
+                  onFiltersChange={(next) => { setSearchFilters(next); syncSearchUrl(next); }}
+                  onSelectListing={handleSelectListing}
+                  onToggleSave={handleToggleSave}
+                  onBack={handleBack}
+                  currentUser={currentUser}
+                  onAddToCart={handleAddToCart}
+                  listings={listings}
                   onGoHome={() => handleNavigate('browse')}
                 />
-              ) : (
-                <DetailSkeleton />
-              )
-            )}
+              )}
 
-            {currentView === 'detail' && selectedListing && (
-              <DetailScreen
-                listing={selectedListing}
-                similarListings={listings}
-                onBack={handleBack}
-                onToggleSave={handleToggleSave}
-                onSelectSimilar={handleSelectListing}
-                onOpenChat={handleOpenChat}
-                onViewSellerProfile={handleViewSellerProfile}
-                currentUser={currentUser}
-                onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                onListingDeleted={() => {
-                  loadServerListings();
-                  // Not handleBack: the page behind might be this same listing,
-                  // and going back to something that no longer exists is worse
-                  // than going somewhere that does.
-                  setSelectedListing(null);
-                  handleNavigate('browse');
-                }}
-                onAddToCart={handleAddToCart}
-                onEditListing={handleEditListing}
-                onGoHome={() => handleNavigate('browse')}
-                onViewAllSimilar={(item) => {
-                  // The narrowest true description of "more like this": its own
-                  // category when it has one, otherwise its type.
-                  const next: SearchFilters = {
-                    ...EMPTY_SEARCH_FILTERS,
-                    categoryId: item.categoryId || '',
-                    type: item.categoryId ? 'All' : (item.category as SearchFilters['type']),
-                  };
-                  setSearchFilters(next);
-                  setCurrentView('search');
-                  updateUrl('search');
-                  syncSearchUrl(next);
-                }}
-              />
-            )}
-
-            {currentView === 'sell' && (
-              <SellScreen
-                /*
-                 * Every field is seeded from `editingListing` in a useState
-                 * initialiser, which runs once. Keying on the listing forces a
-                 * fresh form whenever the target changes - including edit ->
-                 * new, which happens in place when Sell is tapped from the
-                 * nav while an edit is already open and so never unmounts.
-                 */
-                key={editingListing?.id ?? 'new'}
-                onBack={() => {
-                  setEditingListing(null);
-                  // An admin came from the catalogue screen and should land back
-                  // on it, not be dropped into the shopper's feed mid-task.
-                  if (currentUser.role === 'admin') {
-                    setActiveAdminTab('listings');
-                    handleNavigate('admin');
-                    return;
-                  }
-                  if (editingListing) {
-                    setCurrentView('detail');
-                    updateUrl('detail', editingListing.id);
-                    return;
-                  }
-                  handleNavigate('browse');
-                }}
-                onPublishListing={handlePublishListing}
-                onSaveEdit={handleSaveEditedListing}
-                editingListing={editingListing}
-                currentUser={currentUser}
-                onListingDeleted={() => {
-                  setEditingListing(null);
-                  setSelectedListing(null);
-                  loadServerListings();
-                  handleNavigate('browse');
-                }}
-              />
-            )}
-
-            {currentView === 'profile' && (
-              <ProfileScreen
-                listings={listings}
-                onBack={handleBack}
-                onSelectListing={handleSelectListing}
-                onNavigateToSell={() => handleNavigate('sell')}
-                onOpenChatWithSeller={() => {
-                  setOpenConversationId(undefined);
-                  setMessagesTab('chat');
-                  handleNavigate('messages');
-                }}
-                initialSellerId={selectedSellerId}
-                currentUser={currentUser}
-                onOpenAuthModal={() => setIsAuthModalOpen(true)}
-                onNavigateToSaved={() => handleNavigate('saved')}
-                onNavigateToOrders={() => handleNavigate('orders')}
-                onProfileUpdated={loadServerSession}
-                onLogout={handleLogout}
-              />
-            )}
-
-            {currentView === 'saved' && (
-              <SavedScreen
-                savedListings={savedListings}
-                onSelectListing={handleSelectListing}
-                onRemoveSaved={(id) => handleToggleSave(id)}
-                onBrowseMore={() => handleNavigate('browse')}
-                onAddToCart={handleAddToCart}
-                currentUser={currentUser}
-              />
-            )}
-
-            {currentView === 'messages' && (
-              <MessagesScreen
-                initialTab={messagesTab}
-                initialConversationId={openConversationId}
-                onBack={handleBack}
-                onViewListing={handleOpenListingById}
-              />
-            )}
-
-            {currentView === 'admin' && (
-              <Suspense fallback={<ScreenLoading />}>
-                <AdminScreen
+              {currentView === 'browse' && (
+                <BrowseScreen
+                  listings={listings}
+                  onSelectListing={handleSelectListing}
+                  onToggleSave={handleToggleSave}
+                  onNavigateToSell={() => handleNavigate('sell')}
+                  onAddToCart={handleAddToCart}
+                  onOpenChat={handleOpenChat}
                   currentUser={currentUser}
-                  activeTab={activeAdminTab}
-                  onTabChange={setActiveAdminTab}
-                  onNavigateToSell={() => { setEditingListing(null); handleNavigate('sell'); }}
-                  onViewListing={handleSelectListing}
-                  onEditListing={handleEditListing}
-                  onExitAdmin={() => handleNavigate('browse')}
+                  searchQuery={feedQuery}
+                  onSearchChange={setFeedQuery}
+                  feedType={feedType}
+                  onFeedTypeChange={setFeedType}
+                  categoryId={feedCategoryId}
+                  onCategoryChange={setFeedCategoryId}
                 />
-              </Suspense>
-            )}
+              )}
 
-            {currentView === 'support' && (
-              <SupportScreen
-                onBackToBrowse={handleBack}
-                currentUser={currentUser}
-              />
-            )}
+              {/* A shared link lands here with nothing loaded yet. The page has
+                to say so - it used to render as a blank band between the nav
+                and the footer for as long as the fetch took. */}
+              {currentView === 'detail' && !selectedListing && (
+                detailUnreachable ? (
+                  <DetailUnavailable
+                    onRetry={() => { setDetailUnreachable(false); loadServerListings(); }}
+                    onGoHome={() => handleNavigate('browse')}
+                  />
+                ) : (
+                  <DetailSkeleton />
+                )
+              )}
 
-            {currentView === 'cart' && (
-              <CartScreen
-                onBack={handleBack}
-                onExplore={() => handleNavigate('browse')}
-                onCartUpdated={loadServerCart}
-                onGoToMessages={() => handleNavigate('messages')}
-                onGoToOrders={() => {
-                  // They just checked out, so it is the order they placed
-                  // they want - not the ones they have received.
-                  setOrdersInitialSide('placed');
-                  handleNavigate('orders');
-                }}
-                onSaveForLater={handleSaveForLater}
-                onGoToSaved={() => handleNavigate('saved')}
-                onGoToProfile={() => handleNavigate('profile')}
-                currentUser={currentUser}
-              />
-            )}
-
-            {currentView === 'deals' && (
-              <DealsScreen
-                onBack={handleBack}
-                onExplore={() => handleNavigate('browse')}
-              />
-            )}
-
-            {currentView === 'notifications' && (
-              <NotificationsScreen
-                onBack={handleBack}
-                onNavigateToLink={handleNotificationLink}
-              />
-            )}
-
-            {currentView === 'my-listings' && (
-              <MyListingsScreen
-                onBack={handleBack}
-                onNavigateToSell={() => handleNavigate('sell')}
-                onSelectListing={handleSelectListing}
-                onEditListing={handleEditListing}
-                onListingsChanged={() => {
-                  loadServerListings();
-                  loadServerSession();
-                }}
-              />
-            )}
-
-            {currentView === 'orders' && (
-              <OrdersScreen
-                initialSide={ordersInitialSide}
-                selectedOrderId={selectedOrderId}
-                onOpenOrder={handleOpenOrder}
-                onCloseOrder={() => {
-                  setSelectedOrderId(undefined);
-                  updateUrl('orders');
-                }}
-                onBack={handleBack}
-                onExplore={() => handleNavigate('browse')}
-                onOpenMessages={() => handleNavigate('messages')}
-                currentUser={currentUser}
-                onOrdersChanged={() => {
-                  // Refreshes the open-order badge and any listing that just
-                  // flipped to sold by completing an order.
-                  loadServerSession();
-                  loadServerListings();
-                }}
-              />
-            )}
-
-            {currentView === 'legal' && (
-              <Suspense fallback={<ScreenLoading />}>
-                <LegalScreen
+              {currentView === 'detail' && selectedListing && (
+                <DetailScreen
+                  listing={selectedListing}
+                  similarListings={listings}
                   onBack={handleBack}
+                  onToggleSave={handleToggleSave}
+                  onSelectSimilar={handleSelectListing}
+                  onOpenChat={handleOpenChat}
+                  onViewSellerProfile={handleViewSellerProfile}
+                  currentUser={currentUser}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                  onListingDeleted={() => {
+                    loadServerListings();
+                    // Not handleBack: the page behind might be this same listing,
+                    // and going back to something that no longer exists is worse
+                    // than going somewhere that does.
+                    setSelectedListing(null);
+                    handleNavigate('browse');
+                  }}
+                  onAddToCart={handleAddToCart}
+                  onEditListing={handleEditListing}
+                  onGoHome={() => handleNavigate('browse')}
+                  onViewAllSimilar={(item) => {
+                    // The narrowest true description of "more like this": its own
+                    // category when it has one, otherwise its type.
+                    const next: SearchFilters = {
+                      ...EMPTY_SEARCH_FILTERS,
+                      categoryId: item.categoryId || '',
+                      type: item.categoryId ? 'All' : (item.category as SearchFilters['type']),
+                    };
+                    setSearchFilters(next);
+                    setCurrentView('search');
+                    updateUrl('search');
+                    syncSearchUrl(next);
+                  }}
                 />
-              </Suspense>
-            )}
+              )}
 
-            {currentView === 'notFound' && (
-              <NotFoundScreen
-                onBackHome={() => handleNavigate('browse')}
+              {currentView === 'sell' && (
+                <SellScreen
+                  /*
+                   * Every field is seeded from `editingListing` in a useState
+                   * initialiser, which runs once. Keying on the listing forces a
+                   * fresh form whenever the target changes - including edit ->
+                   * new, which happens in place when Sell is tapped from the
+                   * nav while an edit is already open and so never unmounts.
+                   */
+                  key={editingListing?.id ?? 'new'}
+                  onBack={() => {
+                    setEditingListing(null);
+                    // An admin came from the catalogue screen and should land back
+                    // on it, not be dropped into the shopper's feed mid-task.
+                    if (currentUser.role === 'admin') {
+                      setActiveAdminTab('listings');
+                      handleNavigate('admin');
+                      return;
+                    }
+                    if (editingListing) {
+                      setCurrentView('detail');
+                      updateUrl('detail', editingListing.id);
+                      return;
+                    }
+                    handleNavigate('browse');
+                  }}
+                  onPublishListing={handlePublishListing}
+                  onSaveEdit={handleSaveEditedListing}
+                  editingListing={editingListing}
+                  currentUser={currentUser}
+                  onListingDeleted={() => {
+                    setEditingListing(null);
+                    setSelectedListing(null);
+                    loadServerListings();
+                    handleNavigate('browse');
+                  }}
+                />
+              )}
+
+              {currentView === 'profile' && (
+                <ProfileScreen
+                  listings={listings}
+                  onBack={handleBack}
+                  onSelectListing={handleSelectListing}
+                  onNavigateToSell={() => handleNavigate('sell')}
+                  onOpenChatWithSeller={() => {
+                    setOpenConversationId(undefined);
+                    setMessagesTab('chat');
+                    handleNavigate('messages');
+                  }}
+                  initialSellerId={selectedSellerId}
+                  currentUser={currentUser}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                  onNavigateToSaved={() => handleNavigate('saved')}
+                  onNavigateToOrders={() => handleNavigate('orders')}
+                  onProfileUpdated={loadServerSession}
+                  onLogout={handleLogout}
+                />
+              )}
+
+              {currentView === 'saved' && (
+                <SavedScreen
+                  savedListings={savedListings}
+                  onSelectListing={handleSelectListing}
+                  onRemoveSaved={(id) => handleToggleSave(id)}
+                  onBrowseMore={() => handleNavigate('browse')}
+                  onAddToCart={handleAddToCart}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {currentView === 'messages' && (
+                <MessagesScreen
+                  initialTab={messagesTab}
+                  initialConversationId={openConversationId}
+                  onBack={handleBack}
+                  onViewListing={handleOpenListingById}
+                />
+              )}
+
+              {currentView === 'admin' && (
+                <Suspense fallback={<ScreenLoading />}>
+                  <AdminScreen
+                    currentUser={currentUser}
+                    activeTab={activeAdminTab}
+                    onTabChange={setActiveAdminTab}
+                    onNavigateToSell={() => { setEditingListing(null); handleNavigate('sell'); }}
+                    onViewListing={handleSelectListing}
+                    onEditListing={handleEditListing}
+                    onExitAdmin={() => handleNavigate('browse')}
+                  />
+                </Suspense>
+              )}
+
+              {currentView === 'support' && (
+                <SupportScreen
+                  onBackToBrowse={handleBack}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {currentView === 'cart' && (
+                <CartScreen
+                  onBack={handleBack}
+                  onExplore={() => handleNavigate('browse')}
+                  onCartUpdated={loadServerCart}
+                  onGoToMessages={() => handleNavigate('messages')}
+                  onGoToOrders={() => {
+                    // They just checked out, so it is the order they placed
+                    // they want - not the ones they have received.
+                    setOrdersInitialSide('placed');
+                    handleNavigate('orders');
+                  }}
+                  onSaveForLater={handleSaveForLater}
+                  onGoToSaved={() => handleNavigate('saved')}
+                  onGoToProfile={() => handleNavigate('profile')}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {currentView === 'deals' && (
+                <DealsScreen
+                  onBack={handleBack}
+                  onExplore={() => handleNavigate('browse')}
+                />
+              )}
+
+              {currentView === 'notifications' && (
+                <NotificationsScreen
+                  onBack={handleBack}
+                  onNavigateToLink={handleNotificationLink}
+                />
+              )}
+
+              {currentView === 'my-listings' && (
+                <MyListingsScreen
+                  onBack={handleBack}
+                  onNavigateToSell={() => handleNavigate('sell')}
+                  onSelectListing={handleSelectListing}
+                  onEditListing={handleEditListing}
+                  onListingsChanged={() => {
+                    loadServerListings();
+                    loadServerSession();
+                  }}
+                />
+              )}
+
+              {currentView === 'orders' && (
+                <OrdersScreen
+                  initialSide={ordersInitialSide}
+                  selectedOrderId={selectedOrderId}
+                  onOpenOrder={handleOpenOrder}
+                  onCloseOrder={() => {
+                    setSelectedOrderId(undefined);
+                    updateUrl('orders');
+                  }}
+                  onBack={handleBack}
+                  onExplore={() => handleNavigate('browse')}
+                  onOpenMessages={() => handleNavigate('messages')}
+                  currentUser={currentUser}
+                  onOrdersChanged={() => {
+                    // Refreshes the open-order badge and any listing that just
+                    // flipped to sold by completing an order.
+                    loadServerSession();
+                    loadServerListings();
+                  }}
+                />
+              )}
+
+              {currentView === 'legal' && (
+                <Suspense fallback={<ScreenLoading />}>
+                  <LegalScreen
+                    onBack={handleBack}
+                  />
+                </Suspense>
+              )}
+
+              {currentView === 'notFound' && (
+                <NotFoundScreen
+                  onBackHome={() => handleNavigate('browse')}
+                />
+              )}
+            </main>
+
+            {/* Admins get the console shell, which has its own chrome and no
+              use for marketplace links. */}
+            {currentUser.role !== 'admin' && (
+              <SiteFooter
+                currentView={currentView}
+                onNavigate={handleNavigate}
+                onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                isGuest={currentUser.role === 'guest'}
               />
             )}
-          </main>
-
-          {/* Admins get the console shell, which has its own chrome and no
-              use for marketplace links. */}
-          {currentUser.role !== 'admin' && (
-            <SiteFooter
-              currentView={currentView}
-              onNavigate={handleNavigate}
-              onOpenAuthModal={() => setIsAuthModalOpen(true)}
-              isGuest={currentUser.role === 'guest'}
-            />
-          )}
+          </div>
         </div>
-      </div>
 
-      {/* Bottom nav for phone and tablet. Rule 4 returns null for admin. */}
-      <BottomNav
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
-        savedCount={savedListings.length}
-        cartCount={cartCount}
-        unreadMessagesCount={unreadMessages}
-        currentUser={currentUser}
-      />
+        {/* Bottom nav for phone and tablet. Rule 4 returns null for admin. */}
+        <BottomNav
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          savedCount={savedListings.length}
+          cartCount={cartCount}
+          unreadMessagesCount={unreadMessages}
+          currentUser={currentUser}
+        />
 
-      {/* Login & Sign Up Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        initialMode={authModalMode}
-        resetToken={resetToken}
-        onClose={() => {
-          setIsAuthModalOpen(false);
-          setAuthModalMode('login');
-          setResetToken(undefined);
-          // If user dismissed without logging in, clear the pending route
-          setPendingRoute(null);
-        }}
-        onLoginSuccess={async () => {
-          const session = await api.auth.getMe();
-          await loadServerListings();
-          // handleSessionChange fetches cart and saved for the accounts that
-          // have them; doing it here as well made an admin login ask for both
-          // and collect a pair of 403s on the way in.
-          handleSessionChange(session.user);
-        }}
-      />
+        {/* Login & Sign Up Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialMode={authModalMode}
+          resetToken={resetToken}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setAuthModalMode('login');
+            setResetToken(undefined);
+            // If user dismissed without logging in, clear the pending route
+            setPendingRoute(null);
+          }}
+          onLoginSuccess={async () => {
+            const session = await api.auth.getMe();
+            await loadServerListings();
+            // handleSessionChange fetches cart and saved for the accounts that
+            // have them; doing it here as well made an admin login ask for both
+            // and collect a pair of 403s on the way in.
+            handleSessionChange(session.user);
+          }}
+        />
 
-      {/* Shown when a buying-only account reaches for Sell. */}
-      <BecomeSellerModal
-        isOpen={isBecomeSellerOpen}
-        onClose={() => setIsBecomeSellerOpen(false)}
-        currentUser={currentUser}
-        onUpgraded={(user) => {
-          setCurrentUser(user);
-          // Applying no longer grants access - an admin decides - so this must
-          // not drop them into the Sell form they would only be bounced out of.
-          if (user.canSell) {
-            toast.success('Your account can now post listings.', { title: "You're a seller" });
-            setCurrentView('sell');
-            updateUrl('sell');
-          } else {
-            toast.success('An admin will review it shortly.', {
-              title: 'Application submitted',
-            });
-          }
-        }}
-      />
+        {/* Shown when a buying-only account reaches for Sell. */}
+        <BecomeSellerModal
+          isOpen={isBecomeSellerOpen}
+          onClose={() => setIsBecomeSellerOpen(false)}
+          currentUser={currentUser}
+          onUpgraded={(user) => {
+            setCurrentUser(user);
+            // Applying no longer grants access - an admin decides - so this must
+            // not drop them into the Sell form they would only be bounced out of.
+            if (user.canSell) {
+              toast.success('Your account can now post listings.', { title: "You're a seller" });
+              setCurrentView('sell');
+              updateUrl('sell');
+            } else {
+              toast.success('An admin will review it shortly.', {
+                title: 'Application submitted',
+              });
+            }
+          }}
+        />
 
-      {/* Last child on purpose: it draws over the chrome it points at, and the
+        {/* Last child on purpose: it draws over the chrome it points at, and the
           modals above it own the screen outright while they are open. */}
-      {!isAuthModalOpen && !isBecomeSellerOpen && <OnboardingHost />}
-    </div>
+        {!isAuthModalOpen && !isBecomeSellerOpen && <OnboardingHost />}
+      </div>
     </OnboardingProvider>
   );
 }

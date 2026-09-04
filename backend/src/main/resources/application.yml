@@ -16,6 +16,19 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+        # Resolve lazy associations in batches instead of one SELECT per row.
+        #
+        # The feed is the case that made this necessary: DtoMapper reads both
+        # listing.getImages() and listing.getDietaryTags() for every row, so a
+        # 24-item page issued 48 extra queries to fill in two collections. With
+        # a batch size, Hibernate gathers the pending proxies and fetches them
+        # with one `... where listing_id in (?, ?, ...)` per collection - the
+        # same page becomes 3 queries.
+        #
+        # 32 rather than the 60-item page cap: the win is almost entirely in
+        # going from N to a handful, and an oversized IN list is its own cost.
+        # Applies to every lazy association in the app, not only this one.
+        default_batch_fetch_size: 32
 
   flyway:
     enabled: true

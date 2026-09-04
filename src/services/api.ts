@@ -500,8 +500,12 @@ export const api = {
         }
       });
       const res = await get(`/api/listings?${query.toString()}`, signal);
+      // Annotated rather than mapped inline: res.data is `any`, and mapping over
+      // an `any` produces `any` again - which erased Listing[] at every caller,
+      // so `l` in their .filter/.map callbacks had no type at all.
+      const items: unknown[] = res.data?.items ?? [];
       return {
-        listings: (res.data?.items ?? []).map(toListing),
+        listings: items.map(toListing),
         page: res.data?.page ?? 0,
         totalItems: res.data?.totalItems ?? 0,
         totalPages: res.data?.totalPages ?? 0,
@@ -845,8 +849,11 @@ export const api = {
   notifications: {
     async getAll() {
       const res = await get('/api/notifications');
+      // See listings.search: mapping over an `any` gives back an `any`, which
+      // left every caller's callback parameter untyped.
+      const rows: unknown[] = res.data?.notifications ?? [];
       return {
-        notifications: (res.data?.notifications ?? []).map(toNotification),
+        notifications: rows.map(toNotification),
         unreadCount: res.data?.unreadCount ?? 0,
         error: res.error,
         status: res.status,

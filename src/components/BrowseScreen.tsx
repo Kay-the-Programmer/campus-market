@@ -617,7 +617,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     && coreType === 'All' && !categoryId;
 
   /* ── Build category items for unified strip / mega menu ───────────────── */
-  const coreItems: { key: string; label: string; icon: React.ReactNode; type?: CoreType }[] = [
+  /*
+   * `type` is a ListingCategory, not a CoreType: "All" is encoded as absence,
+   * which is what `item.type ?? 'All'` and isCoreActive(undefined) both already
+   * assume. Declaring it as CoreType admitted an 'All' entry that TYPE_STYLE has
+   * no key for - reading .solid off it would have thrown at render.
+   */
+  const coreItems: { key: string; label: string; icon: React.ReactNode; type?: ListingCategory }[] = [
     { key: 'all', label: 'All', icon: <Layers className="w-3.5 h-3.5" /> },
     { key: 'product', label: 'Products', icon: TYPE_STYLE.Product.icon, type: 'Product' },
     { key: 'service', label: 'Services', icon: TYPE_STYLE.Service.icon, type: 'Service' },

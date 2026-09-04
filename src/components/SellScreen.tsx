@@ -50,8 +50,8 @@ const CONDITION_LABEL_BY_API: Record<string, string> = {
 const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Halal', 'Gluten-free', 'Nut-free', 'Contains dairy'];
 
 const AVAILABILITY_CHIPS = [
-  'Weekday mornings', 'Weekday afternoons', 'Weekday evenings',
-  'Weekend mornings', 'Weekend afternoons', 'Weekend evenings',
+  'Anytime', 'Monday - Friday', 'Weekends Only',
+  'Sunday Only', 'Saturday Only', 'Weekend Afternoon',
 ];
 
 const FIELD_LABEL: Record<string, string> = {
@@ -261,7 +261,9 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   const sectionsDone = [photosDone, detailsDone, locationDone].filter(Boolean).length;
   const progressPct = Math.round((sectionsDone / 3) * 100);
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) =>
+  // Nullable element type: React 19's useRef(null) yields
+  // RefObject<HTMLDivElement | null>, which is also what the ?. below assumes.
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) =>
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const buildPayload = (status: 'ACTIVE' | 'DRAFT') => ({
@@ -520,7 +522,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
           ) : (
             <section>
               <h2 className="text-lg font-bold text-slate-900 mb-1">What are you offering?</h2>
-              <p className="text-sm text-slate-500 mb-4">Pick one to unlock the rest of the form.</p>
+              <p className="text-sm text-slate-500 mb-4">Pick what you are actually offering to the community.</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" data-onboarding="sell-type">
                 {OFFERINGS.map(({ type, icon, label, desc }) => {
                   const selected = offeringType === type;
@@ -623,19 +625,30 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                    on the section nav, since they're really one decision. ── */}
               <div ref={detailsRef} className="space-y-6 sm:space-y-8 scroll-mt-32">
                 <section className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-slate-900/5 space-y-5">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="w-4 h-4 text-slate-400" />
-                    <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Basic Info</h2>
-                  </div>
+
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Title</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      {
+                        offeringType === 'Food'
+                          ? "Menu Name"
+                          : offeringType === 'Service'
+                            ? 'Service Name'
+                            : "Product Name"
+                      }
+                    </label>
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       maxLength={80}
-                      placeholder="e.g. MacBook Pro M2, Psychology Textbook"
+                      placeholder={
+                        offeringType === 'Food'
+                          ? "e.g. Chicken & Chips, Sharwama"
+                          : offeringType === 'Service'
+                            ? 'e.g. Tutoring'
+                            : "e.g. JBL Headphones"
+                      }
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                     <div className="flex justify-between mt-1.5">
@@ -797,16 +810,14 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                             type="button"
                             onClick={() => setServiceMode(opt.value)}
                             aria-pressed={serviceMode === opt.value}
-                            className={`p-3.5 rounded-xl border text-left transition-all duration-150 ${
-                              serviceMode === opt.value
-                                ? 'bg-violet-50 border-violet-500 ring-1 ring-violet-500'
-                                : 'bg-white border-slate-200 hover:border-violet-300'
-                            }`}
+                            className={`p-3.5 rounded-xl border text-left transition-all duration-150 ${serviceMode === opt.value
+                              ? 'bg-violet-50 border-violet-500 ring-1 ring-violet-500'
+                              : 'bg-white border-slate-200 hover:border-violet-300'
+                              }`}
                           >
                             <span
-                              className={`flex items-center gap-2 font-bold text-sm ${
-                                serviceMode === opt.value ? 'text-violet-700' : 'text-slate-700'
-                              }`}
+                              className={`flex items-center gap-2 font-bold text-sm ${serviceMode === opt.value ? 'text-violet-700' : 'text-slate-700'
+                                }`}
                             >
                               {opt.icon}
                               {opt.label}
@@ -932,7 +943,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
               <section ref={locationRef} className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-slate-900/5 space-y-4 scroll-mt-32">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-blue-500" />
-                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Pickup / Meetup Location</h2>
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Location</h2>
                 </div>
                 {/* Zone first: it is what buyers filter on, so it has to be a
                     fixed choice rather than free text everyone spells
@@ -951,11 +962,10 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                           type="button"
                           onClick={() => setCampusZone(zone.value)}
                           aria-pressed={selected}
-                          className={`rounded-xl border p-3 text-left transition-all ${
-                            selected
-                              ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
-                              : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                          }`}
+                          className={`rounded-xl border p-3 text-left transition-all ${selected
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                            : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                            }`}
                         >
                           <span className={`block text-sm font-bold leading-tight ${selected ? 'text-blue-700' : 'text-slate-900'}`}>
                             {zone.label}
@@ -976,11 +986,11 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="e.g. Hall 4 Dorms, Student Union, Engineering Hub"
+                    placeholder="e.g. Student Hostels, Student Center"
                     className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   <p className="mt-1.5 text-xs text-slate-500">
-                    A landmark is enough — avoid your exact room or address.
+                    A common place on campus is enough — avoid your exact room or address.
                   </p>
                   <FieldError name="location" />
                 </div>
@@ -988,61 +998,6 @@ export const SellScreen: React.FC<SellScreenProps> = ({
             </div>
           )}
         </form>
-
-        {/* ── Live preview sidebar (desktop only) - answers "what does this
-             look like to a buyer?" without leaving the form or opening the
-             modal. The modal preview (below) still exists for a full look
-             and stays the only preview surface on mobile. ── */}
-        {offeringType && (
-          <aside className="hidden lg:block w-80 shrink-0 sticky top-32">
-            <div className="bg-white rounded-3xl shadow-sm ring-1 ring-slate-900/5 overflow-hidden">
-              <div className="relative aspect-[4/3] bg-slate-100">
-                {photos[0] ? (
-                  <img src={photos[0]} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1.5">
-                    <ImageOff className="w-7 h-7" />
-                    <span className="text-[11px] font-semibold">No photo yet</span>
-                  </div>
-                )}
-                <div className="absolute top-2.5 left-2.5">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${accent?.solidBg} text-white`}>
-                    {offeringType === 'Product' && <ShoppingBag className="w-3 h-3" />}
-                    {offeringType === 'Service' && <Briefcase className="w-3 h-3" />}
-                    {offeringType === 'Food' && <Utensils className="w-3 h-3" />}
-                    {offeringType}
-                  </span>
-                </div>
-              </div>
-              <div className="p-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Live preview</p>
-                <h3 className="font-bold text-slate-900 text-sm truncate">{title.trim() || 'Untitled listing'}</h3>
-                <p className="text-blue-600 font-extrabold text-xl mt-0.5">
-                  {!Number.isNaN(numericPrice) ? formatPrice(numericPrice) : formatPrice(0)}
-                  {offeringType === 'Service' && rateType === 'HOURLY' && (
-                    <span className="text-xs font-semibold text-slate-400 ml-0.5">/hr</span>
-                  )}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mt-2">
-                  <MapPin className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  <span className="truncate">{location.trim() || 'Add a pickup location'}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-3 line-clamp-3">
-                  {description.trim() || 'No description yet — buyers see this right under the price.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPreviewOpen(true)}
-                  disabled={!title.trim()}
-                  className="w-full mt-4 h-9 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  See full buyer view
-                </button>
-              </div>
-            </div>
-          </aside>
-        )}
       </main>
 
       {/* ── Sticky Bottom Action Bar ── */}

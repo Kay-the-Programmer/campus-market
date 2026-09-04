@@ -12,6 +12,14 @@ import com.campusmarket.web.dto.ListingDtos.SuggestionsDto;
 import com.campusmarket.web.error.ApiException;
 import com.campusmarket.web.request.ListingRequests.SaveListingRequest;
 import com.campusmarket.web.request.ListingRequests.StatusChangeRequest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.Tuple;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +41,15 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ListingService {
+
+    /*
+     * Field-injected rather than constructor-injected: the class is built by
+     * Lombok's @RequiredArgsConstructor, and an EntityManager is not something
+     * callers should have to supply. Used only by countPublicByCategory below,
+     * which needs a GROUP BY that Specification-based repositories cannot run.
+     */
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
@@ -143,11 +161,26 @@ public class ListingService {
                 .toList();
 
         String needle = query.toLowerCase();
-        List<SuggestionDto> categories = categoryRepository.findAllByOrderBySortOrderAscNameAsc()
+        List<Category> matching = categoryRepository.findAllByOrderBySortOrderAscNameAsc()
                 .stream()
                 .filter(c -> c.getName().toLowerCase().contains(needle))
+                .toList();
+
+        /*
+         * Every matching category's count in one grouped query.
+         *
+         * This used to be a count() per category inside the map below. The
+         * stream's laziness bounded it at "however many it takes to find four
+         * that are not empty", which is fine for a handful of categories and
+         * turns a per-keystroke endpoint into a query per candidate as the
+         * taxonomy grows.
+         */
+        Map<UUID, Long> counts = countPublicByCategory(
+                matching.stream().map(Category::getId).toList());
+
+        List<SuggestionDto> categories = matching.stream()
                 .map(c -> {
-                    long count = listingRepository.count(ListingSpecifications.publicInCategory(c.getId()));
+                    long count = counts.getOrDefault(c.getId(), 0L);
                     return new SuggestionDto(
                             "category", c.getId(), c.getName(),
                             count + (count == 1 ? " listing" : " listings"), null, null);
@@ -157,8 +190,7 @@ public class ListingService {
                 // it: taking four first let four dead ends fill every slot and
                 // hide the stocked categories behind them - which the stricter
                 // count above makes likelier, since a shelf of sold items now
-                // correctly reads as empty. The stream is lazy, so this still
-                // stops counting once four have survived.
+                // correctly reads as empty.
                 .filter(s -> !s.detail().startsWith("0 "))
                 .limit(4)
                 .toList();
@@ -502,6 +534,43 @@ public class ListingService {
             case "popular" -> Sort.by(Sort.Order.desc("viewsCount"), Sort.Order.desc("createdAt"));
             default -> newest;
         };
+    }
+
+    /**
+     * Visible-listing counts for a set of categories, as one grouped query.
+     *
+     * <p>Builds on {@link ListingSpecifications#publiclyVisible()} rather than
+     * restating its rules in JPQL. That predicate is the definition of what a
+     * shopper can reach - deleted, non-live, and banned or suspended sellers all
+     * excluded - and the count beside a category name is a promise about where
+     * that link goes. A second hand-written copy of it would be free to drift
+     * from the feed's, which is the whole reason
+     * {@link ListingSpecifications#publicInCategory} exists.
+     *
+     * <p>Categories with nothing visible produce no row and are simply absent
+     * from the returned map; callers read a missing key as zero.
+     */
+    private Map<UUID, Long> countPublicByCategory(Collection<UUID> categoryIds) {
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<Listing> root = query.from(Listing.class);
+        Path<UUID> categoryId = root.get("category").get("id");
+
+        Predicate visible = ListingSpecifications.publiclyVisible().toPredicate(root, query, cb);
+
+        query.multiselect(categoryId.alias("categoryId"), cb.count(root).alias("total"))
+                .where(cb.and(visible, categoryId.in(categoryIds)))
+                .groupBy(categoryId);
+
+        Map<UUID, Long> counts = new LinkedHashMap<>();
+        for (Tuple row : entityManager.createQuery(query).getResultList()) {
+            counts.put(row.get("categoryId", UUID.class), row.get("total", Long.class));
+        }
+        return counts;
     }
 
     private Specification<Listing> and(Specification<Listing> base, Specification<Listing> extra) {
