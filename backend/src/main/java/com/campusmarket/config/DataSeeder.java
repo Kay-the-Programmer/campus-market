@@ -34,31 +34,75 @@ public class DataSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final ListingRepository listingRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AppProperties properties;
 
     @Override
     @Transactional
     public void run(String... args) {
-        if (userRepository.count() > 0) {
-            log.info("Database already seeded - skipping demo data.");
+        seedCategories();
+        seedAdmin();
+        seedDemoData();
+    }
+
+    private void seedCategories() {
+        if (categoryRepository.count() > 0) {
             return;
         }
-        log.info("Seeding demo data...");
-
-        Category textbooks = category("Textbooks", "book-open", 1);
-        Category electronics = category("Electronics", "laptop", 2);
-        Category food = category("Food & Snacks", "utensils", 3);
-        Category tutoring = category("Tutoring", "graduation-cap", 4);
+        log.info("Seeding standard categories...");
+        category("Textbooks", "book-open", 1);
+        category("Electronics", "laptop", 2);
+        category("Food & Snacks", "utensils", 3);
+        category("Tutoring", "graduation-cap", 4);
         category("Furniture", "armchair", 5);
         category("Clothing", "shirt", 6);
         category("Sports & Outdoors", "bike", 7);
         category("Tickets & Events", "ticket", 8);
+    }
 
-        User admin = user("Campus Marketplace Admin", "admin@campus.edu", ADMIN_PASSWORD,
+    private void seedAdmin() {
+        String adminEmail = (properties.getAdminEmail() != null && !properties.getAdminEmail().isBlank())
+                ? properties.getAdminEmail().trim().toLowerCase()
+                : "admin@campus.edu";
+
+        if (userRepository.existsByEmail(adminEmail) || userRepository.countByRole(Role.ADMIN) > 0) {
+            return;
+        }
+
+        String adminPass = (properties.getAdminPassword() != null && !properties.getAdminPassword().isBlank())
+                ? properties.getAdminPassword()
+                : ADMIN_PASSWORD;
+
+        String adminName = (properties.getAdminName() != null && !properties.getAdminName().isBlank())
+                ? properties.getAdminName()
+                : "Campus Marketplace Admin";
+
+        log.info("Creating administrator account: {}", adminEmail);
+        User admin = user(adminName, adminEmail, adminPass,
                 Role.ADMIN, "Campus IT & Safety", "Staff",
                 "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80");
         admin.setPhone("+1 (800) 555-0000");
         admin.setPrivateAddress("Admin Building Room 300");
         admin.setCampusZone(CampusZone.ACROSS);
+        userRepository.save(admin);
+    }
+
+    private void seedDemoData() {
+        if (!properties.isSeedDemoData()) {
+            log.info("Demo data seeding is disabled (campusmarket.seed-demo-data=false).");
+            return;
+        }
+
+        if (userRepository.countByRole(Role.CUSTOMER) > 0) {
+            log.info("Non-admin users already present - skipping demo listings/users.");
+            return;
+        }
+
+        log.info("Seeding demo users and listings...");
+
+        Category textbooks = categoryRepository.findBySlug("textbooks").orElse(null);
+        Category electronics = categoryRepository.findBySlug("electronics").orElse(null);
+        Category food = categoryRepository.findBySlug("food-snacks").orElse(null);
+        Category tutoring = categoryRepository.findBySlug("tutoring").orElse(null);
 
         User alex = user("Alex Rivers", "alex.rivers@campus.edu", DEMO_PASSWORD,
                 Role.CUSTOMER, "Faculty of Engineering", "Senior Student",
@@ -111,65 +155,76 @@ public class DataSeeder implements CommandLineRunner {
         emma.setSellerApprovalStatus(SellerApprovalStatus.NOT_REQUESTED);
         emma.setCampusZone(CampusZone.UPSCHOOL);
 
-        userRepository.saveAll(List.of(admin, alex, john, sarah, marcus, emma));
+        userRepository.saveAll(List.of(alex, john, sarah, marcus, emma));
 
-        Listing headphones = listing(john, ListingType.PRODUCT, electronics,
-                "Sony WH-1000XM4 Noise Cancelling Headphones", new BigDecimal("180.00"),
-                "Selling my Sony XM4s as I upgraded. Excellent condition, no scratches or scuffs. "
-                        + "Battery life is still incredible (about 30 hours). Comes with the original "
-                        + "case and USB-C charging cable.",
-                "Main Campus Library");
-        headphones.setCondition(ListingCondition.LIKE_NEW);
-        headphones.setBrand("Sony");
-        headphones.addImage("https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80");
-        headphones.addImage("https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=80");
+        if (electronics != null) {
+            Listing headphones = listing(john, ListingType.PRODUCT, electronics,
+                    "Sony WH-1000XM4 Noise Cancelling Headphones", new BigDecimal("180.00"),
+                    "Selling my Sony XM4s as I upgraded. Excellent condition, no scratches or scuffs. "
+                            + "Battery life is still incredible (about 30 hours). Comes with the original "
+                            + "case and USB-C charging cable.",
+                    "Main Campus Library");
+            headphones.setCondition(ListingCondition.LIKE_NEW);
+            headphones.setBrand("Sony");
+            headphones.addImage("https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80");
+            headphones.addImage("https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=80");
 
-        Listing pasta = listing(sarah, ListingType.FOOD, food,
-                "Homemade Pasta Dinner Bowl", new BigDecimal("12.00"),
-                "Fresh homemade pasta tossed with rich tomato garlic sauce, cherry tomatoes and basil. "
-                        + "Prepared cleanly in the Hall 4 dorm kitchen.",
-                "Hall 4 Dorm Kitchen");
-        pasta.setQuantity(4);
-        pasta.setPickupWindow("Today until 7:00 PM");
-        pasta.setDietaryTags(Set.of("Vegetarian", "Contains gluten"));
-        pasta.addImage("https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80");
+            Listing keyboard = listing(marcus, ListingType.PRODUCT, electronics,
+                    "Keychron K2 Mechanical Wireless Keyboard", new BigDecimal("75.00"),
+                    "Wireless mechanical keyboard with Gateron Brown tactile switches. Connects over "
+                            + "Bluetooth to up to 3 devices, or wired via USB-C.",
+                    "Computer Science Bldg");
+            keyboard.setCondition(ListingCondition.LIKE_NEW);
+            keyboard.setBrand("Keychron");
+            keyboard.addImage("https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80");
 
-        Listing tutoringListing = listing(alex, ListingType.SERVICE, tutoring,
-                "Calculus 101 & Linear Algebra Tutoring", new BigDecimal("25.00"),
-                "Struggling with Calculus or Linear Algebra? I'm a senior engineering student offering "
-                        + "1-on-1 sessions tailored to midterm and final exam prep.",
-                "Student Center or Zoom");
-        tutoringListing.setPriceUnit("/hr");
-        tutoringListing.setRateType(RateType.HOURLY);
-        tutoringListing.setAvailability("Weekdays after 4pm, Saturday mornings");
-        tutoringListing.addImage("https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80");
+            listingRepository.saveAll(List.of(headphones, keyboard));
+        }
 
-        Listing keyboard = listing(marcus, ListingType.PRODUCT, electronics,
-                "Keychron K2 Mechanical Wireless Keyboard", new BigDecimal("75.00"),
-                "Wireless mechanical keyboard with Gateron Brown tactile switches. Connects over "
-                        + "Bluetooth to up to 3 devices, or wired via USB-C.",
-                "Computer Science Bldg");
-        keyboard.setCondition(ListingCondition.LIKE_NEW);
-        keyboard.setBrand("Keychron");
-        keyboard.addImage("https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&auto=format&fit=crop&q=80");
+        if (food != null) {
+            Listing pasta = listing(sarah, ListingType.FOOD, food,
+                    "Homemade Pasta Dinner Bowl", new BigDecimal("12.00"),
+                    "Fresh homemade pasta tossed with rich tomato garlic sauce, cherry tomatoes and basil. "
+                            + "Prepared cleanly in the Hall 4 dorm kitchen.",
+                    "Hall 4 Dorm Kitchen");
+            pasta.setQuantity(4);
+            pasta.setPickupWindow("Today until 7:00 PM");
+            pasta.setDietaryTags(Set.of("Vegetarian", "Contains gluten"));
+            pasta.addImage("https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80");
+            listingRepository.save(pasta);
+        }
 
-        Listing calcTextbook = listing(alex, ListingType.PRODUCT, textbooks,
-                "Stewart Calculus: Early Transcendentals (8th Ed.)", new BigDecimal("45.00"),
-                "Standard first-year calculus text. Some highlighting in the first three chapters, "
-                        + "binding is solid.",
-                "Engineering Library");
-        calcTextbook.setCondition(ListingCondition.GOOD);
-        calcTextbook.addImage("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=80");
+        if (tutoring != null) {
+            Listing tutoringListing = listing(alex, ListingType.SERVICE, tutoring,
+                    "Calculus 101 & Linear Algebra Tutoring", new BigDecimal("25.00"),
+                    "Struggling with Calculus or Linear Algebra? I'm a senior engineering student offering "
+                            + "1-on-1 sessions tailored to midterm and final exam prep.",
+                    "Student Center or Zoom");
+            tutoringListing.setPriceUnit("/hr");
+            tutoringListing.setRateType(RateType.HOURLY);
+            tutoringListing.setAvailability("Weekdays after 4pm, Saturday mornings");
+            tutoringListing.addImage("https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80");
+            listingRepository.save(tutoringListing);
+        }
 
-        listingRepository.saveAll(List.of(headphones, pasta, tutoringListing, keyboard, calcTextbook));
+        if (textbooks != null) {
+            Listing calcTextbook = listing(alex, ListingType.PRODUCT, textbooks,
+                    "Stewart Calculus: Early Transcendentals (8th Ed.)", new BigDecimal("45.00"),
+                    "Standard first-year calculus text. Some highlighting in the first three chapters, "
+                            + "binding is solid.",
+                    "Engineering Library");
+            calcTextbook.setCondition(ListingCondition.GOOD);
+            calcTextbook.addImage("https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=80");
+            listingRepository.save(calcTextbook);
+        }
 
         log.info("""
 
                 Demo data ready.
-                  admin@campus.edu        / {}   (admin console)
+                  admin account:          {}
                   alex.rivers@campus.edu  / {}   (seller - has listings)
                   emma.w@campus.edu       / {}   (customer - no listings)
-                """, ADMIN_PASSWORD, DEMO_PASSWORD, DEMO_PASSWORD);
+                """, properties.getAdminEmail(), DEMO_PASSWORD, DEMO_PASSWORD);
     }
 
     private Category category(String name, String icon, int order) {

@@ -79,6 +79,10 @@ campusmarket:
   # so the flows are exercisable without a mail provider. MUST be false in prod.
   expose-dev-tokens: ${CAMPUSMARKET_EXPOSE_DEV_TOKENS:false}
   cors-origins: ${CAMPUSMARKET_CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  seed-demo-data: ${CAMPUSMARKET_SEED_DEMO_DATA:true}
+  admin-email: ${CAMPUSMARKET_ADMIN_EMAIL:admin@campus.edu}
+  admin-password: ${CAMPUSMARKET_ADMIN_PASSWORD:Admin123!}
+  admin-name: ${CAMPUSMARKET_ADMIN_NAME:Campus Marketplace Admin}
   session-ttl-days: 14
   verification-token-ttl-minutes: 1440
   reset-token-ttl-minutes: 30

@@ -47,6 +47,10 @@ services:
       SPRING_DATASOURCE_USERNAME: campusmarket
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       CAMPUSMARKET_UPLOADS_DIR: /app/uploads
+      CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-}"
+      CAMPUSMARKET_SEED_DEMO_DATA: "${CAMPUSMARKET_SEED_DEMO_DATA:-true}"
+      CAMPUSMARKET_ADMIN_EMAIL: "${CAMPUSMARKET_ADMIN_EMAIL:-}"
+      CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-}"
       # Optional: paste a Firebase service-account key's JSON contents (as one
       # line) into a .env file at the repo root as CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON
       # to enable "Continue with Google" and push notifications. Left unset, both

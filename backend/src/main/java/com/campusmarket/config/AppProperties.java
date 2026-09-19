@@ -20,6 +20,18 @@ public class AppProperties {
 
     private List<String> corsOrigins = List.of("http://localhost:3000", "http://localhost:5173");
 
+    /**
+     * Whether to seed sample demo listings and demo customer/seller users on an empty database.
+     * In production deployment, set to false so only categories and the admin account are created.
+     */
+    private boolean seedDemoData = true;
+
+    private String adminEmail = "admin@campus.edu";
+
+    private String adminPassword = "Admin123!";
+
+    private String adminName = "Campus Marketplace Admin";
+
     private int sessionTtlDays = 14;
 
     private int verificationTokenTtlMinutes = 1440;

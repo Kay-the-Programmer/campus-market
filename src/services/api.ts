@@ -69,6 +69,16 @@ export interface ApiResult<T = any> {
   fields?: Record<string, string>;
 }
 
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+export function resolveUrl(path: string): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('blob:')) {
+    return path;
+  }
+  return API_BASE_URL ? `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}` : path;
+}
+
 async function request<T = any>(
   path: string,
   options: RequestInit = {},
@@ -84,7 +94,7 @@ async function request<T = any>(
   }
 
   try {
-    const res = await fetch(path, { ...options, headers });
+    const res = await fetch(resolveUrl(path), { ...options, headers });
     const data = await res.json().catch(() => ({}));
 
     /*
@@ -658,7 +668,7 @@ export const api = {
       if (token) headers.Authorization = `Bearer ${token}`;
 
       try {
-        const res = await fetch('/api/uploads/image', { method: 'POST', body: form, headers });
+        const res = await fetch(resolveUrl('/api/uploads/image'), { method: 'POST', body: form, headers });
         const data = await res.json().catch(() => ({}));
         return {
           ok: res.ok,

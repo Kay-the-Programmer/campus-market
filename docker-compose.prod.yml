@@ -46,9 +46,11 @@ services:
       CAMPUSMARKET_EXPOSE_DEV_TOKENS: "false"
       SERVER_ERROR_INCLUDE_MESSAGE: "never"
       CAMPUSMARKET_RATE_LIMIT_ENABLED: "true"
-      # Same origin behind Caddy, so this is empty rather than a domain: there
-      # is no cross-origin request left to authorize. WebConfig sets
-      # allowCredentials(true), which makes "*" invalid here in any case.
+      CAMPUSMARKET_SEED_DEMO_DATA: "${CAMPUSMARKET_SEED_DEMO_DATA:-false}"
+      CAMPUSMARKET_ADMIN_EMAIL: "${CAMPUSMARKET_ADMIN_EMAIL:-admin@campus.edu}"
+      CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-Admin123!}"
+      # If the frontend is hosted on another domain or port, supply comma-separated
+      # origins (e.g. CAMPUSMARKET_CORS_ORIGINS=https://app.mydomain.com).
       CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-}"
       # Container memory is the ceiling the JVM should size its heap against.
       JAVA_OPTS: "-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport"

@@ -72,10 +72,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         boolean auth = path.startsWith(AUTH_PREFIX);
 
-        // Reads are left alone. They are the overwhelming majority of traffic,
-        // they cost little, and throttling them is how a legitimate person
-        // scrolling a busy feed gets told to slow down.
-        if (!auth && "GET".equalsIgnoreCase(request.getMethod())) {
+        // Preflight OPTIONS requests and GET reads are never rate limited.
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod()) || (!auth && "GET".equalsIgnoreCase(request.getMethod()))) {
             chain.doFilter(request, response);
             return;
         }
