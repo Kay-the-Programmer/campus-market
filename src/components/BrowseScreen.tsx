@@ -3,6 +3,7 @@ import {
   Heart, ShoppingBag, Briefcase, Utensils, MapPin, Sparkles, X,
   ArrowUpDown, Images, ShieldCheck, Layers, Loader2, Tag,
   ChevronLeft, ChevronRight, ChevronDown, Pause, Play, SlidersHorizontal,
+  Check,
 } from 'lucide-react';
 import {
   AddToCart, AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory,
@@ -181,6 +182,14 @@ const TYPE_STYLE: Record<ListingCategory, { chip: string; solid: string; icon: R
   },
 };
 
+/** Core type tabs are static - built once rather than reallocated every render. */
+const CORE_ITEMS: { key: string; label: string; icon: React.ReactNode; type?: ListingCategory }[] = [
+  { key: 'all', label: 'All', icon: <Layers className="w-3.5 h-3.5" /> },
+  { key: 'product', label: 'Products', icon: TYPE_STYLE.Product.icon, type: 'Product' },
+  { key: 'service', label: 'Services', icon: TYPE_STYLE.Service.icon, type: 'Service' },
+  { key: 'food', label: 'Food', icon: TYPE_STYLE.Food.icon, type: 'Food' },
+];
+
 /**
  * The one contextual detail shown under the price, chosen by listing type.
  * Returns null when the listing simply doesn't carry that information rather
@@ -278,6 +287,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
   /** Which card's quick-add is in flight, so only that button shows a spinner. */
   const [addingId, setAddingId] = useState<string | null>(null);
+  /** Which card's quick-add just succeeded, so it can flash a confirmation. */
+  const [addedId, setAddedId] = useState<string | null>(null);
 
   const [promoDismissed, setPromoDismissed] = useState(
     () => !HOME_PROMO || sessionStorage.getItem(`cm_promo_dismissed:${HOME_PROMO.id}`) === '1',
@@ -285,6 +296,12 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const [recent, setRecent] = useState<Listing[]>([]);
 
   const isGuest = !currentUser || currentUser.role === 'guest';
+
+  /** Skip transitions/autoplay for anyone who has asked the OS to reduce motion. */
+  const prefersReducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  );
 
   /* ── Admin-editable home-page panels ──────────────────────────────────── */
   const [promos, setPromos] = useState<PromoSlot[]>(FALLBACK_PROMOS);
@@ -313,7 +330,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const [carouselPaused, setCarouselPaused] = useState(false); // Hover state
   const [userPaused, setUserPaused] = useState(false);         // Explicit toggle state
   const carouselRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef(0);
+  // Full touch gesture state (position + time), so a slow drag or a mostly
+  // vertical scroll over the banner never gets misread as a swipe.
+  const carouselTouch = useRef<{ x: number; y: number; time: number } | null>(null);
+  const AUTOPLAY_MS = 5000;
 
   /* ── Category strip scroll state (mobile) ─────────────────────────────── */
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -353,13 +373,17 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   }, [currentUser?.id, isGuest]);
 
   /* ── Carousel Auto-play ───────────────────────────────────────────────── */
+  // `setCarouselIndex` uses a functional update, so the tick itself doesn't
+  // need `carouselIndex` in the dependency list - keeping it there was
+  // tearing the interval down and rebuilding it on every single advance.
   useEffect(() => {
-    if (carouselPaused || userPaused || carouselSlides.length < 2) return;
+    if (carouselPaused || userPaused || prefersReducedMotion || carouselSlides.length < 2) return;
     const timer = setInterval(() => {
       setCarouselIndex((i) => (i + 1) % carouselSlides.length);
-    }, 5000);
+    }, AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, [carouselPaused, userPaused, carouselIndex, carouselSlides.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carouselPaused, userPaused, prefersReducedMotion, carouselSlides.length]);
 
   // An admin deleting slides can leave the index past the end.
   useEffect(() => {
@@ -599,6 +623,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setAddingId(item.id);
     await onAddToCart(item, { event: e });
     setAddingId(null);
+    // Brief confirmation before the button reverts, so a tap gets a clear
+    // "that worked" instead of silently returning to its resting state.
+    setAddedId(item.id);
+    setTimeout(() => setAddedId((current) => (current === item.id ? null : current)), 1400);
   };
 
   /** Anything narrowing the feed right now - what "Clear" would undo. */
@@ -611,24 +639,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     [effectiveSort],
   );
 
-  const visibleSorts = SORTS.filter((s) => !s.needsQuery || searchQuery.trim());
+  const visibleSorts = useMemo(
+    () => SORTS.filter((s) => !s.needsQuery || searchQuery.trim()),
+    [searchQuery],
+  );
 
   const showRecentRow = !isGuest && recent.length > 0 && !searchQuery.trim()
     && coreType === 'All' && !categoryId;
-
-  /* ── Build category items for unified strip / mega menu ───────────────── */
-  /*
-   * `type` is a ListingCategory, not a CoreType: "All" is encoded as absence,
-   * which is what `item.type ?? 'All'` and isCoreActive(undefined) both already
-   * assume. Declaring it as CoreType admitted an 'All' entry that TYPE_STYLE has
-   * no key for - reading .solid off it would have thrown at render.
-   */
-  const coreItems: { key: string; label: string; icon: React.ReactNode; type?: ListingCategory }[] = [
-    { key: 'all', label: 'All', icon: <Layers className="w-3.5 h-3.5" /> },
-    { key: 'product', label: 'Products', icon: TYPE_STYLE.Product.icon, type: 'Product' },
-    { key: 'service', label: 'Services', icon: TYPE_STYLE.Service.icon, type: 'Service' },
-    { key: 'food', label: 'Food', icon: TYPE_STYLE.Food.icon, type: 'Food' },
-  ];
 
   const isCoreActive = (type?: CoreType) => {
     if (type === undefined) return coreType === 'All' && !categoryId;
@@ -686,12 +703,24 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const prevSlide = () =>
     setCarouselIndex((i) => (i - 1 + carouselSlides.length) % carouselSlides.length);
 
+  // Axis-locked, velocity-aware swipe - mirrors the bottom nav's gesture
+  // handling so a vertical scroll over the banner never fires a slide change.
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.changedTouches[0].screenX;
+    const t = e.touches[0];
+    carouselTouch.current = { x: t.clientX, y: t.clientY, time: Date.now() };
   };
   const onTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX.current - e.changedTouches[0].screenX;
-    if (Math.abs(diff) > 40) diff > 0 ? nextSlide() : prevSlide();
+    const start = carouselTouch.current;
+    carouselTouch.current = null;
+    if (!start) return;
+    const end = e.changedTouches[0];
+    const deltaX = end.clientX - start.x;
+    const deltaY = end.clientY - start.y;
+    const elapsed = Date.now() - start.time;
+    const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY) * 1.5;
+    if (isHorizontal && elapsed <= 500 && Math.abs(deltaX) > 40) {
+      deltaX > 0 ? prevSlide() : nextSlide();
+    }
   };
 
   // Bento tiles route through the same admin-configured link as the carousel,
@@ -699,6 +728,22 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] pb-28">
+      {/* Small, self-contained keyframes for the polish added below - kept
+          local to this screen rather than touching the shared stylesheet.
+          Every animation is skipped for prefers-reduced-motion. */}
+      <style>{`
+        @keyframes cm-shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+        .cm-shimmer { background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); background-size: 300px 100%; background-repeat: no-repeat; animation: cm-shimmer 1.6s ease-in-out infinite; }
+        @keyframes cm-progress { from { width: 0%; } to { width: 100%; } }
+        @keyframes cm-dropdown-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .cm-dropdown-in { animation: cm-dropdown-in 0.14s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }
+        @keyframes cm-added-pop { 0% { transform: scale(0.85); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .cm-added-pop { animation: cm-added-pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @media (prefers-reduced-motion: reduce) {
+          .cm-shimmer, .cm-dropdown-in, .cm-added-pop, .animate-card-in, .animate-fade-in, .animate-badge-pop, .animate-cart-bump { animation: none !important; }
+        }
+      `}</style>
+
       {/*
         The search box lives in the global nav, so the feed doesn't repeat it.
         Below lg, the nav has no room for its own category row, so the feed
@@ -767,7 +812,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               }}
             >
               {/* Core type tabs — larger, more prominent */}
-              {coreItems.map((item) => {
+              {CORE_ITEMS.map((item) => {
                 const active = isCoreActive(item.type);
                 return (
                   <button
@@ -776,6 +821,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       setCoreType(item.type ?? 'All');
                       setCategoryId('');
                     }}
+                    style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
                     className={`snap-start shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold border transition-all duration-200 select-none ${active
                       ? item.type
                         ? `${TYPE_STYLE[item.type].solid} shadow-sm scale-[1.02]`
@@ -824,7 +870,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
           {/* ── Categories strip (desktop only) ────────────── */}
           <div className="hidden lg:flex items-center gap-6 py-2.5 overflow-x-auto no-scrollbar whitespace-nowrap">
-            {coreItems.map((item) => {
+            {CORE_ITEMS.map((item) => {
               const active = isCoreActive(item.type);
               return (
                 <button
@@ -900,9 +946,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               <div
                 ref={carouselRef}
                 className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+                style={{
+                  transform: `translateX(-${carouselIndex * 100}%)`,
+                  willChange: 'transform',
+                }}
                 onTouchStart={onTouchStart}
                 onTouchEnd={onTouchEnd}
+                onTouchCancel={() => (carouselTouch.current = null)}
               >
                 {carouselSlides.map((slide) => (
                   <div
@@ -946,6 +996,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                             <img
                               src={slide.imageUrl}
                               alt=""
+                              decoding="async"
                               className="block w-full h-auto lg:absolute lg:inset-0 lg:h-full object-contain"
                             />
                           </div>
@@ -967,18 +1018,30 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             {/* ── Controls: outside on mobile, absolute inside on desktop ── */}
             {carouselSlides.length > 1 && (
               <div className="mt-3.5 flex items-center justify-between lg:mt-0 lg:absolute lg:bottom-3 lg:left-4 lg:right-4 z-20">
-                {/* Dot indicators */}
+                {/* Dot indicators, each doubling as a 5s progress bar for the
+                    active slide so the wait to the next one is never a
+                    surprise. */}
                 <div className="flex items-center gap-1.5 px-2 lg:px-0">
                   {carouselSlides.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => goToSlide(i)}
                       aria-label={`Go to slide ${i + 1}`}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${i === carouselIndex
-                        ? 'w-5 bg-[#2563eb] lg:bg-white'
+                      className={`relative h-1.5 rounded-full overflow-hidden transition-all duration-300 ${i === carouselIndex
+                        ? 'w-6 bg-[#cdd5ea] lg:bg-white/30'
                         : 'w-1.5 bg-[#cdd5ea] hover:bg-[#aab5d6] lg:bg-white/50 lg:hover:bg-white/75'
                         }`}
-                    />
+                    >
+                      {i === carouselIndex && !carouselPaused && !userPaused && !prefersReducedMotion && (
+                        <span
+                          key={carouselIndex}
+                          className="absolute inset-y-0 left-0 bg-[#2563eb] lg:bg-white rounded-full"
+                          style={{
+                            animation: `cm-progress ${AUTOPLAY_MS}ms linear forwards`,
+                          }}
+                        />
+                      )}
+                    </button>
                   ))}
                 </div>
 
@@ -1028,6 +1091,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                     <img
                       src={item.image}
                       alt=""
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                     {!item.isAvailable && (
@@ -1089,6 +1153,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                           src={item.imageUrl}
                           alt=""
                           aria-hidden="true"
+                          decoding="async"
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div
@@ -1152,35 +1217,35 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         */}
         <div className="flex items-center gap-2 mb-4" data-onboarding="feed-zones">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
-          <span className="shrink-0 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
-            Zone
-          </span>
-          <button
-            onClick={() => setZone('')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${zone === ''
-              ? 'bg-[#0b1c30] text-white border-[#0b1c30]'
-              : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
-              }`}
-          >
-            Anywhere
-          </button>
-          {CAMPUS_ZONES.map((option) => {
-            const active = zone === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => setZone(active ? '' : option.value)}
-                title={option.hint}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${active
-                  ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                  : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
-                  }`}
-              >
-                <MapPin className="w-3 h-3" />
-                {option.label}
-              </button>
-            );
-          })}
+            <span className="shrink-0 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
+              Zone
+            </span>
+            <button
+              onClick={() => setZone('')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${zone === ''
+                ? 'bg-[#0b1c30] text-white border-[#0b1c30]'
+                : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
+                }`}
+            >
+              Anywhere
+            </button>
+            {CAMPUS_ZONES.map((option) => {
+              const active = zone === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setZone(active ? '' : option.value)}
+                  title={option.hint}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${active
+                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
+                    : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
+                    }`}
+                >
+                  <MapPin className="w-3 h-3" />
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Price belongs on the same row as zone: both cut across every
@@ -1191,11 +1256,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             <button
               onClick={() => setPriceOpen((o) => !o)}
               aria-expanded={priceOpen}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
-                minPrice || maxPrice
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${minPrice || maxPrice
                   ? 'bg-[#2563eb] text-white border-[#2563eb]'
                   : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
-              }`}
+                }`}
             >
               <SlidersHorizontal className="w-3 h-3" />
               {priceButtonLabel}
@@ -1206,7 +1270,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               /* Anchored right, since this is now the rightmost control and a
                  left-anchored 288px panel would hang off a phone screen. z-40
                  clears the sticky category header, which is z-30. */
-              <div className="absolute right-0 mt-2 z-40 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-[#e5eeff] shadow-modal p-4">
+              <div className="cm-dropdown-in absolute right-0 mt-2 z-40 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-[#e5eeff] shadow-modal p-4">
                 <p className="text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider mb-2">
                   Price
                 </p>
@@ -1289,7 +1353,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             {sortOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
-                <div className="absolute right-0 mt-1.5 z-20 w-52 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1">
+                <div className="cm-dropdown-in absolute right-0 mt-1.5 z-20 w-52 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1">
                   {visibleSorts.map((s) => (
                     <button
                       key={s.value}
@@ -1380,13 +1444,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         onSelectListing(item);
                       }
                     }}
-                    className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
+                    className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
                   >
                     <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
                       <img
                         src={item.image}
                         alt={item.title}
                         loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
 
@@ -1402,9 +1467,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       <button
                         onClick={(e) => onToggleSave(item.id, e)}
                         aria-label={item.isSaved ? 'Remove from saved' : 'Save listing'}
-                        className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card transition-all duration-150"
+                        className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card active:scale-90 transition-all duration-150"
                       >
-                        <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500' : ''}`} />
+                        <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
                       </button>
 
                       {/* More-photos hint, so extra images aren't hidden behind a tap */}
@@ -1452,18 +1517,31 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       {/* One tap from the grid, as on any shop. It stops the
                           card's own navigation, so the row is a real choice
                           between "add it" and "look at it" rather than a
-                          button that opens the page anyway. */}
+                          button that opens the page anyway. A short "Added"
+                          confirmation replaces the spinner before the button
+                          reverts, so the tap gets a clear result rather than
+                          silently snapping back. */}
                       {canQuickAdd(item) && (
                         <button
                           onClick={(e) => quickAdd(item, e)}
                           disabled={addingId === item.id}
                           aria-label={`Add ${item.title} to cart`}
-                          className="mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white text-[11px] font-bold transition-colors disabled:opacity-60 disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]"
+                          className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-60 ${addedId === item.id
+                              ? 'bg-[#007d55] text-white'
+                              : 'bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]'
+                            }`}
                         >
-                          {addingId === item.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <ShoppingBag className="w-3.5 h-3.5" />}
-                          Add to cart
+                          {addingId === item.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : addedId === item.id ? (
+                            <span className="cm-added-pop flex items-center gap-1.5">
+                              <Check className="w-3.5 h-3.5" />
+                              Added
+                            </span>
+                          ) : (
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                          )}
+                          {addingId !== item.id && addedId !== item.id && 'Add to cart'}
                         </button>
                       )}
                     </div>
@@ -1504,16 +1582,17 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   );
 };
 
-/** Grey placeholders matching the real card layout - never a blank screen. */
+/** Grey placeholders matching the real card layout - never a blank screen,
+ *  with a soft shimmer sweep instead of a flat pulse for a more premium feel. */
 const SkeletonGrid: React.FC<{ count: number }> = ({ count }) => (
   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
     {Array.from({ length: count }).map((_, i) => (
-      <div key={i} className="bg-white rounded-2xl border border-[#e5eeff]/80 overflow-hidden animate-pulse">
-        <div className="aspect-[4/3] bg-[#e5eeff]" />
+      <div key={i} className="bg-white rounded-2xl border border-[#e5eeff]/80 overflow-hidden">
+        <div className="aspect-[4/3] bg-[#e5eeff] cm-shimmer" />
         <div className="p-3.5 space-y-2">
-          <div className="h-3 bg-[#e5eeff] rounded w-3/4" />
-          <div className="h-5 bg-[#dce9ff] rounded w-1/3" />
-          <div className="h-2.5 bg-[#eff4ff] rounded w-2/3 mt-3" />
+          <div className="h-3 bg-[#e5eeff] rounded w-3/4 cm-shimmer" />
+          <div className="h-5 bg-[#dce9ff] rounded w-1/3 cm-shimmer" />
+          <div className="h-2.5 bg-[#eff4ff] rounded w-2/3 mt-3 cm-shimmer" />
         </div>
       </div>
     ))}
