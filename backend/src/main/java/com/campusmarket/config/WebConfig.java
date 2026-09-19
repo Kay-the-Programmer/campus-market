@@ -46,6 +46,7 @@ public class WebConfig implements WebMvcConfigurer {
         List<String> origins = properties.getCorsOrigins() != null
                 ? properties.getCorsOrigins().stream()
                         .map(String::trim)
+                        .map(s -> s.replaceAll("/+$", ""))
                         .filter(s -> !s.isEmpty())
                         .toList()
                 : List.of();

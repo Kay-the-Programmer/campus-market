@@ -18,7 +18,14 @@ public class AppProperties {
      */
     private boolean exposeDevTokens = false;
 
-    private List<String> corsOrigins = List.of("http://localhost:3000", "http://localhost:5173");
+    private List<String> corsOrigins = List.of(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://salepilot.space",
+            "https://www.salepilot.space",
+            "https://campus-market-mu.vercel.app",
+            "https://www.campus-market-mu.vercel.app"
+    );
 
     /**
      * Whether to seed sample demo listings and demo customer/seller users on an empty database.
