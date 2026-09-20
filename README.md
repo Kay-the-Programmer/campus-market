@@ -101,11 +101,42 @@ Database backups are not automatic. `scripts/backup-db.sh` is a nightly `pg_dump
 intended for cron — read the header, set `BACKUP_REMOTE`, and restore one dump into
 a scratch database before trusting it.
 
+### Starting from a clean database
+
+`CAMPUSMARKET_SEED_DEMO_DATA=false` only stops demo rows being *written*. Rows seeded
+on an earlier boot stay exactly where they are, so a site that was ever brought up
+with seeding on still has Alex Rivers and five sample listings in it. Clearing them is
+a database operation, and the honest way to do it is to throw the database away:
+
+```bash
+# 1. What is actually in there? Do this before deciding.
+docker exec campusmarket-db psql -U campusmarket -d campusmarket \
+  -c "select email, role, created_at from users order by created_at;"
+
+# 2. Take a dump you can go back to.
+./scripts/backup-db.sh
+
+# 3. Destroy the data and rebuild it empty.
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+npm run prod:up
+```
+
+**`down -v` deletes every volume this project owns** — the database *and* the uploads
+volume. It is irreversible. Step 1 exists because "start fresh" and "delete the accounts
+people have already signed up with" are the same command, and only the row listing tells
+you which one you are actually running.
+
+What comes back: the eight categories, and one administrator built from
+`CAMPUSMARKET_ADMIN_EMAIL` / `_PASSWORD` / `_NAME`. Nothing else.
+
 ## Demo accounts
+
+These exist only when `CAMPUSMARKET_SEED_DEMO_DATA=true`, which is the local default and
+is hardcoded off in `docker-compose.prod.yml`.
 
 | Account | Password | Why it exists |
 |---|---|---|
-| `admin@campus.edu` | `Admin123!` | Admin console |
+| `admin@campus.edu` | `Admin123!` (local only — set `CAMPUSMARKET_ADMIN_PASSWORD` in production) | Admin console |
 | `alex.rivers@campus.edu` | `Password123` | Customer **with** listings → renders the Seller nav |
 | `emma.w@campus.edu` | `Password123` | Customer with **no** listings → renders the Customer nav |
 | `john.doe@campus.edu`, `sarah.j@campus.edu`, `marcus.c@campus.edu` | `Password123` | Other sellers |

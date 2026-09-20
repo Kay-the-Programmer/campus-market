@@ -28,7 +28,6 @@ import java.util.Set;
 public class DataSeeder implements CommandLineRunner {
 
     private static final String DEMO_PASSWORD = "Password123";
-    private static final String ADMIN_PASSWORD = "Admin123!";
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
@@ -59,31 +58,82 @@ public class DataSeeder implements CommandLineRunner {
         category("Tickets & Events", "ticket", 8);
     }
 
+    /**
+     * Brings the administrator account into line with configuration.
+     *
+     * <p>Keyed on the configured email alone. It used to also return early
+     * when <em>any</em> admin existed, which made every one of these settings
+     * write-once: changing the email in the environment did nothing at all,
+     * with nothing logged to say why.
+     *
+     * <p>A pre-existing admin under a different email is left alone rather
+     * than demoted or deleted. Removing someone's access is not a decision
+     * that belongs to a startup hook.
+     */
     private void seedAdmin() {
-        String adminEmail = (properties.getAdminEmail() != null && !properties.getAdminEmail().isBlank())
-                ? properties.getAdminEmail().trim().toLowerCase()
-                : "admin@campus.edu";
+        String email = configured(properties.getAdminEmail(), "admin@campus.edu").toLowerCase();
+        String name = configured(properties.getAdminName(), "Campus Marketplace Admin");
+        String password = properties.getAdminPassword() == null ? "" : properties.getAdminPassword();
 
-        if (userRepository.existsByEmail(adminEmail) || userRepository.countByRole(Role.ADMIN) > 0) {
+        User existing = userRepository.findByEmail(email).orElse(null);
+
+        if (existing == null) {
+            if (password.isBlank()) {
+                log.warn("No administrator account exists and no password is configured, so none was created. "
+                        + "Set CAMPUSMARKET_ADMIN_PASSWORD (and optionally CAMPUSMARKET_ADMIN_EMAIL) and restart.");
+                return;
+            }
+            log.info("Creating administrator account: {}", email);
+            // No department, avatar, phone or address. The previous version
+            // filled these with placeholder values - a stock photo and a
+            // +1-800 number - which then showed up as though a real person
+            // had entered them. An operator can fill in a real profile from
+            // the app; inventing one here only creates something to undo.
+            User admin = user(name, email, password, Role.ADMIN, null, null, null);
+            userRepository.save(admin);
             return;
         }
 
-        String adminPass = (properties.getAdminPassword() != null && !properties.getAdminPassword().isBlank())
-                ? properties.getAdminPassword()
-                : ADMIN_PASSWORD;
+        boolean changed = false;
 
-        String adminName = (properties.getAdminName() != null && !properties.getAdminName().isBlank())
-                ? properties.getAdminName()
-                : "Campus Marketplace Admin";
+        if (existing.getRole() != Role.ADMIN) {
+            // The configured email belongs to an ordinary account. Promoting
+            // is the intent - this is the address the operator named as the
+            // administrator - but it is worth a line in the log, because it
+            // is also what a typo in the email would look like.
+            log.warn("Promoting existing account {} to ADMIN - it is the configured admin email.", email);
+            existing.setRole(Role.ADMIN);
+            changed = true;
+        }
 
-        log.info("Creating administrator account: {}", adminEmail);
-        User admin = user(adminName, adminEmail, adminPass,
-                Role.ADMIN, "Campus IT & Safety", "Staff",
-                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80");
-        admin.setPhone("+1 (800) 555-0000");
-        admin.setPrivateAddress("Admin Building Room 300");
-        admin.setCampusZone(CampusZone.ACROSS);
-        userRepository.save(admin);
+        if (!name.equals(existing.getName())) {
+            existing.setName(name);
+            changed = true;
+        }
+
+        if (properties.isAdminPasswordReset()) {
+            if (password.isBlank()) {
+                log.warn("Admin password reset was requested but CAMPUSMARKET_ADMIN_PASSWORD is blank - ignoring.");
+            } else {
+                log.warn("Resetting the administrator password for {} as configured. "
+                        + "Unset CAMPUSMARKET_ADMIN_PASSWORD_RESET so the next restart does not do it again.", email);
+                existing.setPasswordHash(passwordEncoder.encode(password));
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            userRepository.save(existing);
+        }
+
+        long otherAdmins = userRepository.countByRole(Role.ADMIN) - 1;
+        if (otherAdmins > 0) {
+            log.info("{} other administrator account(s) exist besides {}.", otherAdmins, email);
+        }
+    }
+
+    private static String configured(String value, String fallback) {
+        return (value != null && !value.isBlank()) ? value.trim() : fallback;
     }
 
     private void seedDemoData() {

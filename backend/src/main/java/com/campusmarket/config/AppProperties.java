@@ -35,11 +35,37 @@ public class AppProperties {
      */
     private boolean seedDemoData = true;
 
+    /**
+     * The administrator account, reconciled against these three values on
+     * every boot by {@link DataSeeder} - created when the email is not yet
+     * present, and kept in step with the configured name when it is.
+     */
     private String adminEmail = "admin@campus.edu";
 
-    private String adminPassword = "Admin123!";
+    /**
+     * Blank by default, and deliberately so.
+     *
+     * <p>This used to default to a literal password, which meant an operator
+     * who never set the environment variable got an administrator account on
+     * a public site with a credential published in this repository. Left
+     * blank now, no administrator is created at all and startup says so - an
+     * obvious missing account beats a silently guessable one. The production
+     * compose overlay requires the variable outright.
+     */
+    private String adminPassword = "";
 
     private String adminName = "Campus Marketplace Admin";
+
+    /**
+     * Rotate the existing administrator's password to {@link #adminPassword}
+     * on the next boot.
+     *
+     * <p>Off by default because the alternative - reapplying the configured
+     * password on every restart - would silently undo a password the
+     * administrator had changed in the app, and a deploy is a bad moment to
+     * discover that. Set it, restart, then unset it again.
+     */
+    private boolean adminPasswordReset = false;
 
     private int sessionTtlDays = 14;
 

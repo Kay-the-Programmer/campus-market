@@ -48,9 +48,18 @@ services:
       CAMPUSMARKET_EXPOSE_DEV_TOKENS: "false"
       SERVER_ERROR_INCLUDE_MESSAGE: "never"
       CAMPUSMARKET_RATE_LIMIT_ENABLED: "true"
-      CAMPUSMARKET_SEED_DEMO_DATA: "${CAMPUSMARKET_SEED_DEMO_DATA:-false}"
+      # Hardcoded rather than defaulted: demo listings and demo accounts have
+      # no place on a live site, and this is not a knob worth leaving within
+      # reach of a stray .env line on the production box.
+      CAMPUSMARKET_SEED_DEMO_DATA: "false"
       CAMPUSMARKET_ADMIN_EMAIL: "${CAMPUSMARKET_ADMIN_EMAIL:-admin@campus.edu}"
-      CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-Admin123!}"
+      CAMPUSMARKET_ADMIN_NAME: "${CAMPUSMARKET_ADMIN_NAME:-Campus Marketplace Admin}"
+      # Required, with no fallback. The previous default was a password
+      # committed to this repository, which is not a thing to hand an
+      # administrator account on a public site. Compose refuses to start
+      # without it rather than quietly choosing something guessable.
+      CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:?set CAMPUSMARKET_ADMIN_PASSWORD in .env}"
+      CAMPUSMARKET_ADMIN_PASSWORD_RESET: "${CAMPUSMARKET_ADMIN_PASSWORD_RESET:-false}"
       # Where the frontend is served from. The Vercel production domain is the
       # real one; localhost is kept so a developer can point a local `npm run
       # dev` at this API when reproducing something that only happens against

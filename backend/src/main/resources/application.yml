@@ -89,8 +89,15 @@ campusmarket:
   cors-origins: ${CAMPUSMARKET_CORS_ORIGINS:http://localhost:3000,http://localhost:5173,https://campus-market-mu.vercel.app}
   seed-demo-data: ${CAMPUSMARKET_SEED_DEMO_DATA:true}
   admin-email: ${CAMPUSMARKET_ADMIN_EMAIL:admin@campus.edu}
-  admin-password: ${CAMPUSMARKET_ADMIN_PASSWORD:Admin123!}
+  # No default. This used to fall back to a literal password, so an operator who
+  # never set the variable got an administrator account whose credentials are in
+  # this repository. Blank means no admin is created and startup logs why.
+  admin-password: ${CAMPUSMARKET_ADMIN_PASSWORD:}
   admin-name: ${CAMPUSMARKET_ADMIN_NAME:Campus Marketplace Admin}
+  # One-shot: rotates the existing admin's password to admin-password on the
+  # next boot, then should be unset again. See AppProperties for why this is
+  # not simply applied every time.
+  admin-password-reset: ${CAMPUSMARKET_ADMIN_PASSWORD_RESET:false}
   session-ttl-days: 14
   verification-token-ttl-minutes: 1440
   reset-token-ttl-minutes: 30

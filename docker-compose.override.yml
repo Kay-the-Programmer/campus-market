@@ -37,5 +37,10 @@ services:
       # Off locally: the per-IP limiter would otherwise throttle a rapid
       # edit-reload-retry cycle against the auth screens.
       CAMPUSMARKET_RATE_LIMIT_ENABLED: "false"
+      # A known local admin password. There is no default any more - the one
+      # that used to exist is in this repository's history, which is exactly
+      # why it had to go - so it is stated here, in the file production never
+      # loads, rather than being something every developer has to discover.
+      CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-Admin123!}"
     ports:
       - "127.0.0.1:8080:8080"
