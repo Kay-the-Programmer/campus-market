@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +41,27 @@ public class SmtpMailer implements Mailer {
 
     @Override
     public boolean isEnabled() {
-        return mailSenderProvider.getIfAvailable() != null && !from().isBlank();
+        return hasHost() && !from().isBlank();
+    }
+
+    /**
+     * Whether a sender exists AND actually points somewhere.
+     *
+     * <p>The bean's existence alone is not enough, and this class used to
+     * assume it was. Spring Boot's mail auto-configuration is gated on
+     * {@code spring.mail.host} being <em>present</em>, and the YAML default
+     * of {@code ${SPRING_MAIL_HOST:}} makes it present as an empty string -
+     * so a JavaMailSender is built with host "" on every box with no SMTP.
+     * That sender cannot connect to anything; treating it as "configured"
+     * would have campaigns attempt every recipient and record every one as
+     * failed. The host check is what makes "blank means off" true.
+     */
+    private boolean hasHost() {
+        JavaMailSender sender = mailSenderProvider.getIfAvailable();
+        if (sender instanceof JavaMailSenderImpl impl) {
+            return impl.getHost() != null && !impl.getHost().isBlank();
+        }
+        return sender != null;
     }
 
     private String from() {

@@ -20,6 +20,15 @@ interface AuthModalProps {
   onLoginSuccess?: (email: string) => void;
   initialMode?: AuthMode;
   resetToken?: string;
+  /**
+   * A Firebase ID token from a redirect-based Google sign-in, handed in by
+   * App on the page load that returns from Google. The modal exchanges it
+   * exactly as it would one from the popup, so the profile step still runs
+   * for a brand-new account.
+   */
+  pendingGoogleToken?: string | null;
+  /** Called once the pending token has been used, so App can drop it. */
+  onPendingGoogleTokenConsumed?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -28,6 +37,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLoginSuccess,
   initialMode = 'login',
   resetToken,
+  pendingGoogleToken,
+  onPendingGoogleTokenConsumed,
 }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState('');
@@ -72,6 +83,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setConfirmPassword('');
     }
   }, [isOpen, initialMode]);
+
+  /*
+   * The return leg of a redirect sign-in. Runs the same exchange as the popup
+   * path; the only difference is where the token came from.
+   *
+   * Consumed-then-cleared through the callback, not by the modal forgetting
+   * it: a token still sitting in App state would be exchanged again on the
+   * next open, and the backend would mint a second session for one sign-in.
+   */
+  useEffect(() => {
+    if (!isOpen || !pendingGoogleToken) return;
+    const token = pendingGoogleToken;
+    onPendingGoogleTokenConsumed?.();
+    setBusy(true);
+    resetFeedback();
+    exchangeGoogleToken(token).catch((err: any) => {
+      setBusy(false);
+      setError(err?.message || 'Could not sign in with Google.');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, pendingGoogleToken]);
 
   if (!isOpen) return null;
 
@@ -127,22 +159,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     resetFeedback();
     try {
       const idToken = await signInWithGoogle();
-      const res = await api.auth.google(idToken);
-      setBusy(false);
-
-      if (!res.ok) {
-        setError(res.error || 'Could not sign in with Google.');
-        setErrorCode(res.code || null);
+      if (idToken === null) {
+        /*
+         * The popup was blocked and Firebase is redirecting the whole page to
+         * Google instead. Leave `busy` on - the page is about to unload, and a
+         * re-enabled button would only invite a second click into the gap.
+         * When the browser comes back, App hands the result in through
+         * `pendingGoogleToken` and the effect below finishes the sign-in.
+         */
+        setNotice('Taking you to Google to sign in…');
         return;
       }
-      if (res.needsProfile) {
-        setGoogleToken(idToken);
-        setEmail(res.user?.email || '');
-        setMode('profile');
-        return;
-      }
-      onLoginSuccess?.(res.user?.email || email.trim());
-      onClose();
+      await exchangeGoogleToken(idToken);
     } catch (err: any) {
       setBusy(false);
       // The user closing the popup themselves isn't an error worth reporting.
@@ -151,6 +179,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
       setError(err?.message || 'Could not sign in with Google.');
     }
+  }
+
+  /**
+   * Trades a Firebase ID token for an app session. Shared by the popup path
+   * above and the redirect return, so the profile step and error handling
+   * exist once and behave identically however the token was obtained.
+   */
+  async function exchangeGoogleToken(idToken: string) {
+    const res = await api.auth.google(idToken);
+    setBusy(false);
+
+    if (!res.ok) {
+      setError(res.error || 'Could not sign in with Google.');
+      setErrorCode(res.code || null);
+      return;
+    }
+    if (res.needsProfile) {
+      setGoogleToken(idToken);
+      setEmail(res.user?.email || '');
+      setMode('profile');
+      return;
+    }
+    onLoginSuccess?.(res.user?.email || email.trim());
+    onClose();
   }
 
   /** Second leg: replay the same token with the answers attached. */

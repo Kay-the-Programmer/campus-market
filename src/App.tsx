@@ -68,6 +68,7 @@ import { useToast } from './components/shared/ToastProvider';
 import { useOrderToasts } from './hooks/useOrderToasts';
 import { useLiveCounts } from './hooks/useLiveCounts';
 import { api } from './services/api';
+import { completeGoogleRedirect } from './firebase';
 import { onForegroundPush, onNotificationClick, refreshToken } from './services/push';
 import { recordRecentlyViewed } from './services/recentlyViewed';
 
@@ -249,6 +250,38 @@ export default function App() {
   const [heldOrders, setHeldOrders] = useState(0);
   const [authModalMode, setAuthModalMode] = useState<AuthMode>('login');
   const [resetToken, setResetToken] = useState<string | undefined>(undefined);
+
+  /**
+   * A Google ID token from a redirect sign-in, waiting for the modal to
+   * exchange it. Set on the one page load that is the return leg from Google
+   * and cleared the moment the modal has used it.
+   */
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
+
+  /*
+   * Is this page load the browser coming back from Google?
+   *
+   * The popup path never needs this - the modal stays mounted and finishes
+   * the sign-in itself. The redirect path unloads the whole page, so the only
+   * place the result can be collected is here, on the load that follows. Null
+   * on every ordinary load, which is nearly all of them, and Firebase answers
+   * that from local state without a request.
+   */
+  useEffect(() => {
+    completeGoogleRedirect()
+      .then((token) => {
+        if (!token) return;
+        setPendingGoogleToken(token);
+        setAuthModalMode('login');
+        setIsAuthModalOpen(true);
+      })
+      .catch((err: any) => {
+        // A failed return leg is a real sign-in failure the person would
+        // otherwise never see - they clicked, left, and came back to nothing.
+        toast.error(err?.message || 'Could not complete Google sign-in.');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /*
    * How many entries this app has pushed onto the history stack. A "Back"
@@ -1463,6 +1496,8 @@ export default function App() {
           isOpen={isAuthModalOpen}
           initialMode={authModalMode}
           resetToken={resetToken}
+          pendingGoogleToken={pendingGoogleToken}
+          onPendingGoogleTokenConsumed={() => setPendingGoogleToken(null)}
           onClose={() => {
             setIsAuthModalOpen(false);
             setAuthModalMode('login');
