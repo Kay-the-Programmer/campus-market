@@ -47,7 +47,7 @@ services:
       SPRING_DATASOURCE_USERNAME: campusmarket
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       CAMPUSMARKET_UPLOADS_DIR: /app/uploads
-      CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-}"
+      CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-https://salepilot.space,https://www.salepilot.space,https://campusmarket.salepilot.space,https://campus-market-mu.vercel.app,https://www.campus-market-mu.vercel.app,http://localhost:3000,http://localhost:5173}"
       CAMPUSMARKET_SEED_DEMO_DATA: "${CAMPUSMARKET_SEED_DEMO_DATA:-true}"
       CAMPUSMARKET_ADMIN_EMAIL: "${CAMPUSMARKET_ADMIN_EMAIL:-}"
       CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-}"

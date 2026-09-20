@@ -5,9 +5,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
 import org.springframework.http.CacheControl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -41,23 +46,59 @@ public class WebConfig implements WebMvcConfigurer {
         resolvers.add(principalArgumentResolver);
     }
 
+    private static final List<String> DEFAULT_ORIGINS = List.of(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://salepilot.space",
+            "https://www.salepilot.space",
+            "https://campusmarket.salepilot.space",
+            "https://campus-market-mu.vercel.app",
+            "https://www.campus-market-mu.vercel.app"
+    );
+
+    private List<String> resolveOrigins() {
+        List<String> raw = properties.getCorsOrigins();
+        if (raw == null) {
+            return DEFAULT_ORIGINS;
+        }
+        List<String> cleaned = raw.stream()
+                .map(String::trim)
+                .map(s -> s.replaceAll("/+$", ""))
+                .filter(s -> !s.isEmpty())
+                .toList();
+        return cleaned.isEmpty() ? DEFAULT_ORIGINS : cleaned;
+    }
+
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilterRegistrationBean() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+
+        List<String> origins = resolveOrigins();
+        config.setAllowedOriginPatterns(origins);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        source.registerCorsConfiguration("/**", config);
+
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
+    }
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        List<String> origins = properties.getCorsOrigins() != null
-                ? properties.getCorsOrigins().stream()
-                        .map(String::trim)
-                        .map(s -> s.replaceAll("/+$", ""))
-                        .filter(s -> !s.isEmpty())
-                        .toList()
-                : List.of();
-
-        if (!origins.isEmpty()) {
-            registry.addMapping("/api/**")
-                    .allowedOriginPatterns(origins.toArray(String[]::new))
-                    .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                    .allowedHeaders("*")
-                    .allowCredentials(true);
-        }
+        List<String> origins = resolveOrigins();
+        registry.addMapping("/**")
+                .allowedOriginPatterns(origins.toArray(String[]::new))
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
+                .allowedHeaders("*")
+                .exposedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600L);
     }
 
     /**
