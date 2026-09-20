@@ -45,7 +45,7 @@ public class EmailCampaign {
         DRAFT,
         /**
          * Handed to the executor. Also the state a crashed send is left in -
-         * see the note in V10 about there being no resume.
+         * see the note in V11 about there being no resume.
          */
         SENDING,
         SENT,

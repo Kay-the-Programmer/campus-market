@@ -41,7 +41,7 @@ public class NotificationPreference {
      * Consent for admin-composed campaigns - mail nobody asked for
      * individually. Kept apart from {@link #emailEnabled} so that opting out
      * of announcements does not also stop the email about an order you just
-     * placed. See V10 for why this defaults to true and when it should not.
+     * placed. See V11 for why this defaults to true and when it should not.
      */
     @Column(name = "marketing_emails", nullable = false)
     private boolean marketingEmails = true;
