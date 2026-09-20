@@ -491,7 +491,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* ---------------------------------------------------------- login */}
-        {/* {mode === 'login' && (
+        {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
             <Field label="Email">
               <input
@@ -526,10 +526,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <SubmitButton busy={busy} label="Log In" />
           </form>
-        )} */}
+        )}
 
         {/* --------------------------------------------------------- signup */}
-        {/* {mode === 'signup' && (
+        {mode === 'signup' && (
           <form onSubmit={handleSignup} className="space-y-4">
             <Field label="Full name">
               <input
@@ -588,7 +588,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </Field>
             <SubmitButton busy={busy} label="Create account" />
           </form>
-        )} */}
+        )}
 
         {/* ------------------------------------ Google: finish setting up */}
         {mode === 'profile' && (
