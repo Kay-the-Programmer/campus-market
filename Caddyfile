@@ -35,10 +35,27 @@
 	# policy breaks, and it fails silently in the console rather than loudly.
 	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com https://lh3.googleusercontent.com; connect-src 'self' https://*.googleapis.com https://*.google.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"
 
-	# The API. Same origin as the app by design - that removes the CORS
-	# preflight entirely, and is what lets the session cookie work without
-	# cross-origin credential handling.
-	handle /api/* {
+	# The API. The frontend is hosted on Vercel (cross-origin), so CORS headers
+	# are injected here at the Caddy edge. Preflight OPTIONS requests are answered
+	# immediately (204) without touching Spring Boot, which cuts latency and
+	# avoids any filter-ordering races in the JVM.
+	@api path /api/*
+	handle @api {
+		@cors_preflight method OPTIONS
+		handle @cors_preflight {
+			header Access-Control-Allow-Origin "{header.Origin}"
+			header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+			header Access-Control-Allow-Headers "*"
+			header Access-Control-Allow-Credentials "true"
+			header Access-Control-Max-Age "3600"
+			respond "" 204
+		}
+
+		header Access-Control-Allow-Origin "{header.Origin}"
+		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+		header Access-Control-Allow-Headers "*"
+		header Access-Control-Allow-Credentials "true"
+
 		reverse_proxy api:8080 {
 			header_up X-Real-IP {remote_host}
 		}
