@@ -7,6 +7,37 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:campusmarket}
     password: ${SPRING_DATASOURCE_PASSWORD:campusmarket}
 
+  # SMTP. No default host on purpose: Spring Boot builds a JavaMailSender only
+  # when spring.mail.host is set, and SmtpMailer keys "can we send mail?" off
+  # whether that bean exists. Left unset, every send is written to the log
+  # instead - which is what a developer wants and what an unconfigured
+  # production box should do rather than failing to start.
+  #
+  # Port 587 with STARTTLS is the near-universal submission port. Use 465 only
+  # with a provider that wants implicit TLS, and then set
+  # spring.mail.properties.mail.smtp.ssl.enable=true instead of starttls.
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            # Refuse to continue in the clear if the server will not upgrade.
+            # Without this, a misconfigured server silently downgrades and
+            # credentials cross the network in plaintext.
+            required: true
+        # Caps, so a hung provider cannot pin a mail thread indefinitely -
+        # the campaign executor has one thread and a stall would stop every
+        # later campaign behind it.
+        smtp.connectiontimeout: 10000
+        smtp.timeout: 15000
+        smtp.writetimeout: 15000
+
   jpa:
     hibernate:
       # Flyway owns the schema; Hibernate must never mutate it.
@@ -94,6 +125,22 @@ campusmarket:
   # this repository. Blank means no admin is created and startup logs why.
   admin-password: ${CAMPUSMARKET_ADMIN_PASSWORD:}
   admin-name: ${CAMPUSMARKET_ADMIN_NAME:Campus Marketplace Admin}
+
+  # --- Email -----------------------------------------------------------
+  # The transport itself is spring.mail.* below. These are the things the
+  # application needs on top of a working SMTP connection.
+  #
+  # Blank mail-from disables sending as surely as a missing host does: a
+  # message with no From is refused by every provider, so Mailer treats it as
+  # "not configured" and logs instead.
+  mail-from: ${CAMPUSMARKET_MAIL_FROM:}
+  mail-from-name: ${CAMPUSMARKET_MAIL_FROM_NAME:CampusMarket}
+  # Absolute, public, no trailing slash - it becomes the unsubscribe link and
+  # every deep link in an email. Campaigns refuse to send without it, because
+  # a campaign whose unsubscribe link does not work is worse than no campaign.
+  app-base-url: ${CAMPUSMARKET_APP_BASE_URL:}
+  mail-batch-size: ${CAMPUSMARKET_MAIL_BATCH_SIZE:25}
+  mail-batch-pause-millis: ${CAMPUSMARKET_MAIL_BATCH_PAUSE_MILLIS:1000}
   # One-shot: rotates the existing admin's password to admin-password on the
   # next boot, then should be unset again. See AppProperties for why this is
   # not simply applied every time.

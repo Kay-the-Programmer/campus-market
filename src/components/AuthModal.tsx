@@ -101,67 +101,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   }
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    resetFeedback();
-
-    const res = await api.auth.login(email.trim(), password);
-    setBusy(false);
-
-    if (res.ok) {
-      // Dropped the moment it is no longer needed, rather than being held
-      // until something happens to reopen the modal.
-      setPassword('');
-      onLoginSuccess?.(email.trim());
-      onClose();
-      return;
-    }
-
-    setError(res.error || 'Could not sign you in.');
-    setErrorCode(res.code || null);
-
-    // An unverified account is not a dead end - move them straight to the
-    // resend screen (workflow 3 step 2).
-    if (res.code === 'EMAIL_NOT_VERIFIED') {
-      setMode('verify');
-      setNotice('Verify your email before logging in.');
-      setError(null);
-    }
-  }
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    if (!campusZone) {
-      setError('Choose your campus location.');
-      return;
-    }
-    setBusy(true);
-    resetFeedback();
-
-    const res = await api.auth.signup({
-      name: name.trim(),
-      email: email.trim(),
-      password,
-      accountType,
-      campusZone,
-      phone: phone.trim() || undefined,
-      department: department.trim() || undefined,
-    });
-    setBusy(false);
-
-    if (res.ok) {
-      // The account exists now; nothing left in this flow needs the password.
-      setPassword('');
-      setConfirmPassword('');
-      setMode('verify');
-      setNotice(res.data?.message || 'Check your email to verify your account.');
-      setDevToken(res.data?.devToken || null);
-      return;
-    }
-    setError(res.error || 'Could not create your account.');
-    setErrorCode(res.code || null);
-  }
+  /*
+   * There is deliberately no email/password login or signup here.
+   *
+   * Google is the only way in, and the reason is the signup flow rather than
+   * the login one: creating an account with an address means proving you own
+   * it, which means a verification mail, a token, and a person sitting on a
+   * "check your email" screen. Google has already done that work, so a Google
+   * signup lands verified (AuthService sets emailVerified on creation) and
+   * goes straight into the app.
+   *
+   * The forms used to exist, commented out, which read as an accident and was
+   * restored as one. They are gone now; `git log` has them if the decision is
+   * ever revisited. The reset/verify modes below are kept because their email
+   * links are still reachable by URL for accounts that predate this.
+   */
 
   /**
    * First leg: run the popup and sign in. A returning user is done here. A
@@ -423,38 +377,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {(mode === 'login' || mode === 'signup') && (
-          <div className="grid grid-cols-2 border-b border-[#c3c6d7]/60 mb-6">
-            {(['login', 'signup'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => switchMode(tab)}
-                className={`py-2.5 text-center font-semibold text-sm transition-all duration-150 ${mode === tab
-                  ? 'text-[#2563eb] border-b-2 border-[#2563eb]'
-                  : 'text-[#737686] hover:text-[#0b1c30]'
-                  }`}
-              >
-                {tab === 'login' ? 'Log In' : 'Sign Up'}
-              </button>
-            ))}
-          </div>
-        )}
-
+        {/*
+          No Log In / Sign Up tabs. Google is the only way in, and it does not
+          distinguish the two - the same button signs an existing account in and
+          creates a new one. Two tabs that render identical content only invite
+          the question of what the difference is.
+        */}
         {mode !== 'login' && mode !== 'signup' && (
           <h3 className="text-base font-bold text-[#0b1c30] mb-4 text-center">{titles[mode]}</h3>
         )}
 
-        {(mode === 'login' || mode === 'signup') && isGoogleSignInConfigured && (
+        {(mode === 'login' || mode === 'signup') && (
           <>
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={busy}
-              className="w-full h-11 rounded-xl border border-[#c3c6d7] bg-white hover:bg-[#f8f9ff] text-[#0b1c30] font-semibold text-sm flex items-center justify-center gap-2.5 disabled:opacity-50 transition-colors"
-            >
-              <GoogleIcon className="w-4 h-4" />
-              <span>Sign in with Google</span>
-            </button>
+            <h3 className="text-base font-bold text-[#0b1c30] mb-1 text-center">
+              Continue to CampusMarket
+            </h3>
+            <p className="text-xs text-[#737686] mb-5 text-center">
+              Sign in with your Google account — no verification code to wait for.
+            </p>
+
+            {isGoogleSignInConfigured ? (
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={busy}
+                className="w-full h-11 rounded-xl border border-[#c3c6d7] bg-white hover:bg-[#f8f9ff] text-[#0b1c30] font-semibold text-sm flex items-center justify-center gap-2.5 disabled:opacity-50 transition-colors"
+              >
+                <GoogleIcon className="w-4 h-4" />
+                <span>Continue with Google</span>
+              </button>
+            ) : (
+              /*
+               * Load-bearing, not defensive padding. Google is now the only way
+               * in, so an unconfigured build is a locked door - and the version
+               * of this that rendered nothing at all produced a modal with a
+               * heading, a footer, and no way to sign in, which read as a bug in
+               * the site rather than a missing setting. Say which setting.
+               */
+              <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-3 text-xs text-amber-900">
+                <p className="font-semibold mb-1">Sign-in is unavailable</p>
+                <p>
+                  This build has no Google sign-in configuration, so there is no way to
+                  log in. Whoever deployed it needs to set the{' '}
+                  <code className="font-mono">VITE_FIREBASE_*</code> environment variables
+                  and redeploy — they are read when the site is built, not when it runs.
+                </p>
+              </div>
+            )}
           </>
         )}
 
@@ -488,106 +457,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
             <p className="text-xs text-emerald-800 font-medium">{notice}</p>
           </div>
-        )}
-
-        {/* ---------------------------------------------------------- login */}
-        {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Field label="Email">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@campus.edu"
-                required
-                autoComplete="email"
-                className="input-base text-sm"
-              />
-            </Field>
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-[#434655]">Password</label>
-                <button
-                  type="button"
-                  onClick={() => switchMode('forgot')}
-                  className="text-xs font-semibold text-[#2563eb] hover:text-[#004ac6]"
-                >
-                  Forgot password?
-                </button>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="input-base text-sm"
-              />
-            </div>
-            <SubmitButton busy={busy} label="Log In" />
-          </form>
-        )}
-
-        {/* --------------------------------------------------------- signup */}
-        {mode === 'signup' && (
-          <form onSubmit={handleSignup} className="space-y-4">
-            <Field label="Full name">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="input-base text-sm"
-              />
-            </Field>
-            <Field label="Campus email">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@campus.edu"
-                required
-                autoComplete="email"
-                className="input-base text-sm"
-              />
-            </Field>
-            <Field label="Password">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                className="input-base text-sm"
-              />
-              <p className="mt-1 text-[11px] text-[#737686]">
-                At least 8 characters, including a letter and a number.
-              </p>
-            </Field>
-
-            {accountTypePicker}
-            {zonePicker}
-
-            <Field label="Phone number (optional)">
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 (555) 000-0000"
-                autoComplete="tel"
-                className="input-base text-sm"
-              />
-            </Field>
-            <Field label="Faculty / department (optional)">
-              <input
-                type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="input-base text-sm"
-              />
-            </Field>
-            <SubmitButton busy={busy} label="Create account" />
-          </form>
         )}
 
         {/* ------------------------------------ Google: finish setting up */}

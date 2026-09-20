@@ -4,7 +4,6 @@ import com.campusmarket.domain.*;
 import com.campusmarket.repository.*;
 import com.campusmarket.security.AccessGuard;
 import com.campusmarket.security.Principal;
-import com.campusmarket.util.Money;
 import com.campusmarket.web.dto.ListingDtos.ListingDto;
 import com.campusmarket.web.dto.ListingDtos.PageDto;
 import com.campusmarket.web.dto.ListingDtos.SuggestionDto;
@@ -56,8 +55,8 @@ public class ListingService {
     private final SavedListingRepository savedListingRepository;
     private final ConversationRepository conversationRepository;
     private final CartItemRepository cartItemRepository;
-    private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final SavedListingNotifier savedListingNotifier;
     /** Records edits an admin makes to someone else's listing. */
     private final AuditService auditService;
     private final AccessGuard accessGuard;
@@ -271,13 +270,18 @@ public class ListingService {
             // listing may only be re-described or re-statused - not re-priced.
             applySoldListingEdits(listing, request);
         } else {
+            // Captured before applyRequest overwrites them: the notifier needs
+            // the transition, not the destination.
             BigDecimal previousPrice = listing.getPrice();
+            ListingStatus previousStatus = listing.getStatus();
+            Integer previousQuantity = listing.getQuantity();
+
             applyRequest(listing, request);
             if (request.status() != null && !request.status().isBlank()) {
                 listing.setStatus(parseStatusForSave(request.status()));
             }
             validateForStatus(listing);
-            notifyPriceDrop(listing, previousPrice);
+            notifySavedWatchers(listing, previousPrice, previousStatus, previousQuantity);
         }
 
         if (actingOnBehalf) {
@@ -312,7 +316,21 @@ public class ListingService {
             throw ApiException.badRequest("USE_MARK_SOLD",
                     "Use the Mark as Sold flow so the sale is recorded against a buyer.");
         }
+
+        ListingStatus previousStatus = listing.getStatus();
         listing.setStatus(target);
+
+        /*
+         * The reservation-fell-through case, and the main reason this is worth
+         * a notification at all: the watcher had already decided they wanted
+         * the item and been beaten to it. Guarded on the transition rather
+         * than the destination, so re-saving an already-ACTIVE listing sends
+         * nothing.
+         */
+        if (previousStatus == ListingStatus.RESERVED && target == ListingStatus.ACTIVE) {
+            savedListingNotifier.availableAgain(listing);
+        }
+
         return mapper.listing(listing, principal, savedIdsFor(principal));
     }
 
@@ -365,46 +383,39 @@ public class ListingService {
     // ---------------------------------------------------------------- helpers
 
     /**
-     * Tells everyone who saved this listing that it just got cheaper.
+     * Everything a watcher should hear about after an edit.
      *
-     * <p>Saving something is the clearest signal a student gives that they want
-     * it but not at that price, so this is the one notification the app sends
-     * that nobody explicitly triggered. It is deliberately narrow: only real
-     * decreases on a listing that is still buyable, and never to the seller who
-     * just made the edit.
+     * <p>Called with the values captured before the request was applied, so it
+     * can see transitions rather than states - "came back up for sale" is not
+     * something the listing alone can tell you.
+     *
+     * <p>Availability is checked before price, and only one of the two is
+     * sent. An edit that drops the price and marks the item sold in the same
+     * request is, to someone waiting for it, one piece of news: it is gone.
+     * Sending both would be a bargain announcement for something unbuyable.
      */
-    private void notifyPriceDrop(Listing listing, BigDecimal previousPrice) {
-        if (previousPrice == null || listing.getPrice() == null
-                || listing.getStatus() != ListingStatus.ACTIVE
-                || listing.getPrice().compareTo(previousPrice) >= 0) {
+    private void notifySavedWatchers(Listing listing, BigDecimal previousPrice,
+                                     ListingStatus previousStatus, Integer previousQuantity) {
+        ListingStatus status = listing.getStatus();
+
+        if (previousStatus != ListingStatus.SOLD && status == ListingStatus.SOLD) {
+            savedListingNotifier.soldOut(listing);
+            return;
+        }
+        if (previousStatus == ListingStatus.RESERVED && status == ListingStatus.ACTIVE) {
+            savedListingNotifier.availableAgain(listing);
+            return;
+        }
+        // Zero to positive only, so restocking from 3 to 8 stays quiet - the
+        // item was never unavailable, so nobody was waiting on it.
+        if (status == ListingStatus.ACTIVE
+                && previousQuantity != null && previousQuantity == 0
+                && listing.getQuantity() != null && listing.getQuantity() > 0) {
+            savedListingNotifier.backInStock(listing);
             return;
         }
 
-        List<UUID> watcherIds = savedListingRepository.findUserIdsByListingId(listing.getId());
-        if (watcherIds.isEmpty()) {
-            return;
-        }
-
-        // Scales are normalised so the three figures read as one sentence:
-        // an unscaled edit produces "Now K188 - down K7.00 from K195.00".
-        BigDecimal newPrice = money(listing.getPrice());
-        BigDecimal oldPrice = money(previousPrice);
-        String body = "Now " + Money.format(newPrice)
-                + " - down " + Money.format(oldPrice.subtract(newPrice))
-                + " from " + Money.format(oldPrice) + ".";
-
-        userRepository.findAllById(watcherIds).stream()
-                .filter(watcher -> !watcher.getId().equals(listing.getSeller().getId()))
-                .forEach(watcher -> notificationService.notify(
-                        watcher,
-                        NotificationType.PRICE_DROP,
-                        "Price drop: " + listing.getTitle(),
-                        body,
-                        "/listing/" + listing.getId()));
-    }
-
-    private BigDecimal money(BigDecimal amount) {
-        return amount.setScale(2, java.math.RoundingMode.HALF_UP);
+        savedListingNotifier.priceDropped(listing, previousPrice);
     }
 
     private Set<UUID> savedIdsFor(Principal principal) {

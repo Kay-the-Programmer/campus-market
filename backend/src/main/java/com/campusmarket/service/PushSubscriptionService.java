@@ -27,6 +27,7 @@ public class PushSubscriptionService {
     private final PushDeviceRepository pushDeviceRepository;
     private final NotificationPreferenceRepository preferenceRepository;
     private final PushNotificationService pushNotificationService;
+    private final Mailer mailer;
     private final AccessGuard accessGuard;
 
     /**
@@ -95,7 +96,9 @@ public class PushSubscriptionService {
                                                         Boolean orders,
                                                         Boolean reviews,
                                                         Boolean priceDrops,
-                                                        Boolean systemUpdates) {
+                                                        Boolean systemUpdates,
+                                                        Boolean emailEnabled,
+                                                        Boolean marketingEmails) {
         accessGuard.requireAuthenticated(principal);
         NotificationPreference preferences = preferenceRepository.findById(principal.id())
                 .orElseGet(() -> newPreferences(principal));
@@ -106,6 +109,8 @@ public class PushSubscriptionService {
         Optional.ofNullable(reviews).ifPresent(preferences::setReviews);
         Optional.ofNullable(priceDrops).ifPresent(preferences::setPriceDrops);
         Optional.ofNullable(systemUpdates).ifPresent(preferences::setSystemUpdates);
+        Optional.ofNullable(emailEnabled).ifPresent(preferences::setEmailEnabled);
+        Optional.ofNullable(marketingEmails).ifPresent(preferences::setMarketingEmails);
         preferences.setUpdatedAt(Instant.now());
 
         NotificationPreference saved = preferenceRepository.save(preferences);
@@ -121,6 +126,8 @@ public class PushSubscriptionService {
     private NotificationPreferencesDto toDto(NotificationPreference p, int deviceCount) {
         return new NotificationPreferencesDto(
                 p.isPushEnabled(),
+                p.isEmailEnabled(),
+                p.isMarketingEmails(),
                 p.isMessages(),
                 p.isOrders(),
                 p.isReviews(),
@@ -129,7 +136,10 @@ public class PushSubscriptionService {
                 deviceCount,
                 // Without server credentials there is nothing behind the toggles,
                 // so the UI hides the opt-in rather than offering a dead switch.
-                pushNotificationService.isConfigured());
+                pushNotificationService.isConfigured(),
+                // Same reasoning for email: a toggle with no SMTP behind it is
+                // a promise the server cannot keep.
+                mailer.isEnabled());
     }
 
     private PushPlatform parsePlatform(String platform) {

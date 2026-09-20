@@ -57,6 +57,27 @@ services:
       # are simply disabled - notifications still appear in-app, they just do not
       # reach devices, and everything else works the same.
       CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON: "${CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON:-}"
+      # Optional: SMTP, for notification email and admin campaigns. Left unset,
+      # Spring builds no JavaMailSender, SmtpMailer reports itself disabled, and
+      # every message is written to the container log instead - which is what a
+      # local run wants. Campaigns refuse to send at all rather than pretending.
+      #
+      # Any provider that speaks SMTP works; nothing here names one. Port 587
+      # with STARTTLS is the default in application.yml.
+      SPRING_MAIL_HOST: "${SPRING_MAIL_HOST:-}"
+      SPRING_MAIL_PORT: "${SPRING_MAIL_PORT:-587}"
+      SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME:-}"
+      SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD:-}"
+      # The envelope sender. Must be on a domain the provider has verified, or
+      # mail is rejected or junked in a way that looks like it never sent.
+      CAMPUSMARKET_MAIL_FROM: "${CAMPUSMARKET_MAIL_FROM:-}"
+      CAMPUSMARKET_MAIL_FROM_NAME: "${CAMPUSMARKET_MAIL_FROM_NAME:-CampusMarket}"
+      # Public URL of the frontend. Becomes the unsubscribe link and every deep
+      # link in an email, so a relative or localhost value produces mail whose
+      # links do not work for the recipient.
+      CAMPUSMARKET_APP_BASE_URL: "${CAMPUSMARKET_APP_BASE_URL:-}"
+      CAMPUSMARKET_MAIL_BATCH_SIZE: "${CAMPUSMARKET_MAIL_BATCH_SIZE:-25}"
+      CAMPUSMARKET_MAIL_BATCH_PAUSE_MILLIS: "${CAMPUSMARKET_MAIL_BATCH_PAUSE_MILLIS:-1000}"
       # Optional: move listing/promo image uploads to a Google Cloud Storage
       # bucket instead of the local volume below. Set both:
       #   CAMPUSMARKET_GCS_BUCKET - the bucket name (not a full URL)

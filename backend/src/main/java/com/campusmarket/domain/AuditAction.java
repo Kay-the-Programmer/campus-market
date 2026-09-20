@@ -27,5 +27,15 @@ public enum AuditAction {
     CREATE_CATEGORY,
     UPDATE_CATEGORY,
     DELETE_CATEGORY,
-    REASSIGN_CATEGORY
+    REASSIGN_CATEGORY,
+    /**
+     * A campaign email was sent. Audited like any other moderation action, and
+     * for a sharper reason than most: it is the only admin action that reaches
+     * people outside the app, it cannot be undone once the mail is accepted,
+     * and "who sent that to everyone?" is a question that gets asked.
+     *
+     * <p>audit_logs.action is a plain VARCHAR(40) with no CHECK, so this
+     * needed no migration - same as the constants V4 added.
+     */
+    SEND_CAMPAIGN
 }

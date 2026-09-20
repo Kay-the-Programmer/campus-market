@@ -1,8 +1,10 @@
 import {
   AccountType,
   AuthSession,
+  CampaignAudience,
   CampusZone,
   CartItem,
+  EmailCampaign,
   Listing,
   ListingCategory,
   ListingCondition,
@@ -361,6 +363,7 @@ function toNotification(dto: any): NotificationItem {
     MODERATION: 'moderation',
     REVIEW: 'review',
     PRICE_DROP: 'price-drop',
+    SAVED_UPDATE: 'saved-update',
   };
   return {
     id: dto?.id,
@@ -890,7 +893,11 @@ export const api = {
       };
     },
     /** Partial: send only the toggles that changed. */
-    async updatePreferences(changes: Partial<Omit<NotificationPreferences, 'deviceCount' | 'pushConfigured'>>) {
+    async updatePreferences(
+      changes: Partial<
+        Omit<NotificationPreferences, 'deviceCount' | 'pushConfigured' | 'emailConfigured'>
+      >,
+    ) {
       const res = await put('/api/notifications/preferences', changes);
       return {
         success: res.ok,
@@ -978,6 +985,43 @@ export const api = {
     async getStats() {
       const res = await get('/api/admin/stats');
       return { ...res.data, error: res.error, status: res.status };
+    },
+    /**
+     * How many people an audience reaches, without sending anything. Lets the
+     * composer state the number before the admin commits to it - nobody
+     * should have to send a campaign to find out how large it was.
+     */
+    async getCampaignAudience(audience: CampaignAudience) {
+      const res = await get(`/api/admin/campaigns/audience?audience=${audience}`);
+      return {
+        recipientCount: (res.data?.recipientCount as number | undefined) ?? 0,
+        error: res.error,
+        status: res.status,
+      };
+    },
+    async getCampaigns() {
+      const res = await get('/api/admin/campaigns');
+      return {
+        campaigns: (res.data?.campaigns ?? []) as EmailCampaign[],
+        error: res.error,
+        status: res.status,
+      };
+    },
+    /**
+     * Returns while the mail is still going out - the campaign comes back in
+     * SENDING and the list has to be re-read for the counts. An audience paced
+     * at a batch a second outlasts any sensible request timeout, so the server
+     * answers as soon as the row is committed.
+     */
+    async sendCampaign(subject: string, body: string, audience: CampaignAudience) {
+      const res = await post('/api/admin/campaigns', { subject, body, audience });
+      return {
+        success: res.ok,
+        campaign: res.data?.campaign as EmailCampaign | undefined,
+        error: res.error,
+        code: res.code,
+        status: res.status,
+      };
     },
     async getUsers() {
       const res = await get('/api/admin/users');

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bell, ArrowLeft, MessageSquare, ShoppingBag, ShieldCheck, Info, CheckCheck, Inbox,
-  Star, TrendingDown,
+  Star, TrendingDown, Bookmark,
 } from 'lucide-react';
 import { NotificationItem } from '../types';
 import { api } from '../services/api';
@@ -13,7 +13,8 @@ interface NotificationsScreenProps {
   onNavigateToLink?: (link: string) => void;
 }
 
-type FilterKey = 'all' | 'unread' | 'message' | 'order' | 'moderation' | 'review' | 'price-drop';
+type FilterKey = 'all' | 'unread' | 'message' | 'order' | 'moderation' | 'review'
+  | 'price-drop' | 'saved-update';
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -21,6 +22,7 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'message', label: 'Messages' },
   { key: 'order', label: 'Orders' },
   { key: 'price-drop', label: 'Price drops' },
+  { key: 'saved-update', label: 'Saved items' },
   { key: 'review', label: 'Reviews' },
   { key: 'moderation', label: 'Moderation' },
 ];
@@ -57,6 +59,15 @@ const TYPE_STYLES: Record<string, { icon: React.ReactNode; iconBg: string; accen
     iconBg: 'bg-[#e6faf1]',
     accent: 'before:bg-[#007d55]',
     dot: 'bg-[#007d55]',
+  },
+  /* Availability news about a saved item - sold, back up for sale, restocked.
+     Blue rather than the price-drop green: half of these are not good news,
+     and a green "Sold" would read as a congratulation. */
+  'saved-update': {
+    icon: <Bookmark className="w-[18px] h-[18px] text-[#2563eb]" />,
+    iconBg: 'bg-[#e5eeff]',
+    accent: 'before:bg-[#2563eb]',
+    dot: 'bg-[#2563eb]',
   },
   default: {
     icon: <Info className="w-[18px] h-[18px] text-[#737686]" />,

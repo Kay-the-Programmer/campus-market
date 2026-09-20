@@ -27,13 +27,25 @@ public final class ModerationDtos {
      */
     public record NotificationPreferencesDto(
             boolean pushEnabled,
+            /** Master switch for notification email - the counterpart of pushEnabled. */
+            boolean emailEnabled,
+            /**
+             * Campaign consent, separate from emailEnabled so that opting out
+             * of announcements does not silence the email about your own order.
+             */
+            boolean marketingEmails,
             boolean messages,
             boolean orders,
             boolean reviews,
             boolean priceDrops,
             boolean systemUpdates,
             int deviceCount,
-            boolean pushConfigured
+            boolean pushConfigured,
+            /**
+             * Whether the server can actually send mail. Lets the UI explain a
+             * dead toggle instead of showing one that silently does nothing.
+             */
+            boolean emailConfigured
     ) {}
 
     public record ReportDto(

@@ -100,6 +100,43 @@ public class AppProperties {
     private int rateLimitWritePerMinute = 120;
 
     /**
+     * Envelope sender for everything the app mails. Must be an address the
+     * SMTP provider has authorised: providers reject or silently junk mail
+     * whose From does not belong to a verified domain, and that failure looks
+     * like "the email never arrived" rather than an error.
+     *
+     * <p>Blank disables nothing on its own - {@code spring.mail.host} is what
+     * decides whether mail can be sent at all - but a send with no From is
+     * refused, so Mailer treats a blank value as "not configured" too.
+     */
+    private String mailFrom = "";
+
+    /** Display name beside {@link #mailFrom} in the recipient's client. */
+    private String mailFromName = "CampusMarket";
+
+    /**
+     * Public base URL of the frontend, used to build links in email - deep
+     * links into the app and the unsubscribe URL.
+     *
+     * <p>No sensible default exists. A relative link is meaningless in an
+     * inbox, and guessing localhost produces mail whose unsubscribe link
+     * cannot work, which is worse than mail that refuses to send.
+     */
+    private String appBaseUrl = "";
+
+    /**
+     * Campaign recipients per batch, and the pause between batches.
+     *
+     * <p>Shared SMTP providers rate-limit per connection and answer a burst
+     * with a temporary failure that looks identical to a bad address. Pacing
+     * costs a campaign a few seconds and removes a whole class of phantom
+     * bounce.
+     */
+    private int mailBatchSize = 25;
+
+    private long mailBatchPauseMillis = 1000;
+
+    /**
      * Where uploaded listing and promo images are written on disk. Relative
      * paths resolve against the working directory - {@code /app} in the
      * container image, which is why the Docker Compose file mounts a volume

@@ -85,7 +85,9 @@ public class NotificationController {
                 request.orders(),
                 request.reviews(),
                 request.priceDrops(),
-                request.systemUpdates());
+                request.systemUpdates(),
+                request.emailEnabled(),
+                request.marketingEmails());
         return Map.of("success", true, "preferences", updated);
     }
 }

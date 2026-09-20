@@ -23,6 +23,8 @@ public final class PushRequests {
             Boolean orders,
             Boolean reviews,
             Boolean priceDrops,
-            Boolean systemUpdates
+            Boolean systemUpdates,
+            Boolean emailEnabled,
+            Boolean marketingEmails
     ) {}
 }

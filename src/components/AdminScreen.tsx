@@ -10,12 +10,14 @@ import { useLiveCounts } from '../hooks/useLiveCounts';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
 import { PromoEditor } from './admin/PromoEditor';
 import { SpecialOffersEditor } from './admin/SpecialOffersEditor';
+import { CampaignComposer } from './admin/CampaignComposer';
 import { ListingManager } from './admin/ListingManager';
 import { formatPrice } from '../utils/currency';
 
 type Tab =
   | 'dashboard' | 'reports' | 'sellers' | 'heldOrders' | 'chats'
-  | 'users' | 'listings' | 'homepage' | 'specialOffers' | 'categories' | 'auditLogs';
+  | 'users' | 'listings' | 'homepage' | 'specialOffers' | 'categories'
+  | 'campaigns' | 'auditLogs';
 
 /** One thread in the admin's inbox - always a handover they are mediating. */
 interface ChatRow {
@@ -1246,6 +1248,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           {tab === 'homepage' && <PromoEditor onNotice={succeed} />}
 
           {tab === 'specialOffers' && <SpecialOffersEditor onNotice={succeed} />}
+          {tab === 'campaigns' && <CampaignComposer onNotice={succeed} />}
 
           {tab === 'listings' && (
             <ListingManager

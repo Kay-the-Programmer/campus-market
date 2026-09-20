@@ -110,7 +110,8 @@ export interface NotificationItem {
   message: string;
   time: string;
   read: boolean;
-  type: 'order' | 'message' | 'system' | 'moderation' | 'review' | 'price-drop';
+  type: 'order' | 'message' | 'system' | 'moderation' | 'review' | 'price-drop'
+    | 'saved-update';
   link?: string;
 }
 
@@ -122,14 +123,25 @@ export interface NotificationItem {
  * Moderation notices have no switch by design - see V6__push_notifications.sql.
  */
 export interface NotificationPreferences {
+  /** Master switch for push. The categories below are shared with email. */
   pushEnabled: boolean;
+  /** Master switch for notification email - the counterpart of pushEnabled. */
+  emailEnabled: boolean;
+  /**
+   * Campaign email. Separate from emailEnabled on purpose: opting out of
+   * announcements must not silence the email about your own order.
+   */
+  marketingEmails: boolean;
   messages: boolean;
   orders: boolean;
   reviews: boolean;
   priceDrops: boolean;
   systemUpdates: boolean;
   deviceCount: number;
+  /** Server has Firebase credentials; without them push cannot be delivered. */
   pushConfigured: boolean;
+  /** Server has SMTP; without it no email can be delivered. */
+  emailConfigured: boolean;
 }
 
 export interface Listing {
@@ -394,3 +406,31 @@ export interface AddToCartOptions {
 /** Resolves `false` on a failed add, so a caller with its own success animation
  *  (the detail page's "Added!" state) doesn't play it over a failure toast. */
 export type AddToCart = (listing: Listing, options?: AddToCartOptions) => void | Promise<void | boolean>;
+
+/**
+ * Who an email campaign goes to.
+ *
+ * <p>Marketing consent is applied on top of every one of these by the server,
+ * so no value here reaches someone who opted out.
+ */
+export type CampaignAudience = 'ALL' | 'BUYERS' | 'SELLERS' | 'APPROVED_SELLERS';
+
+/** One admin-composed email, as the console sees it. */
+export interface EmailCampaign {
+  id: string;
+  subject: string;
+  body: string;
+  audience: CampaignAudience;
+  /**
+   * SENDING is also where a crashed send is left - the server cannot resume
+   * one, so a campaign stuck in SENDING has to be judged from the counts.
+   */
+  status: 'DRAFT' | 'SENDING' | 'SENT' | 'FAILED';
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  /** Why a FAILED campaign never started. Null otherwise. */
+  error?: string | null;
+  createdAt: string;
+  sentAt?: string | null;
+}

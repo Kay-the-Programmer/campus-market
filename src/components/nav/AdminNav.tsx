@@ -1,13 +1,14 @@
 import React from 'react';
 import {
   LayoutDashboard, Flag, Users, Grid3x3, ShieldCheck, LogOut, User as UserIcon,
-  Store, PackageCheck, Megaphone, Tag, Package, MessageSquare,
+  Store, PackageCheck, Megaphone, Tag, Package, MessageSquare, Mail,
 } from 'lucide-react';
 import { AuthSession } from '../../types';
 
 export type AdminTab =
   | 'dashboard' | 'reports' | 'sellers' | 'heldOrders' | 'chats'
-  | 'users' | 'listings' | 'homepage' | 'specialOffers' | 'categories' | 'auditLogs';
+  | 'users' | 'listings' | 'homepage' | 'specialOffers' | 'categories'
+  | 'campaigns' | 'auditLogs';
 
 interface AdminNavProps {
   activeTab: AdminTab;
@@ -35,6 +36,7 @@ const TABS: { key: AdminTab; label: string; icon: React.ElementType; badge?: 're
   { key: 'homepage', label: 'Home Page', icon: Megaphone },
   { key: 'specialOffers', label: 'Special Offers', icon: Tag },
   { key: 'categories', label: 'Categories', icon: Grid3x3 },
+  { key: 'campaigns', label: 'Email Campaigns', icon: Mail },
   { key: 'auditLogs', label: 'Audit Trail', icon: ShieldCheck },
 ];
 

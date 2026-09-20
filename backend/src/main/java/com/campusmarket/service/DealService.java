@@ -31,6 +31,7 @@ public class DealService {
     private final ReviewRepository reviewRepository;
     private final ConversationRepository conversationRepository;
     private final NotificationService notificationService;
+    private final SavedListingNotifier savedListingNotifier;
     private final AccessGuard accessGuard;
     private final DtoMapper mapper;
 
@@ -93,6 +94,16 @@ public class DealService {
         deal.setMeetupTime(request.meetupTime());
         deal.setStatus(DealStatus.COMPLETED);
         dealRepository.save(deal);
+
+        /*
+         * Everyone still waiting on this item finds out it is gone.
+         *
+         * Placed after the conditional UPDATE above, so it can only run for
+         * the caller that actually won the race - the loser threw ALREADY_SOLD
+         * and never reaches here. Without that, two simultaneous confirmations
+         * would each tell the same watchers the same thing.
+         */
+        savedListingNotifier.soldOut(soldListing);
 
         // Only the buyer is prompted to review (workflow 9 step 5) - reviews
         // rate sellers, so sellers never review their buyers.

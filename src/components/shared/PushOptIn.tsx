@@ -146,12 +146,30 @@ export const PushOptIn: React.FC<PushOptInProps> = ({ visible = true }) => {
   );
 };
 
+/**
+ * What a user cares about, shared by push and email.
+ *
+ * <p>These are categories of activity, not channels. The same row governs
+ * whether an order update reaches a phone and whether it reaches an inbox,
+ * which is why the block is no longer nested under the push switch - doing
+ * that implied turning push off also stopped the emails.
+ *
+ * <p>`systemUpdates` was labelled "Announcements", which now collides with the
+ * marketing toggle below it. Renamed to say what it actually covers: notices
+ * the app generates about the service, not mail an admin composed.
+ */
 const TOGGLES: { key: keyof NotificationPreferences; label: string; hint: string }[] = [
   { key: 'messages', label: 'Messages', hint: 'Someone replies in a chat thread.' },
   { key: 'orders', label: 'Orders', hint: 'Order placed, accepted, ready for pickup or cancelled.' },
   { key: 'reviews', label: 'Reviews', hint: 'A trade completes and a review is left for you.' },
-  { key: 'priceDrops', label: 'Price drops', hint: 'Something you saved gets cheaper.' },
-  { key: 'systemUpdates', label: 'Announcements', hint: 'Occasional updates from CampusMarket.' },
+  {
+    key: 'priceDrops',
+    label: 'Saved items',
+    // Covers PRICE_DROP and SAVED_UPDATE both. The field is still called
+    // priceDrops server-side; the label says what it actually governs.
+    hint: 'Something you saved gets cheaper, sells, or comes back in stock.',
+  },
+  { key: 'systemUpdates', label: 'Service notices', hint: 'Changes to your account or the service.' },
 ];
 
 const Switch: React.FC<{ on: boolean; disabled?: boolean; onChange: () => void; label: string }> = ({
@@ -311,11 +329,15 @@ export const NotificationSettings: React.FC = () => {
         </div>
       )}
 
-      {/* ── Master switch + per-type ── */}
+      {/* ── Channel master switches ── */}
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#a0a3b1] mb-1">
+        How we reach you
+      </p>
+
       <div className="flex items-center justify-between gap-4 py-3 border-b border-[#eef1fa]">
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#0b1c30]">Push notifications</p>
-          <p className="text-xs text-[#737686] mt-0.5">Master switch for every device on your account.</p>
+          <p className="text-xs text-[#737686] mt-0.5">Every device on your account.</p>
         </div>
         <Switch
           label="Push notifications"
@@ -325,7 +347,46 @@ export const NotificationSettings: React.FC = () => {
         />
       </div>
 
-      <div className={preferences.pushEnabled ? '' : 'opacity-50 pointer-events-none'}>
+      <div className="flex items-center justify-between gap-4 py-3 border-b border-[#eef1fa]">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[#0b1c30]">Email</p>
+          <p className="text-xs text-[#737686] mt-0.5">
+            {preferences.emailConfigured
+              ? 'Sent to the address on your account.'
+              : 'Email isn’t set up on this server yet, so nothing can be sent.'}
+          </p>
+        </div>
+        <Switch
+          label="Email notifications"
+          on={preferences.emailEnabled && preferences.emailConfigured}
+          /*
+           * Disabled rather than hidden when the server has no SMTP. A toggle
+           * that silently does nothing is the failure this codebase already
+           * avoids for push, and the hint above says which it is.
+           */
+          disabled={saving === 'emailEnabled' || !preferences.emailConfigured}
+          onChange={() => save('emailEnabled', !preferences.emailEnabled)}
+        />
+      </div>
+
+      {/* ── Categories, shared by both channels ── */}
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#a0a3b1] mt-5 mb-1">
+        What to tell you about
+      </p>
+
+      {/*
+        Dimmed only when BOTH channels are off, not when push is. These rows
+        are shared, so gating them on pushEnabled alone would have shown email
+        categories as unavailable to someone who had deliberately chosen email
+        over push.
+      */}
+      <div
+        className={
+          preferences.pushEnabled || (preferences.emailEnabled && preferences.emailConfigured)
+            ? ''
+            : 'opacity-50 pointer-events-none'
+        }
+      >
         {TOGGLES.map(({ key, label, hint }) => (
           <div key={key} className="flex items-center justify-between gap-4 py-3 border-b border-[#eef1fa] last:border-0">
             <div className="min-w-0">
@@ -342,9 +403,31 @@ export const NotificationSettings: React.FC = () => {
         ))}
       </div>
 
+      {/* ── Marketing, deliberately apart from everything above ── */}
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#a0a3b1] mt-5 mb-1">
+        Announcements
+      </p>
+
+      <div className="flex items-center justify-between gap-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0b1c30]">Announcements and offers</p>
+          <p className="text-xs text-[#737686] mt-0.5">
+            Occasional email about CampusMarket. Turning this off never affects email about
+            your own orders and messages.
+          </p>
+        </div>
+        <Switch
+          label="Announcements and offers"
+          on={preferences.marketingEmails && preferences.emailConfigured}
+          disabled={saving === 'marketingEmails' || !preferences.emailConfigured}
+          onChange={() => save('marketingEmails', !preferences.marketingEmails)}
+        />
+      </div>
+
       <p className="text-[11px] text-[#a0a3b1] mt-4 leading-relaxed">
-        Account and moderation notices are always sent while push is on — they explain actions taken
-        on your account, so they can't be switched off separately.
+        Everything still appears in your notifications list either way. Account and moderation
+        notices are always sent on any channel you have on — they explain actions taken on your
+        account, so they can't be switched off separately.
       </p>
     </div>
   );

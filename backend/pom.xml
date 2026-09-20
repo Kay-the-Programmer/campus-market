@@ -50,6 +50,16 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <!-- SMTP. Deliberately a starter rather than a provider's SDK: every
+         transactional provider worth using (Brevo, Mailgun, SendGrid, SES,
+         Resend) speaks SMTP, so the provider is a matter of .env rather than
+         a code change. Spring Boot only builds a JavaMailSender when
+         spring.mail.host is set, which is what lets Mailer fall back to
+         logging on a machine with no mail configured. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
     <!-- Health endpoint only (see management.* in application.yml), so the
          container healthcheck and any future orchestrator can tell a wedged
          JVM from a running one. -->
