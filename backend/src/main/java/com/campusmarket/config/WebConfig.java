@@ -2,6 +2,7 @@ package com.campusmarket.config;
 
 import com.campusmarket.security.PrincipalArgumentResolver;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +15,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -28,6 +28,7 @@ import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class WebConfig implements WebMvcConfigurer {
 
     private final PrincipalArgumentResolver principalArgumentResolver;
@@ -46,27 +47,28 @@ public class WebConfig implements WebMvcConfigurer {
         resolvers.add(principalArgumentResolver);
     }
 
-    private static final List<String> DEFAULT_ORIGINS = List.of(
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "https://salepilot.space",
-            "https://www.salepilot.space",
-            "https://campusmarket.salepilot.space",
-            "https://campus-market-mu.vercel.app",
-            "https://www.campus-market-mu.vercel.app"
-    );
-
+    /**
+     * The allowlist as configured, minus the two things people get wrong when
+     * typing one into an environment variable: stray whitespace around the
+     * commas, and a trailing slash. Neither survives a string comparison
+     * against a browser's {@code Origin} header, which is always scheme, host
+     * and port and nothing else.
+     *
+     * <p>No hardcoded fallback. application.yml holds the default, and an
+     * explicitly empty list means the operator allowed nothing - silently
+     * substituting a built-in list there would be a surprising way to
+     * re-open access someone had deliberately closed.
+     */
     private List<String> resolveOrigins() {
         List<String> raw = properties.getCorsOrigins();
         if (raw == null) {
-            return DEFAULT_ORIGINS;
+            return List.of();
         }
-        List<String> cleaned = raw.stream()
+        return raw.stream()
                 .map(String::trim)
                 .map(s -> s.replaceAll("/+$", ""))
                 .filter(s -> !s.isEmpty())
                 .toList();
-        return cleaned.isEmpty() ? DEFAULT_ORIGINS : cleaned;
     }
 
     @Bean
@@ -75,6 +77,21 @@ public class WebConfig implements WebMvcConfigurer {
         CorsConfiguration config = new CorsConfiguration();
 
         List<String> origins = resolveOrigins();
+
+        /*
+         * Logged because a CORS failure is invisible from the server side: the
+         * request succeeds, the response is correct, and the browser discards
+         * it without telling anyone but the console of whoever is looking. One
+         * line on startup turns "the frontend cannot reach the API" from a
+         * guessing game into a comparison.
+         */
+        if (origins.isEmpty()) {
+            log.warn("CORS allowlist is empty - every cross-origin browser request will be rejected. "
+                    + "Set CAMPUSMARKET_CORS_ORIGINS to the origin serving the frontend.");
+        } else {
+            log.info("CORS allowlist: {}", origins);
+        }
+
         config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));
@@ -89,17 +106,21 @@ public class WebConfig implements WebMvcConfigurer {
         return bean;
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        List<String> origins = resolveOrigins();
-        registry.addMapping("/**")
-                .allowedOriginPatterns(origins.toArray(String[]::new))
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
-                .allowedHeaders("*")
-                .exposedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600L);
-    }
+    /*
+     * There is deliberately no addCorsMappings override to go with the filter
+     * above.
+     *
+     * Spring MVC's CORS support and a CorsFilter are two implementations of
+     * the same thing, and the filter is registered at HIGHEST_PRECEDENCE, so
+     * it answers every preflight before a handler is ever looked up. The MVC
+     * mapping never got to make a decision - Spring's processor sees the
+     * Access-Control-Allow-Origin header already on the response and returns
+     * early. It was a second copy of the policy that could drift from the
+     * first without any symptom to reveal it.
+     *
+     * The filter is also the one that covers the static resource handler
+     * below, which is why it is the copy that was kept.
+     */
 
     /**
      * Serves what {@link com.campusmarket.service.ImageStorageService} writes.

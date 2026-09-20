@@ -78,7 +78,15 @@ campusmarket:
   # Dev convenience: return verification / password-reset tokens in API responses
   # so the flows are exercisable without a mail provider. MUST be false in prod.
   expose-dev-tokens: ${CAMPUSMARKET_EXPOSE_DEV_TOKENS:false}
-  cors-origins: ${CAMPUSMARKET_CORS_ORIGINS:http://localhost:3000,http://localhost:5173,https://salepilot.space,https://www.salepilot.space,https://campus-market-mu.vercel.app,https://www.campus-market-mu.vercel.app}
+  # The single source of truth for the CORS allowlist. These are origins the
+  # FRONTEND is served from - not this API's own domain, which needs no entry
+  # because a request from the same origin is never a CORS request.
+  #
+  # WebConfig logs the resolved list on startup; check that line before
+  # theorising about a CORS failure. Wildcards are permitted (Spring matches
+  # these with allowedOriginPatterns) but a pattern is a standing grant to
+  # every hostname it matches, so prefer exact origins.
+  cors-origins: ${CAMPUSMARKET_CORS_ORIGINS:http://localhost:3000,http://localhost:5173,https://campus-market-mu.vercel.app}
   seed-demo-data: ${CAMPUSMARKET_SEED_DEMO_DATA:true}
   admin-email: ${CAMPUSMARKET_ADMIN_EMAIL:admin@campus.edu}
   admin-password: ${CAMPUSMARKET_ADMIN_PASSWORD:Admin123!}

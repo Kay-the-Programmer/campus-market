@@ -51,18 +51,46 @@ loads.
 |---|---|---|
 | `docker-compose.yml` | always | Postgres and the API. No published ports, no dev flags. |
 | `docker-compose.override.yml` | bare `docker compose` only | Published ports, dev tokens, verbose errors, rate limiting off. |
-| `docker-compose.prod.yml` | named explicitly | Caddy, TLS, restart policies, rate limiting on. |
+| `docker-compose.prod.yml` | named explicitly | Restart policies, rate limiting on, the shared edge network. |
 
-On the VPS, set `POSTGRES_PASSWORD` and `SITE_ADDRESS` (the bare domain, no scheme)
-in `.env`, point that domain's DNS at the box, then:
+### The current production topology
+
+The frontend and the API are deployed to different places, and the split is worth
+stating plainly because most of the configuration below only makes sense in light
+of it:
+
+- **Frontend — Vercel.** Built from this repo. It needs `VITE_API_BASE_URL` set in
+  Vercel's own Project Settings → Environment Variables, because Vite reads it at
+  build time and bakes the value into the bundle. Changing it requires a redeploy.
+- **API — a Google Cloud VM**, behind the Caddy that belongs to the *SalePilot*
+  stack on the same box. That Caddy publishes host ports 80 and 443; two containers
+  cannot publish the same port, so this project does not run an edge of its own in
+  production. It joins a shared Docker network instead, and SalePilot's Caddyfile
+  has the site block that terminates TLS for the API domain and proxies to it.
+
+Because the two are on different origins, CORS is real and is enforced by the API:
+`CAMPUSMARKET_CORS_ORIGINS` must list the origin **serving the frontend** — not the
+API's own domain, which needs no entry. The API logs the allowlist it resolved on
+startup; read that line before theorising about a CORS failure.
+
+### On the VM
+
+Once per box, create the network the two projects share:
+
+```bash
+docker network create edge
+```
+
+Then set `POSTGRES_PASSWORD` and `CAMPUSMARKET_CORS_ORIGINS` in `.env`, point the
+API domain's DNS at the box, and:
 
 ```bash
 npm run prod:up
 ```
 
-Caddy fetches and renews the TLS certificate on its own, serves the built frontend,
-and proxies `/api` to the API container. App and API share an origin, so there is no
-CORS configuration to get wrong.
+`SITE_ADDRESS` and this repo's own `Caddyfile` belong to the all-in-one deployment,
+where one Caddy serves both the SPA and the API on a single origin. That is not the
+setup above, and nothing in the production path reads either of them.
 
 **Type the production command, never a bare `docker compose up`.** On the VPS a bare
 `up` silently pulls in `docker-compose.override.yml`, which publishes the database

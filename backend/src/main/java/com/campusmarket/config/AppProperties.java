@@ -18,14 +18,16 @@ public class AppProperties {
      */
     private boolean exposeDevTokens = false;
 
-    private List<String> corsOrigins = List.of(
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "https://salepilot.space",
-            "https://www.salepilot.space",
-            "https://campus-market-mu.vercel.app",
-            "https://www.campus-market-mu.vercel.app"
-    );
+    /**
+     * Browser origins allowed to call this API - i.e. where the frontend is
+     * served from, not this API's own domain.
+     *
+     * <p>Deliberately empty here. The default lives in application.yml, which
+     * always binds over whatever is written as a field initialiser, so a list
+     * in both places is a list in one place plus a decoy - and the two had
+     * already drifted apart. {@link WebConfig} logs what it resolved.
+     */
+    private List<String> corsOrigins = List.of();
 
     /**
      * Whether to seed sample demo listings and demo customer/seller users on an empty database.

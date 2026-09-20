@@ -35,20 +35,23 @@
 	# policy breaks, and it fails silently in the console rather than loudly.
 	header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com https://lh3.googleusercontent.com; connect-src 'self' https://*.googleapis.com https://*.google.com https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"
 
-	# The API. The frontend is hosted on Vercel (cross-origin), so CORS headers
-	# are injected at the Caddy edge for all /api/* requests.
+	# The API.
+	#
+	# No CORS headers here. This file is the all-in-one deployment, where the
+	# SPA below and the API are the same origin, so there is nothing to grant.
+	#
+	# An earlier version of this block did inject them, for the Vercel-hosted
+	# frontend - but that frontend is not served by this Caddy at all, so the
+	# headers belonged on whichever edge fronts the API for it. Worse, it set
+	# Access-Control-Allow-Origin to {header.Origin}: reflecting the caller's
+	# own origin alongside Allow-Credentials: true grants every site on the
+	# internet credentialed access to the API. CORS is owned in one place, and
+	# that place is Spring's allowlist (campusmarket.cors-origins), which is
+	# already configured for the cross-origin case.
 	handle /api/* {
-		@options method OPTIONS
-		respond @options 204
-
-		header Access-Control-Allow-Origin "{header.Origin}"
-		header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
-		header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-		header Access-Control-Allow-Credentials "true"
-		header Access-Control-Max-Age "3600"
-		header Vary "Origin"
-
 		reverse_proxy api:8080 {
+			# The app rate-limits per IP, so it needs the caller's address
+			# rather than this proxy's.
 			header_up X-Real-IP {remote_host}
 		}
 	}

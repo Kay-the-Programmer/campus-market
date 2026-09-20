@@ -1,4 +1,4 @@
-# Production overlay for the VPS.
+# Production overlay for the shared VM.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
@@ -7,38 +7,40 @@
 # the box - typing a bare `docker compose up` there would silently pull in the
 # dev overrides, which is precisely the failure this split exists to prevent.
 #
+# There is deliberately no edge (Caddy) service here.
+#
+# This VM already runs the SalePilot stack, whose Caddy publishes host ports 80
+# and 443. Two containers cannot publish the same port, so an edge of our own
+# would simply fail to start - and did: campusmarket.salepilot.space answered
+# 502 for every request because the only Caddy on the box could not route to
+# this project's api container across the Docker network boundary.
+#
+# So SalePilot's Caddy is the single edge for the whole box. It terminates TLS
+# for campusmarket.salepilot.space and proxies to `api` below over the shared
+# `edge` network. The frontend lives on Vercel, so nothing here needs to serve
+# static files either - this project is an API on this VM and nothing more.
+#
+# Create the shared network once per box, before the first `up`:
+#
+#   docker network create edge
+#
 # Required in .env alongside POSTGRES_PASSWORD:
-#   SITE_ADDRESS   the domain Caddy fetches a certificate for, e.g.
-#                  campusmarket.example.com (bare domain, no scheme)
+#   CAMPUSMARKET_CORS_ORIGINS   comma-separated browser origins allowed to call
+#                               this API - i.e. where the frontend is served
+#                               from, NOT this API's own domain.
 
 services:
-  web:
-    build:
-      context: .
-    container_name: campusmarket-web
-    depends_on:
-      api:
-        condition: service_healthy
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
-    ports:
-      # The only two ports open on the host. 80 is required even though the
-      # site is HTTPS-only: it carries the ACME challenge and the redirect.
-      - "80:80"
-      - "443:443"
-    volumes:
-      # Certificates and ACME account keys. Without this volume Caddy
-      # re-requests a certificate on every recreate and will hit Let's
-      # Encrypt's rate limit (5 per domain per week) within a day of ordinary
-      # deploys.
-      - caddy-data:/data
-      - caddy-config:/config
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options: {max-size: "10m", max-file: "3"}
-
   api:
+    # Joined so SalePilot's Caddy, which lives in a different Compose project
+    # and therefore a different default network, can reach this container at
+    # all. `campusmarket-api` is pinned as an alias rather than relying on the
+    # service name: `api` is generic enough to collide with the next project
+    # that joins this network, and the edge config references it by name.
+    networks:
+      default: {}
+      edge:
+        aliases:
+          - campusmarket-api
     environment:
       # Belt and braces. application.yml already defaults this to false, but
       # the flag is dangerous enough to be worth stating where someone reading
@@ -49,12 +51,23 @@ services:
       CAMPUSMARKET_SEED_DEMO_DATA: "${CAMPUSMARKET_SEED_DEMO_DATA:-false}"
       CAMPUSMARKET_ADMIN_EMAIL: "${CAMPUSMARKET_ADMIN_EMAIL:-admin@campus.edu}"
       CAMPUSMARKET_ADMIN_PASSWORD: "${CAMPUSMARKET_ADMIN_PASSWORD:-Admin123!}"
-      # If the frontend is hosted on another domain or port, supply comma-separated
-      # origins (e.g. CAMPUSMARKET_CORS_ORIGINS=https://app.mydomain.com).
-      CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-https://salepilot.space,https://www.salepilot.space,https://campusmarket.salepilot.space,https://campus-market-mu.vercel.app,https://www.campus-market-mu.vercel.app,http://localhost:3000,http://localhost:5173}"
+      # Where the frontend is served from. The Vercel production domain is the
+      # real one; localhost is kept so a developer can point a local `npm run
+      # dev` at this API when reproducing something that only happens against
+      # production data.
+      #
+      # Vercel preview deployments get their own per-commit hostnames and are
+      # NOT covered. Add a pattern like https://campus-market-*.vercel.app if
+      # you need them - Spring matches these with allowedOriginPatterns, so
+      # wildcards work, but note that a pattern is a standing grant to every
+      # hostname it matches.
+      CAMPUSMARKET_CORS_ORIGINS: "${CAMPUSMARKET_CORS_ORIGINS:-https://campus-market-mu.vercel.app,http://localhost:3000,http://localhost:5173}"
       # Container memory is the ceiling the JVM should size its heap against.
       JAVA_OPTS: "-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport"
 
-volumes:
-  caddy-data:
-  caddy-config:
+networks:
+  # Created by hand on the box (`docker network create edge`) and shared with
+  # the SalePilot project. External on purpose: Compose must attach to the
+  # existing network, not create a second one namespaced to this project.
+  edge:
+    external: true
