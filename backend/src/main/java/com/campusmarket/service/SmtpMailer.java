@@ -109,7 +109,15 @@ public class SmtpMailer implements Mailer {
         }
     }
 
-    private InternetAddress fromAddress() throws UnsupportedEncodingException {
+    /**
+     * Declares both checked exceptions the two constructors throw: the
+     * one-argument form parses the address and throws AddressException (a
+     * MessagingException), the three-argument form encodes the display name
+     * and throws UnsupportedEncodingException. The caller's try block already
+     * catches both.
+     */
+    private InternetAddress fromAddress()
+            throws UnsupportedEncodingException, jakarta.mail.MessagingException {
         String name = properties.getMailFromName();
         return (name == null || name.isBlank())
                 ? new InternetAddress(from())

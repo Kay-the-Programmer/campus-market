@@ -78,12 +78,23 @@ public class DataSeeder implements CommandLineRunner {
         User existing = userRepository.findByEmail(email).orElse(null);
 
         if (existing == null) {
-            if (password.isBlank()) {
-                log.warn("No administrator account exists and no password is configured, so none was created. "
-                        + "Set CAMPUSMARKET_ADMIN_PASSWORD (and optionally CAMPUSMARKET_ADMIN_EMAIL) and restart.");
-                return;
-            }
-            log.info("Creating administrator account: {}", email);
+            /*
+             * Created from the email alone. Sign-in is Google-only, so the
+             * account needs no password to be usable: the administrator signs
+             * in with the Google account for this address, AuthService links
+             * the two by verified email, and the ADMIN role carries across.
+             *
+             * This used to refuse to create the account without a password,
+             * which after the move to Google-only meant demanding a secret
+             * that nothing could ever check - and left a fresh deployment with
+             * no administrator at all until someone invented one.
+             *
+             * A password is still applied when one is configured, for the
+             * reset flow that is reachable by emailed link. Absent, the hash
+             * is null, which login() already treats as "Google-only account".
+             */
+            log.info("Creating administrator account: {} (signs in with Google; {})",
+                    email, password.isBlank() ? "no password set" : "password set");
             // No department, avatar, phone or address. The previous version
             // filled these with placeholder values - a stock photo and a
             // +1-800 number - which then showed up as though a real person
@@ -91,6 +102,9 @@ public class DataSeeder implements CommandLineRunner {
             // the app; inventing one here only creates something to undo.
             User admin = user(name, email, password, Role.ADMIN, null, null, null);
             userRepository.save(admin);
+            log.warn("The administrator must sign in with the Google account for {}. "
+                    + "If that address is not a Google account you control, set "
+                    + "CAMPUSMARKET_ADMIN_EMAIL to one that is and restart.", email);
             return;
         }
 
@@ -291,7 +305,11 @@ public class DataSeeder implements CommandLineRunner {
         User user = new User();
         user.setName(name);
         user.setEmail(email.toLowerCase());
-        user.setPasswordHash(passwordEncoder.encode(password));
+        // Null rather than a hash of "" - an empty-string hash is a password
+        // that matches an empty submission, which is not "no password".
+        user.setPasswordHash(password == null || password.isBlank()
+                ? null
+                : passwordEncoder.encode(password));
         user.setRole(role);
         user.setEmailVerified(true);
         user.setVerified(true);

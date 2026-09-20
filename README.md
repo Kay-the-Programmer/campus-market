@@ -127,7 +127,30 @@ people have already signed up with" are the same command, and only the row listi
 you which one you are actually running.
 
 What comes back: the eight categories, and one administrator built from
-`CAMPUSMARKET_ADMIN_EMAIL` / `_PASSWORD` / `_NAME`. Nothing else.
+`CAMPUSMARKET_ADMIN_EMAIL` / `_NAME`. Nothing else.
+
+### How the administrator signs in
+
+With Google, exactly like everyone else — there is no password form anywhere in
+the app. The seeder creates the account with the `ADMIN` role and no password; the
+first time someone signs in with the Google account for that exact address,
+`AuthService.googleSignIn` finds the existing row by Google-verified email, links
+the Google identity to it, and the role carries across.
+
+Two consequences worth stating plainly:
+
+- **`CAMPUSMARKET_ADMIN_EMAIL` must be a Google account you can sign in to.** A
+  Gmail address, or a Workspace address on a domain with Google sign-in. Anything
+  else creates an administrator nobody can become, which is why the production
+  compose file refuses to start without the variable set.
+- **The email is the credential.** Whoever controls that Google account is the
+  admin. Protect it the way you would a root password — 2-step verification on,
+  recovery options current.
+
+Locked out — lost the Google account, or set the wrong address? Change
+`CAMPUSMARKET_ADMIN_EMAIL` to any Google account you control and restart. The seeder
+promotes an existing account with that address to `ADMIN` (or creates one), and you
+sign in with Google. The previous admin account is left untouched.
 
 ## Demo accounts
 

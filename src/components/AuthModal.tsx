@@ -393,7 +393,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Continue to CampusMarket
             </h3>
             <p className="text-xs text-[#737686] mb-5 text-center">
-              Sign in with your Google account — no verification code to wait for.
+              Sign in with your Google account.
+              <br></br>
+              <span className="text-red-500">Quickly get started</span>
             </p>
 
             {isGoogleSignInConfigured ? (

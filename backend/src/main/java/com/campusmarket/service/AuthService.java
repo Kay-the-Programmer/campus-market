@@ -281,9 +281,17 @@ public class AuthService {
 
         Map<String, Object> body = sessionPayload(user, createSession(user));
         body.put("isNewUser", isNewUser);
-        // Tells the client to show the "finish setting up" step rather than
-        // dropping someone into the app with no zone set.
-        body.put("needsProfile", user.getCampusZone() == null);
+        /*
+         * Tells the client to show the "finish setting up" step rather than
+         * dropping someone into the app with no zone set.
+         *
+         * Never for an administrator. The step asks "buy or sell?" and "which
+         * part of campus?", and an admin is blocked from every flow those
+         * answers govern - so the seeded admin, which has no zone on purpose,
+         * would otherwise be met on first sign-in by a questionnaire whose
+         * answers change nothing. They go straight to the console.
+         */
+        body.put("needsProfile", user.getRole() != Role.ADMIN && user.getCampusZone() == null);
         return body;
     }
 
