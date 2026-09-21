@@ -56,10 +56,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     setActiveTab(currentView);
   }, [currentView]);
 
-  // RBAC rule 4: admins never get the customer bar
-  if (currentUser.role === 'admin') return null;
-  if (HIDES_BOTTOM_NAV.includes(currentView)) return null;
-
   const go = useCallback(
     (view: ViewType) => {
       // Swallow accidental double-fires (fast repeat taps / touch+click ghost events)
@@ -81,6 +77,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     },
     [isGuest, onNavigate, onOpenAuthModal],
   );
+
+  /*
+   * Early returns come AFTER every hook, and this position is load-bearing.
+   *
+   * They used to sit above the useCallback, which meant this component ran
+   * eight hooks as a customer and seven the moment it returned early - and
+   * React treats a change in hook count between renders as a corrupted
+   * component ("Rendered fewer hooks than expected", error #300). Signing in
+   * as an admin took the whole app to the error screen; a seller opening the
+   * Sell form would have done the same. The hooks-order rule is not about
+   * where a component *starts* returning, it is that every render must call
+   * the same hooks - so conditional exits belong below the last of them.
+   */
+  // RBAC rule 4: admins never get the customer bar
+  if (currentUser.role === 'admin') return null;
+  if (HIDES_BOTTOM_NAV.includes(currentView)) return null;
 
   // Handle swipe gestures for navigation — axis-locked and velocity-aware
   // so vertical scrolling and slow drags never trigger a tab change.
