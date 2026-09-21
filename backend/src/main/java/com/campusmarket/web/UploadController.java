@@ -10,15 +10,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Where a listing photo or promo banner actually goes once picked.
+ * Accepts an image and returns the URL that serves it.
  *
- * <p>Any signed-in account may call this - it only writes a file and hands
- * back its URL, and does not attach it to anything. What that URL is allowed
- * to become part of (a listing, a promo slot) is enforced separately, where
- * that request is validated.
+ * <p>Any signed-in user may upload: the endpoint stores bytes and nothing else,
+ * and knows nothing about what the image is for. Whether the caller may attach
+ * it to the thing it is about to become part of (a listing, a promo slot) is
+ * enforced separately, where that request is validated.
  */
 @RestController
 @RequiredArgsConstructor
@@ -27,10 +28,24 @@ public class UploadController {
     private final ImageStorageService imageStorageService;
     private final AccessGuard accessGuard;
 
+    /**
+     * @param file  the full-size image
+     * @param thumb optional card-size rendition of the same image, made by the
+     *              client. Stored under the same id so it is derivable from
+     *              {@code url} by convention - see ImageStorageService.THUMB_SUFFIX.
+     */
     @PostMapping("/api/uploads/image")
     public Map<String, String> uploadImage(@AuthPrincipal Principal principal,
-                                           @RequestParam("file") MultipartFile file) {
+                                           @RequestParam("file") MultipartFile file,
+                                           @RequestParam(value = "thumb", required = false) MultipartFile thumb) {
         accessGuard.requireAuthenticated(principal);
-        return Map.of("url", imageStorageService.store(file));
+        ImageStorageService.Stored stored = imageStorageService.store(file, thumb);
+
+        // LinkedHashMap rather than Map.of: thumbUrl is legitimately null when
+        // no thumbnail was sent, and Map.of rejects null values.
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("url", stored.url());
+        body.put("thumbUrl", stored.thumbUrl());
+        return body;
     }
 }

@@ -13,6 +13,7 @@ import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/P
 import { FilterPill } from './search/FilterPill';
 import { formatPrice } from '../utils/currency';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
+import { ListingImage } from './shared/ListingImage';
 
 const PAGE_SIZE = 24;
 
@@ -415,10 +416,9 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
         className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
       >
         <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
-          <img
+          <ListingImage
             src={item.image}
             alt={item.title}
-            loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <div className="absolute top-2.5 left-2.5">

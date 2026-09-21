@@ -13,6 +13,7 @@ import { Modal, ErrorBanner, Field } from './shared/Modal';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { useToast } from './shared/ToastProvider';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface DetailScreenProps {
   listing: Listing;
@@ -492,9 +493,17 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
             <div className="sticky top-20">
               {/* Main Image */}
               <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-900 shadow-xl shadow-slate-200/50 ring-1 ring-slate-900/5">
-                <img
+                {/*
+                  The one image on this page worth the full 1600px - it fills
+                  the column and is what the visitor came to look at. Eager and
+                  high priority: it is the largest thing on screen at paint, so
+                  it is what the browser's "largest contentful paint" waits on.
+                */}
+                <ListingImage
                   src={images[activeImageIndex]}
                   alt={listing.title}
+                  full
+                  eager
                   className="w-full h-full object-cover"
                 />
 
@@ -1018,7 +1027,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                      <img
+                      <ListingImage
                         src={item.image}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

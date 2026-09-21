@@ -9,6 +9,7 @@ import { Listing } from '../types';
 import { api } from '../services/api';
 import { MarkSoldModal } from './shared/MarkSoldModal';
 import { Modal, ErrorBanner } from './shared/Modal';
+import { ListingImage } from './shared/ListingImage';
 
 interface MyListingsScreenProps {
   onBack: () => void;
@@ -385,7 +386,7 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
       >
         {/* Thumbnail */}
         {item.image ? (
-          <img
+          <ListingImage
             src={item.image}
             alt={item.title}
             className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0 border border-[#e5eeff]"

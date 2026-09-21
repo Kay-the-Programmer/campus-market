@@ -708,9 +708,12 @@ export const api = {
      * boundary - setting one by hand here would omit the boundary and the
      * server would fail to split the request back into its parts.
      */
-    async image(blob: Blob, filename: string) {
+    async image(blob: Blob, filename: string, thumb?: Blob) {
       const form = new FormData();
       form.append('file', blob, filename);
+      // Same request, second part. One round trip, one id on the server, and
+      // no way for the thumbnail to exist without its full image or vice versa.
+      if (thumb) form.append('thumb', thumb, filename);
       const headers: Record<string, string> = {};
       const token = getToken();
       if (token) headers.Authorization = `Bearer ${token}`;

@@ -9,6 +9,7 @@ import { MarkSoldModal } from './shared/MarkSoldModal';
 import { ReviewModal } from './shared/ReviewModal';
 import { ErrorBanner } from './shared/Modal';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface MessagesScreenProps {
   initialTab?: 'history' | 'chat';
@@ -480,7 +481,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                         <Tag className="w-5 h-5 text-[#b4c5ff]" />
                       </div>
                     ) : (
-                      <img src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
+                      <ListingImage src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
                     )}
                     <div className="min-w-0">
                       <h3 className={`font-bold text-sm sm:text-base truncate ${deal.listing.removed ? 'text-[#737686] italic' : 'text-[#0b1c30]'}`}>
@@ -628,7 +629,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                           <Tag className="w-3.5 h-3.5 text-[#b4c5ff]" />
                         </div>
                       ) : (
-                        <img
+                        <ListingImage
                           src={t.listing.image}
                           alt=""
                           className={`w-9 h-9 rounded-lg object-cover border border-[#e5eeff] shrink-0 ${t.unreadCount === 0 ? 'opacity-70' : ''}`}
@@ -668,7 +669,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                           <Tag className="w-4 h-4 text-[#b4c5ff]" />
                         </div>
                       ) : (
-                        <img src={thread.listing.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
+                        <ListingImage src={thread.listing.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">

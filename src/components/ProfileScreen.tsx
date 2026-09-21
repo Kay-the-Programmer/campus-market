@@ -10,6 +10,7 @@ import { ReportModal } from './shared/ReportModal';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
 import { ProfileEditor } from './shared/ProfileEditor';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface ProfileScreenProps {
   listings: Listing[];
@@ -438,7 +439,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   className="bg-white rounded-2xl border border-[#e5eeff] p-3.5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex space-x-3"
                 >
                   <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-[#e5eeff] shrink-0">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                    <ListingImage src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
                   </div>
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div>

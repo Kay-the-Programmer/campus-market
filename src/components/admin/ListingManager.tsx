@@ -6,6 +6,7 @@ import { Listing } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner } from '../shared/Modal';
 import { formatPrice } from '../../utils/currency';
+import { ListingImage } from '../shared/ListingImage';
 
 interface ListingManagerProps {
   onNotice: (message: string) => void;
@@ -150,7 +151,7 @@ export const ListingManager: React.FC<ListingManagerProps> = ({
                 key={l.id}
                 className="flex items-center gap-3 p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors"
               >
-                <img
+                <ListingImage
                   src={l.image}
                   alt=""
                   className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0"

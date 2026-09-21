@@ -7,6 +7,7 @@ import { api } from '../services/api';
 import { AuthSession, CAMPUS_ZONES, CampusZone, Order, zoneLabel } from '../types';
 import { Modal, ErrorBanner, Field } from './shared/Modal';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface CartScreenProps {
   onBack: () => void;
@@ -484,7 +485,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({
                             <Tag className="w-6 h-6 text-[#b4c5ff]" />
                           </div>
                         ) : (
-                          <img
+                          <ListingImage
                             src={row.listing.image}
                             alt={row.listing.title}
                             className={`w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0 ${row.available ? '' : 'grayscale opacity-60'

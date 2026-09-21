@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { ReviewModal } from './shared/ReviewModal';
 import { ErrorBanner } from './shared/Modal';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface DealsScreenProps {
   onBack: () => void;
@@ -134,7 +135,7 @@ export const DealsScreen: React.FC<DealsScreenProps> = ({ onBack, onExplore }) =
                         <Tag className="w-5 h-5 text-[#b4c5ff]" />
                       </div>
                     ) : (
-                      <img src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
+                      <ListingImage src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
                     )}
                     <div className="min-w-0">
                       <h3 className={`font-bold text-sm sm:text-base truncate ${deal.listing.removed ? 'text-[#737686] italic' : 'text-[#0b1c30]'}`}>

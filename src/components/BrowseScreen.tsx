@@ -16,6 +16,7 @@ import { formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
+import { ListingImage } from './shared/ListingImage';
 
 interface BrowseScreenProps {
   listings: Listing[];
@@ -954,7 +955,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 onTouchEnd={onTouchEnd}
                 onTouchCancel={() => (carouselTouch.current = null)}
               >
-                {carouselSlides.map((slide) => (
+                {carouselSlides.map((slide, slideIndex) => (
                   <div
                     key={slide.id}
                     className={`min-w-full bg-gradient-to-br ${PROMO_THEME_GRADIENT[slide.theme]} relative`}
@@ -993,10 +994,19 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       {slide.imageUrl ? (
                         <div className="w-full lg:w-1/2 shrink-0">
                           <div className="relative w-full lg:aspect-[16/9] lg:rounded-2xl overflow-hidden">
-                            <img
+                            {/*
+                              Banners are full-bleed at 1280px, so the
+                              640px thumbnail would visibly blur here - this
+                              is the one list where "full" is right. Only the
+                              first slide is eager: it is the largest thing on
+                              the busiest page and paints first; the rest sit
+                              off-screen in the carousel and can wait.
+                            */}
+                            <ListingImage
                               src={slide.imageUrl}
                               alt=""
-                              decoding="async"
+                              full
+                              eager={slideIndex === 0}
                               className="block w-full h-auto lg:absolute lg:inset-0 lg:h-full object-contain"
                             />
                           </div>
@@ -1088,10 +1098,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                   className="shrink-0 w-32 text-left group"
                 >
                   <div className="relative w-32 h-24 rounded-xl overflow-hidden bg-[#e5eeff] border border-[#e5eeff]">
-                    <img
+                    <ListingImage
                       src={item.image}
                       alt=""
-                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                     {!item.isAvailable && (
@@ -1149,11 +1158,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                   >
                     {item.imageUrl ? (
                       <>
-                        <img
+                        <ListingImage
                           src={item.imageUrl}
                           alt=""
                           aria-hidden="true"
-                          decoding="async"
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div
@@ -1447,11 +1455,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                     className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
                   >
                     <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
-                      <img
+                      <ListingImage
                         src={item.image}
                         alt={item.title}
-                        loading="lazy"
-                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
 

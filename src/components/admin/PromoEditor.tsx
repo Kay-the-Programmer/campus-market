@@ -9,53 +9,18 @@ import {
 } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
+import { uploadImageFile } from '../../utils/images';
+import { ListingImage } from '../shared/ListingImage';
 
 /*
  * Banners are decorative and full-bleed, so they are compressed harder than
  * listing photos: this image ships to every visitor on the busiest page, and
  * a crisp 1600px original would dominate the payload for no visible gain.
+ * The rendering itself is the shared pipeline in utils/images.ts; only the
+ * size and quality differ from a listing photo.
  */
-const MAX_DIMENSION = 1280;
-const IMAGE_QUALITY = 0.8;
-
-function compressImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('That file is not an image we can read.'));
-    };
-    img.onload = () => {
-      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-
-      URL.revokeObjectURL(objectUrl);
-
-      if (!ctx) {
-        reject(new Error('Could not process that image.'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          reject(new Error('Could not process that image.'));
-          return;
-        }
-        const res = await api.uploads.image(blob, 'promo.webp');
-        if (res.ok && res.url) {
-          resolve(res.url);
-        } else {
-          reject(new Error(res.error || 'Could not upload that image.'));
-        }
-      }, 'image/webp', IMAGE_QUALITY);
-    };
-    img.src = objectUrl;
-  });
-}
+const BANNER_MAX_EDGE = 1280;
+const BANNER_QUALITY = 0.8;
 
 type Draft = {
   id?: string;
@@ -235,7 +200,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     setImageBusy(true);
     setError(null);
     try {
-      const url = await compressImageFile(file);
+      const url = await uploadImageFile(file, { maxEdge: BANNER_MAX_EDGE, quality: BANNER_QUALITY, filename: 'promo.webp' });
       setDraft({ ...draft, imageUrl: url });
     } catch (e: any) {
       setError(e?.message || 'Could not process that image.');
@@ -252,7 +217,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
         >
           {d.imageUrl && (
             <>
-              <img src={d.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <ListingImage src={d.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-[#0b1c30]" style={{ opacity: d.imageOverlay / 100 }} />
             </>
           )}
@@ -279,7 +244,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
       >
         {d.imageUrl && (
           <>
-            <img src={d.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <ListingImage src={d.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-[#0b1c30]" style={{ opacity: d.imageOverlay / 100 }} />
           </>
         )}

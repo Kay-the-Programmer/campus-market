@@ -19,6 +19,7 @@ import { api } from '../services/api';
 import { DetailScreen } from './DetailScreen';
 import { Modal } from './shared/Modal';
 import { formatPrice } from '../utils/currency';
+import { uploadImageFile } from '../utils/images';
 
 interface SellScreenProps {
   onBack: () => void;
@@ -62,58 +63,12 @@ const FIELD_LABEL: Record<string, string> = {
 
 // Every photo is downscaled and re-encoded client-side before it goes
 // anywhere - a raw phone photo can be 8-12MB, which would bloat the upload and
-// the stored file for no visual benefit at listing-card size. What changed is
-// only where the result ends up: it is uploaded and the URL that comes back
-// is what gets stored, rather than the compressed image itself.
+// the stored file for no visual benefit at listing-card size. The rendering
+// itself lives in utils/images.ts, shared with the promo editor, and now
+// produces a thumbnail alongside the full image in the same pass. What is
+// stored is the URL that comes back, not the image.
 const MAX_PHOTOS = 5;
 const MAX_SOURCE_FILE_MB = 15;
-const MAX_DIMENSION = 1600;
-const IMAGE_QUALITY = 0.82;
-
-function compressImageFile(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-
-    img.onload = () => {
-      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
-      const width = Math.round(img.width * scale);
-      const height = Math.round(img.height * scale);
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-
-      URL.revokeObjectURL(objectUrl);
-
-      if (!ctx) {
-        reject(new Error('Image processing is not supported in this browser.'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          reject(new Error(`Could not process "${file.name}".`));
-          return;
-        }
-        const res = await api.uploads.image(blob, 'listing.webp');
-        if (res.ok && res.url) {
-          resolve(res.url);
-        } else {
-          reject(new Error(res.error || `Could not upload "${file.name}".`));
-        }
-      }, 'image/webp', IMAGE_QUALITY);
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error(`Could not read "${file.name}".`));
-    };
-
-    img.src = objectUrl;
-  });
-}
 
 /** Splits a pre-existing free-text availability string into recognised chips
  *  plus whatever doesn't match one, so editing an older listing never silently
@@ -359,7 +314,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
         continue;
       }
       try {
-        next.push(await compressImageFile(file));
+        next.push(await uploadImageFile(file, { filename: 'listing.webp' }));
       } catch (err) {
         setPhotoError(err instanceof Error ? err.message : `Could not process "${file.name}".`);
       }

@@ -7,6 +7,7 @@ import { api } from '../../services/api';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { getRecentSearches, removeRecentSearch, clearRecentSearches } from '../../services/recentSearches';
 import { formatPrice } from '../../utils/currency';
+import { ListingImage } from '../shared/ListingImage';
 
 const MIN_QUERY = 2;
 
@@ -261,7 +262,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                 className={rowCls(i)}
               >
                 {s.image ? (
-                  <img src={s.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
+                  <ListingImage src={s.image} alt="" className="w-9 h-9 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
                 ) : (
                   <div className="w-9 h-9 rounded-lg bg-[#eff4ff] flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4 text-[#b4c5ff]" />

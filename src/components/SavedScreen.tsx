@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AddToCart, AuthSession, Listing } from '../types';
 import { formatPrice } from '../utils/currency';
+import { ListingImage } from './shared/ListingImage';
 
 interface SavedScreenProps {
   savedListings: Listing[];
@@ -190,7 +191,7 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
               >
                 {/* Banner image */}
                 <div className="relative aspect-[16/9] w-full bg-[#e5eeff] overflow-hidden">
-                  <img
+                  <ListingImage
                     src={item.image}
                     alt={item.title}
                     className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${

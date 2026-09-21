@@ -119,26 +119,87 @@ public class ImageStorageService {
         }
     }
 
-    /** The live upload endpoint - a photo a seller or admin just picked. */
-    public String store(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw ApiException.badRequest("EMPTY_FILE", "Choose an image to upload.");
+    /**
+     * Suffix that turns a stored image's name into its thumbnail's name.
+     *
+     * <p>Convention rather than a database column, deliberately. The full
+     * image's URL is what listings and promos store; the thumbnail's URL is
+     * derived from it by anyone who wants it, on either side of the API. That
+     * keeps the thumbnail entirely out of the data model - no migration, no
+     * DTO field, no mapper change - and means an image without a thumbnail
+     * (there are none yet, but there could be) degrades to the full image
+     * rather than to a broken one. See {@code thumbnailUrl} in the frontend's
+     * utils/images.ts for the other half.
+     */
+    public static final String THUMB_SUFFIX = ".thumb";
+
+    /**
+     * A stored image, addressed by the URL of its full-size version.
+     *
+     * @param url      what to persist and serve - the full image
+     * @param thumbUrl the small version for cards and lists, or null when
+     *                 the client sent none
+     */
+    public record Stored(String url, String thumbUrl) {}
+
+    /**
+     * The live upload endpoint - a photo a seller or admin just picked, with
+     * an optional thumbnail rendered by the same client.
+     *
+     * <p>The thumbnail is made client-side, not here. The browser already has
+     * the decoded image on a canvas to produce the full-size upload; drawing
+     * it a second time at card size costs nothing. Doing it on the server
+     * would need an image library that can decode WebP - which the JDK's
+     * ImageIO cannot - and a native codec on a small VM, for work the client
+     * has already done.
+     *
+     * <p>Both parts share one id, so the thumbnail is always findable from
+     * the full image's URL and nothing else has to remember it exists.
+     */
+    public Stored store(MultipartFile file, MultipartFile thumb) {
+        byte[] bytes = readPart(file, "Choose an image to upload.");
+        String mimeType = requireSupportedMimeType(file.getContentType());
+        String id = UUID.randomUUID().toString();
+
+        String url = write(id + "." + EXTENSION_BY_MIME_TYPE.get(mimeType), bytes);
+
+        String thumbUrl = null;
+        if (thumb != null && !thumb.isEmpty()) {
+            /*
+             * A thumbnail that fails must not fail the upload. The full image
+             * is what the listing needs; the thumbnail is a speed-up, and
+             * cards fall back to the full image when it is missing. Logged so
+             * a systematic problem is visible, not surfaced to the seller who
+             * just successfully uploaded a photo.
+             */
+            try {
+                byte[] thumbBytes = readPart(thumb, "");
+                String thumbType = requireSupportedMimeType(thumb.getContentType());
+                thumbUrl = write(id + THUMB_SUFFIX + "." + EXTENSION_BY_MIME_TYPE.get(thumbType), thumbBytes);
+            } catch (ApiException e) {
+                log.warn("Thumbnail for {} rejected ({}); the full image was stored", id, e.getMessage());
+            }
         }
-        if (file.getSize() > MAX_BYTES) {
+        return new Stored(url, thumbUrl);
+    }
+
+    /** Validates and reads one multipart part, with the caller's message for the empty case. */
+    private byte[] readPart(MultipartFile part, String emptyMessage) {
+        if (part == null || part.isEmpty()) {
+            throw ApiException.badRequest("EMPTY_FILE", emptyMessage);
+        }
+        if (part.getSize() > MAX_BYTES) {
             throw ApiException.badRequest("IMAGE_TOO_LARGE",
                     "That image is too large. Use a smaller or more compressed one.");
         }
-        String mimeType = requireSupportedMimeType(file.getContentType());
-        byte[] bytes;
         try {
-            bytes = file.getBytes();
+            return part.getBytes();
         } catch (IOException e) {
             // The upload was cut off mid-transfer. The client's problem, and
             // retryable - not a server fault worth a 500.
             throw ApiException.badRequest("UPLOAD_INTERRUPTED",
                     "The upload did not complete. Please try again.");
         }
-        return write(bytes, mimeType);
     }
 
     /**
@@ -155,16 +216,17 @@ public class ImageStorageService {
         String header = dataUri.substring("data:".length(), comma);
         String mimeType = requireSupportedMimeType(header.split(";")[0]);
         byte[] bytes = Base64.getDecoder().decode(dataUri.substring(comma + 1));
-        return write(bytes, mimeType);
+        // No thumbnail for a backfilled legacy image: nothing here can decode
+        // it to make one, and cards fall back to the full image.
+        return write(UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(mimeType), bytes);
     }
 
-    private String write(byte[] bytes, String mimeType) {
+    private String write(String filename, byte[] bytes) {
         if (!writable) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "UPLOADS_UNAVAILABLE",
                     "Image uploads are temporarily unavailable. Please try again later.", Map.of());
         }
 
-        String filename = UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(mimeType);
         Path target = root.resolve(filename);
         try {
             // CREATE_NEW: a UUID collision is astronomically unlikely, but if

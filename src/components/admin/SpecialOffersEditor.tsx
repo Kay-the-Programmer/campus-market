@@ -4,6 +4,7 @@ import { Listing } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
 import { formatPrice } from '../../utils/currency';
+import { ListingImage } from '../shared/ListingImage';
 
 interface SpecialOffersEditorProps {
   onNotice: (message: string) => void;
@@ -142,7 +143,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
             return (
               <div key={o.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
                 <div className="relative aspect-[16/9] bg-slate-100">
-                  <img src={o.image} alt="" className="w-full h-full object-cover" />
+                  <ListingImage src={o.image} alt="" className="w-full h-full object-cover" />
                   {typeof o.discountPercent === 'number' && (
                     <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#b3123c] text-white text-[11px] font-extrabold">
                       -{o.discountPercent}%
@@ -234,7 +235,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
                 onClick={() => { setTarget(l); setWasPrice(''); setError(null); }}
                 className="w-full flex items-center gap-3 p-2 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-left transition-colors"
               >
-                <img src={l.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                <ListingImage src={l.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-900 truncate">{l.title}</p>
                   <p className="text-xs text-slate-500 truncate">
