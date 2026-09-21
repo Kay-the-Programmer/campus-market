@@ -153,20 +153,10 @@ public class AppProperties {
      */
     private String firebaseCredentialsJson;
 
-    /**
-     * Google Cloud Storage bucket for listing and promo images. Left blank,
-     * ImageStorageService writes to local disk instead (see uploadsDir) - a
-     * bucket is an enhancement over that, not something the app requires to
-     * run, the same way Google sign-in above is optional.
+    /*
+     * There is no Cloud Storage bucket setting any more. Images are written to
+     * uploadsDir, full stop - see ImageStorageService for why the bucket
+     * backend was removed. Any CAMPUSMARKET_GCS_* variable still in an .env
+     * file is ignored.
      */
-    private String gcsBucket = "";
-
-    /**
-     * Full contents of a service-account key file (JSON) authorised to write
-     * to gcsBucket. Left blank, falls back to GOOGLE_APPLICATION_CREDENTIALS
-     * (a mounted key file path) or ambient Application Default Credentials -
-     * the same two-step resolution firebaseCredentialsJson uses, and commonly
-     * the same key file, since one service account can hold both roles.
-     */
-    private String gcsCredentialsJson;
 }

@@ -81,6 +81,51 @@ export function resolveUrl(path: string): string {
   return API_BASE_URL ? `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}` : path;
 }
 
+/** The path prefix under which the API serves the images it stores. */
+const UPLOADS_PREFIX = '/api/uploads/';
+
+/**
+ * Rewrites every image URL the API serves itself to an absolute one, anywhere
+ * in a response.
+ *
+ * The API stores images on its own disk and returns them as `/api/uploads/x`,
+ * a path relative to the API. This app runs on Vercel - a different origin -
+ * so a bare <img src="/api/uploads/x.jpg"> asks Vercel for the file, hits the
+ * SPA catch-all rewrite, and gets index.html back as a broken image on every
+ * listing. Cloud Storage URLs used to be absolute, which is why this was never
+ * needed and why the gap was invisible until the bucket went away.
+ *
+ * Done once, here, on the way in - not in the mappers and not in the eight
+ * components that render images. Promos, reviews and message threads reach
+ * their screens without passing through a mapper at all, so a per-field fix
+ * would have covered listings and quietly missed the rest. Matching on the
+ * value rather than the key is what makes it complete: the rule is "paths this
+ * API serves become absolute", and that is true of the string wherever it
+ * sits.
+ *
+ * The upload endpoint bypasses this on purpose (it uses fetch directly): its
+ * response URL is the one thing that has to stay relative, because the client
+ * sends it straight back to be stored. The backend also normalises on write
+ * (ImageStorageService.toStoredForm), so nothing depends on getting that
+ * right at every call site either.
+ */
+export function absolutiseUploads<T>(value: T): T {
+  if (typeof value === 'string') {
+    return (value.startsWith(UPLOADS_PREFIX) ? resolveUrl(value) : value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map(absolutiseUploads) as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = absolutiseUploads(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 async function request<T = any>(
   path: string,
   options: RequestInit = {},
@@ -97,7 +142,7 @@ async function request<T = any>(
 
   try {
     const res = await fetch(resolveUrl(path), { ...options, headers });
-    const data = await res.json().catch(() => ({}));
+    const data = absolutiseUploads(await res.json().catch(() => ({})));
 
     /*
      * Anything that changed server state may have changed a badge.

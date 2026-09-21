@@ -156,15 +156,14 @@ campusmarket:
   rate-limit-enabled: ${CAMPUSMARKET_RATE_LIMIT_ENABLED:false}
   rate-limit-auth-per-minute: 20
   rate-limit-write-per-minute: 120
+  # Where listing and promo images are written. The only image backend: a
+  # directory, proven writable at startup by ImageStorageService, served back
+  # at /api/uploads/**. In the container this is a Docker volume so the files
+  # outlive a redeploy.
   uploads-dir: ${CAMPUSMARKET_UPLOADS_DIR:uploads}
   # Firebase service-account key JSON (the whole file contents, not a path).
   # Blank disables "Continue with Google" without affecting anything else.
   firebase-credentials-json: ${CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON:}
-  # Blank keeps image uploads on local disk (uploads-dir above). Set both to
-  # move them to Cloud Storage - see the note beside this var in
-  # docker-compose.yml for the one-time bucket setup that requires.
-  gcs-bucket: ${CAMPUSMARKET_GCS_BUCKET:}
-  gcs-credentials-json: ${CAMPUSMARKET_GCS_CREDENTIALS_JSON:}
 
 logging:
   level:

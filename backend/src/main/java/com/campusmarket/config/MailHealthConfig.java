@@ -20,7 +20,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
  * application reported DOWN, the container healthcheck failed, and nothing
  * was actually wrong.
  *
- * <p>Mail is optional by design here, like Google sign-in and GCS. An optional
+ * <p>Mail is optional by design here, like Google sign-in. An optional
  * feature that is switched off is not a health problem; it is a fact. So this
  * bean - named to take precedence over the auto-configured one - reports UP
  * with a note when mail is off, and defers to Boot's real connection test

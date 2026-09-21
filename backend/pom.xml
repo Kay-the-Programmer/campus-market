@@ -21,10 +21,13 @@
     <java.version>21</java.version>
   </properties>
 
-  <!-- Aligns google-cloud-storage's own transitive versions (grpc, protobuf,
-       google-auth) without touching firebase-admin's version below, which
-       stays pinned - an explicit <dependency> version always wins over
-       anything a BOM manages, so the two coexist safely. -->
+  <!-- Aligns the google-cloud-* transitives (grpc, protobuf, google-auth)
+       that firebase-admin pulls in, without touching firebase-admin's own
+       version below - an explicit <dependency> version always wins over
+       anything a BOM manages. Kept after the direct google-cloud-storage
+       dependency was removed with the bucket backend: it manages the same
+       artifacts either way, so dropping it would change resolved versions
+       for no reason. -->
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -87,12 +90,6 @@
       <groupId>com.google.firebase</groupId>
       <artifactId>firebase-admin</artifactId>
       <version>9.3.0</version>
-    </dependency>
-    <!-- Optional image storage backend - ImageStorageService uses this only
-         when campusmarket.gcs-bucket is set; see GcsConfig. -->
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-storage</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>

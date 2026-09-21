@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -42,6 +43,21 @@ public class GlobalExceptionHandler {
         body.put("code", "VALIDATION_ERROR");
         body.put("fields", fields);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * A multipart body over Spring's limit (spring.servlet.multipart.* in
+     * application.yml). Thrown before any controller runs, so
+     * ImageStorageService's own size check never sees it - without this it
+     * fell through to the handler below and a too-big photo came back as
+     * "Something went wrong", which reads as a bug rather than a size limit.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleTooLarge(MaxUploadSizeExceededException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "That image is too large. Use a smaller or more compressed one.");
+        body.put("code", "IMAGE_TOO_LARGE");
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
     @ExceptionHandler(Exception.class)

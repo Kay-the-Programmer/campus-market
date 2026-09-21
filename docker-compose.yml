@@ -78,33 +78,36 @@ services:
       CAMPUSMARKET_APP_BASE_URL: "${CAMPUSMARKET_APP_BASE_URL:-}"
       CAMPUSMARKET_MAIL_BATCH_SIZE: "${CAMPUSMARKET_MAIL_BATCH_SIZE:-25}"
       CAMPUSMARKET_MAIL_BATCH_PAUSE_MILLIS: "${CAMPUSMARKET_MAIL_BATCH_PAUSE_MILLIS:-1000}"
-      # Optional: move listing/promo image uploads to a Google Cloud Storage
-      # bucket instead of the local volume below. Set both:
-      #   CAMPUSMARKET_GCS_BUCKET - the bucket name (not a full URL)
-      #   CAMPUSMARKET_GCS_CREDENTIALS_JSON - a service-account key's JSON
-      #     contents (as one line); can be the same key used for Firebase
-      #     above if that service account also has Storage Object Admin on
-      #     this bucket
-      # The bucket needs public read so served URLs work without a signed
-      # request: Cloud Console -> bucket -> Permissions -> Grant Access ->
-      # principal "allUsers", role "Storage Object Viewer" (or equivalently
-      # `gcloud storage buckets add-iam-policy-binding gs://BUCKET
-      # --member=allUsers --role=roles/storage.objectViewer`). Left unset,
-      # uploads are written to local disk instead - everything else works
-      # the same.
-      CAMPUSMARKET_GCS_BUCKET: "${CAMPUSMARKET_GCS_BUCKET:-}"
-      CAMPUSMARKET_GCS_CREDENTIALS_JSON: "${CAMPUSMARKET_GCS_CREDENTIALS_JSON:-}"
-      # Preferred over pasting the key JSON above: point at a mounted key file
-      # instead. GcsConfig leaves credentials to the client library when
-      # gcs-credentials-json is blank, and the library reads this path. Keeping
-      # a private key in a gitignored file beats inlining it in an env var,
-      # where it lands in shell history and `docker inspect` output.
+      # Images are stored on local disk - the campusmarket-uploads volume
+      # below - and nowhere else. There used to be an optional Cloud Storage
+      # backend here; it was removed after a suspended GCP billing account
+      # turned every upload into a 500 while a perfectly good disk sat idle.
+      # Any CAMPUSMARKET_GCS_* variable still in .env is ignored.
+      #
+      # Firebase's alternative to pasting the key JSON above: point at a
+      # mounted key file instead. The Firebase Admin SDK reads this path when
+      # CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON is blank. Keeping a private key
+      # in a gitignored file beats inlining it in an env var, where it lands
+      # in shell history and `docker inspect` output.
       GOOGLE_APPLICATION_CREDENTIALS: "${GOOGLE_APPLICATION_CREDENTIALS:-}"
     volumes:
+      # Every uploaded image. Survives `prod:up` (containers are recreated,
+      # volumes are not) and is destroyed by `down -v` along with the
+      # database - which is the command the README reserves for starting
+      # over, not for deploying.
+      #
+      # Ownership: the Dockerfile creates /app/uploads owned by the `app`
+      # user, and Docker copies that ownership into a named volume the first
+      # time it is created. ImageStorageService proves the directory writable
+      # at startup and says exactly what to run if it is not.
       - campusmarket-uploads:/app/uploads
-      # The service-account key, when one is in use. `:ro` because the API only
-      # ever reads it. Harmless when the file is absent and GCS is unconfigured
-      # - Compose creates an empty placeholder and nothing reads it.
+      # The Firebase service-account key, when one is used via
+      # GOOGLE_APPLICATION_CREDENTIALS. `:ro` because the API only reads it.
+      #
+      # If the file is ABSENT on the host, Docker creates an empty directory
+      # in its place and mounts that - which is why a missing key shows up as
+      # "is a directory" rather than "not found". Either put the file there
+      # or use CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON and leave this alone.
       - ./backend/gcs-key.json:/app/gcs-key.json:ro
     healthcheck:
       # Actuator exposes health only (see application.yml). wget rather than

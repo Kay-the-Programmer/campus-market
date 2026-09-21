@@ -465,6 +465,9 @@ public class ListingService {
             listing.getImages().clear();
             request.images().stream()
                     .filter(url -> url != null && !url.isBlank())
+                    // Stored relative, whatever form the client sent - see
+                    // ImageStorageService.toStoredForm for why that matters.
+                    .map(ImageStorageService::toStoredForm)
                     .forEach(listing::addImage);
         }
     }

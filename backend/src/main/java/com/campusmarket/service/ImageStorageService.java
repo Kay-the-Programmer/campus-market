@@ -1,29 +1,25 @@
 package com.campusmarket.service;
 
-import com.campusmarket.config.AppProperties;
 import com.campusmarket.web.error.ApiException;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * Writes listing and promo images and hands back the URL that serves them.
+ * Writes listing and promo images to local disk and hands back the URL that
+ * serves them.
  *
  * <p>Both uploads and stored images used to be a single base64 string living
  * inside the same JSON as everything else about a listing - every payload that
@@ -31,14 +27,27 @@ import java.util.UUID;
  * unable to be served by anything but this API. A file addressed by URL can be
  * cached by the browser and reused across requests instead.
  *
- * <p>Two backends, chosen once at startup: Google Cloud Storage when
- * {@code campusmarket.gcs-bucket} is set, local disk otherwise - the same
- * optional-cloud-service shape {@link com.campusmarket.config.FirebaseConfig}
- * already uses, so a contributor with no GCP project can still run the app,
- * and production points at a bucket with no code change. A GCS-served URL is
- * a direct {@code storage.googleapis.com} link the browser fetches on its
- * own, so once configured this API is no longer in the path for serving a
- * single image, only for writing new ones.
+ * <p>Local disk is the only backend. There used to be a second, Google Cloud
+ * Storage, chosen when a bucket was configured. It was removed after it took
+ * every upload down with a 500 for a reason no code could fix - the GCP
+ * project's billing account was suspended - while the app had a perfectly
+ * good disk it could have written to. A dependency on a metered cloud service
+ * for something a directory does is a failure mode, not a feature. The files
+ * live in a Docker volume (see docker-compose.yml) and are served by
+ * {@code WebConfig#addResourceHandlers} at {@code /api/uploads/**}, which
+ * rides the same edge proxy and CORS rules as everything else.
+ *
+ * <p>What "always works" means here, concretely:
+ * <ul>
+ *   <li>The directory is created and <em>proven writable</em> at startup, not
+ *       discovered unwritable on the first upload. A broken volume shows up in
+ *       the startup log with the path and the fix.</li>
+ *   <li>Every failure the caller can see is a specific {@link ApiException}
+ *       with a status and a message, never a bare 500 from an unchecked
+ *       exception.</li>
+ *   <li>Filenames are random UUIDs, so nothing the client sends can name a
+ *       path, and a URL is either not written yet or never changes.</li>
+ * </ul>
  */
 @Service
 @Slf4j
@@ -50,29 +59,63 @@ public class ImageStorageService {
             "image/jpeg", "jpg",
             "image/gif", "gif");
 
-    private static final String CACHE_CONTROL = "public, max-age=31536000, immutable";
-
     /**
      * Comfortably above anything the client-side downscale in SellScreen or
      * PromoEditor ever produces (both target well under 1MB). This is a floor
-     * against abuse, not the expected size.
+     * against abuse, not the expected size. Kept below Spring's multipart
+     * limit (10MB in application.yml) so this check, with its clear message,
+     * is the one that fires rather than the framework's.
      */
     private static final long MAX_BYTES = 8L * 1024 * 1024;
 
-    private final ObjectProvider<Storage> gcsProvider;
-    private final String gcsBucket;
-    private final Path localRoot;
+    private final Path root;
 
-    public ImageStorageService(ObjectProvider<Storage> gcsProvider,
-                               AppProperties properties,
-                               @Value("${campusmarket.uploads-dir}") String uploadsDir) {
-        this.gcsProvider = gcsProvider;
-        this.gcsBucket = properties.getGcsBucket();
-        this.localRoot = Paths.get(uploadsDir).toAbsolutePath().normalize();
+    /**
+     * Set once at startup by {@link #probeWritable()}. When false, uploads
+     * answer 503 with the reason instead of attempting a write that will fail.
+     */
+    private final boolean writable;
+
+    public ImageStorageService(@Value("${campusmarket.uploads-dir}") String uploadsDir) {
+        this.root = Paths.get(uploadsDir).toAbsolutePath().normalize();
+        this.writable = probeWritable();
+    }
+
+    /**
+     * Creates the directory and writes-then-deletes a probe file in it.
+     *
+     * <p>Existence is not enough. The directory is a volume mount point, so it
+     * always exists; the question is whether the container's user can write
+     * to it, and the only way to know is to try. A volume created outside the
+     * normal path - by hand, or on a host where the image's ownership was not
+     * copied in - is root-owned, and the app runs as a non-root user. Finding
+     * that out here, with the path in the log, beats finding it out from a
+     * seller's failed upload.
+     *
+     * <p>Logged and remembered rather than thrown: the rest of the app works
+     * without uploads, and taking the whole site down over a permissions
+     * problem on one directory is a worse outcome than a clear 503 on the one
+     * feature affected.
+     */
+    private boolean probeWritable() {
         try {
-            Files.createDirectories(localRoot);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Could not create the uploads directory: " + localRoot, e);
+            Files.createDirectories(root);
+            Path probe = root.resolve(".write-probe-" + UUID.randomUUID());
+            Files.write(probe, new byte[0], StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            Files.deleteIfExists(probe);
+            log.info("Image uploads: local disk at {}", root);
+            return true;
+        } catch (IOException | SecurityException e) {
+            log.error("""
+                    Image uploads are DISABLED: {} is not writable ({}).
+                    Uploads will answer 503 until this is fixed. On the VM, the directory is
+                    the campusmarket-uploads volume; the container runs as user 'app'. Check:
+                      docker exec campusmarket-api ls -ld {}
+                    A root-owned directory there means the volume was created without the
+                    image's ownership. Fix with:
+                      docker exec -u root campusmarket-api chown -R app:app {}
+                    """, root, e.toString(), root, root);
+            return false;
         }
     }
 
@@ -90,7 +133,10 @@ public class ImageStorageService {
         try {
             bytes = file.getBytes();
         } catch (IOException e) {
-            throw new UncheckedIOException("Could not read the uploaded file.", e);
+            // The upload was cut off mid-transfer. The client's problem, and
+            // retryable - not a server fault worth a 500.
+            throw ApiException.badRequest("UPLOAD_INTERRUPTED",
+                    "The upload did not complete. Please try again.");
         }
         return write(bytes, mimeType);
     }
@@ -113,39 +159,59 @@ public class ImageStorageService {
     }
 
     private String write(byte[] bytes, String mimeType) {
-        String filename = UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(mimeType);
-        Storage gcs = gcsProvider.getIfAvailable();
-        return (gcs != null && gcsBucket != null && !gcsBucket.isBlank())
-                ? writeToGcs(gcs, filename, bytes, mimeType)
-                : writeToLocalDisk(filename, bytes);
-    }
-
-    private String writeToGcs(Storage gcs, String filename, byte[] bytes, String mimeType) {
-        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(gcsBucket, filename))
-                .setContentType(mimeType)
-                .setCacheControl(CACHE_CONTROL)
-                .build();
-        try {
-            gcs.create(blobInfo, bytes);
-        } catch (StorageException e) {
-            // A configured-but-failing bucket fails loudly rather than
-            // quietly falling back to disk - a half-GCS, half-local set of
-            // images would be a confusing thing to debug later. The
-            // fallback only ever applies when GCS was never configured.
-            log.error("Could not upload image to gs://{}/{}", gcsBucket, filename, e);
-            throw new UncheckedIOException("Could not upload the image to Cloud Storage.", new IOException(e));
+        if (!writable) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "UPLOADS_UNAVAILABLE",
+                    "Image uploads are temporarily unavailable. Please try again later.", Map.of());
         }
-        return "https://storage.googleapis.com/" + gcsBucket + "/" + filename;
-    }
 
-    private String writeToLocalDisk(String filename, byte[] bytes) {
-        Path target = localRoot.resolve(filename);
+        String filename = UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(mimeType);
+        Path target = root.resolve(filename);
         try {
-            Files.write(target, bytes);
+            // CREATE_NEW: a UUID collision is astronomically unlikely, but if
+            // it ever happened, silently overwriting someone else's image is
+            // the one outcome worse than failing.
+            Files.write(target, bytes, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
         } catch (IOException e) {
-            throw new UncheckedIOException("Could not save the image.", e);
+            // The probe passed at startup, so this is something that changed
+            // since - almost always a full disk. Say so, in the log with the
+            // path and to the caller as a retryable 503, rather than a 500
+            // that reads as a bug.
+            log.error("Could not write image to {}: {}", target, e.toString());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "UPLOAD_FAILED",
+                    "The image could not be saved. Please try again in a moment.", Map.of());
         }
         return "/api/uploads/" + filename;
+    }
+
+    /** The path prefix every image this service serves is addressed under. */
+    public static final String SERVED_PREFIX = "/api/uploads/";
+
+    /**
+     * The form an image URL is stored in: relative for anything this API
+     * serves, untouched for anything else.
+     *
+     * <p>The frontend turns {@code /api/uploads/x.jpg} into an absolute URL on
+     * its own origin so the browser fetches it from the API rather than from
+     * Vercel - and then, on an edit, sends the listing's images straight
+     * back. Without this, the first edit after any upload would persist the
+     * absolute form, and the API's public hostname would be baked into every
+     * row that was ever edited. Moving domains, or fronting the API with a
+     * CDN, would then mean a data migration. Stripping the origin here keeps
+     * the stored value the same whether it came from the upload response or
+     * a round trip through the client, so the database never learns where it
+     * is hosted.
+     *
+     * <p>Applied at the write sites for listings and promos rather than by
+     * validating and rejecting: a client that sends the absolute form is not
+     * doing anything wrong, and there is nothing useful to say to it.
+     */
+    public static String toStoredForm(String url) {
+        if (url == null) {
+            return null;
+        }
+        int at = url.indexOf(SERVED_PREFIX);
+        // > 0, not >= 0: at 0 it is already relative and there is nothing to do.
+        return at > 0 ? url.substring(at) : url;
     }
 
     private String requireSupportedMimeType(String mimeType) {

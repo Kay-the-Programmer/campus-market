@@ -160,7 +160,7 @@ public class PromoService {
         slot.setCtaLabel(blankToNull(request.ctaLabel()));
         slot.setCtaLink(normalizeLink(request.ctaLink()));
         slot.setBadge(blankToNull(request.badge()));
-        slot.setImageUrl(validateImage(request.imageUrl()));
+        slot.setImageUrl(ImageStorageService.toStoredForm(validateImage(request.imageUrl())));
         slot.setTheme(parseTheme(request.theme()));
 
         if (request.imageOverlay() != null) {
