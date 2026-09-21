@@ -1,5 +1,6 @@
 import {
   AccountType,
+  ApplicationMessage,
   AuthSession,
   CampaignAudience,
   CampusZone,
@@ -493,6 +494,25 @@ export const api = {
      * selling - an admin still has to approve it, so the result is normally
      * `sellerApprovalStatus: 'PENDING'`.
      */
+    /** The applicant's side of the thread with an admin about their application. */
+    async getSellerApplicationMessages() {
+      const res = await get('/api/users/me/seller-application/messages');
+      return {
+        messages: (res.data?.messages ?? []) as ApplicationMessage[],
+        error: res.error,
+        status: res.status,
+      };
+    },
+    async replyToSellerApplication(body: string) {
+      const res = await post('/api/users/me/seller-application/messages', { body });
+      return {
+        success: res.ok,
+        message: res.data?.message as ApplicationMessage | undefined,
+        error: res.error,
+        code: res.code,
+        status: res.status,
+      };
+    },
     async becomeSeller(campusZone?: CampusZone) {
       const res = await post('/api/auth/become-seller', { campusZone });
       return {
@@ -1145,7 +1165,35 @@ export const api = {
 
     async getPendingSellers() {
       const res = await get('/api/admin/sellers/pending');
-      return { sellers: res.data?.sellers ?? [], error: res.error, status: res.status };
+      return {
+        sellers: res.data?.sellers ?? [],
+        // applicantId -> count of their messages no admin has opened yet.
+        unreadMessages: (res.data?.unreadMessages ?? {}) as Record<string, number>,
+        error: res.error,
+        status: res.status,
+      };
+    },
+    /**
+     * The conversation with an applicant. Reading it marks their messages as
+     * read on the server, so the badge on the queue clears on open.
+     */
+    async getApplicantMessages(userId: string) {
+      const res = await get(`/api/admin/sellers/${userId}/messages`);
+      return {
+        messages: (res.data?.messages ?? []) as ApplicationMessage[],
+        error: res.error,
+        status: res.status,
+      };
+    },
+    async messageApplicant(userId: string, body: string) {
+      const res = await post(`/api/admin/sellers/${userId}/messages`, { body });
+      return {
+        success: res.ok,
+        message: res.data?.message as ApplicationMessage | undefined,
+        error: res.error,
+        code: res.code,
+        status: res.status,
+      };
     },
     /** One applicant in full, for the review step before approving. */
     async getSellerApplicant(userId: string) {

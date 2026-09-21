@@ -3,6 +3,7 @@ import { Store, Loader2, MapPin, Check, Clock, AlertCircle } from 'lucide-react'
 import { AuthSession, CampusZone, CAMPUS_ZONES } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner } from './Modal';
+import { ApplicationThread } from './ApplicationThread';
 
 interface BecomeSellerModalProps {
   isOpen: boolean;
@@ -49,6 +50,23 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
   const awaitingReview = status === 'PENDING';
   const wasRejected = status === 'REJECTED';
 
+  /*
+   * The applicant's side of the conversation with an admin. Shown while the
+   * application is pending and after a refusal - the two states in which
+   * there is something to discuss - and with the same thread in both, so a
+   * question asked before a decision and an answer given after it read as
+   * one conversation.
+   */
+  const thread = (
+    <ApplicationThread
+      viewer="applicant"
+      load={() => api.auth.getSellerApplicationMessages()}
+      send={(body) => api.auth.replyToSellerApplication(body)}
+      emptyHint="If an admin has a question about your application, it appears here and you can answer. You can also write first if there is something you want them to know."
+      placeholder="Message the admin…"
+    />
+  );
+
   const submit = async () => {
     if (needsZone && !zone) {
       setError('Choose your campus location so buyers know where to meet you.');
@@ -90,6 +108,11 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
             in the meantime - nothing else about your account changes.
           </p>
         </div>
+
+        <p className="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wide text-[#a0a3b1]">
+          Conversation with the admin
+        </p>
+        {thread}
       </Modal>
     );
   }
@@ -125,6 +148,15 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
             <p className="font-semibold">Your last application wasn't approved</p>
             <p className="mt-0.5">{currentUser.sellerApprovalReason}</p>
           </div>
+        </div>
+      )}
+
+      {wasRejected && (
+        <div className="mb-4">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#a0a3b1]">
+            Conversation with the admin
+          </p>
+          {thread}
         </div>
       )}
 

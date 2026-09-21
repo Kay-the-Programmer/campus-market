@@ -4,6 +4,7 @@ import com.campusmarket.security.AuthPrincipal;
 import com.campusmarket.security.Principal;
 import com.campusmarket.service.AdminService;
 import com.campusmarket.service.OrderService;
+import com.campusmarket.service.SellerApplicationChatService;
 import com.campusmarket.web.dto.CommerceDtos.OrderDto;
 import com.campusmarket.web.dto.CommerceDtos.FulfilledOrderDto;
 import com.campusmarket.web.dto.ListingDtos.ListingDto;
@@ -43,6 +44,7 @@ public class AdminController {
     private final AdminService adminService;
     /** Held-order review is an admin surface, so its endpoints live here. */
     private final OrderService orderService;
+    private final SellerApplicationChatService applicationChat;
 
     public record ResolveReportRequest(String action, String reason) {}
 
@@ -150,7 +152,32 @@ public class AdminController {
     /** Accounts asking to sell. Approval is the gate on creating any listing. */
     @GetMapping("/sellers/pending")
     public Map<String, Object> pendingSellers(@AuthPrincipal Principal principal) {
-        return Map.of("sellers", adminService.pendingSellers(principal));
+        // Unread replies ride along as a side map rather than a field on the
+        // row: AdminUserDto is shared with the Users tab, where the count has
+        // no meaning, and this keeps the queue to one request.
+        return Map.of(
+                "sellers", adminService.pendingSellers(principal),
+                "unreadMessages", applicationChat.unreadFromApplicants(principal));
+    }
+
+    public record ApplicationMessageRequest(String body) {}
+
+    /**
+     * The conversation with an applicant, before a decision is made. Opening
+     * it marks their messages read.
+     */
+    @GetMapping("/sellers/{id}/messages")
+    public Map<String, Object> applicationThread(@AuthPrincipal Principal principal,
+                                                 @PathVariable UUID id) {
+        return Map.of("messages", applicationChat.thread(principal, id));
+    }
+
+    @PostMapping("/sellers/{id}/messages")
+    public Map<String, Object> messageApplicant(@AuthPrincipal Principal principal,
+                                                @PathVariable UUID id,
+                                                @RequestBody ApplicationMessageRequest request) {
+        return Map.of("success", true,
+                "message", applicationChat.post(principal, id, request == null ? null : request.body()));
     }
 
     /** One applicant in full, for the review step before a decision. */

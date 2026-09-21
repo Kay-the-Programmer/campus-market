@@ -434,3 +434,17 @@ export interface EmailCampaign {
   createdAt: string;
   sentAt?: string | null;
 }
+
+/**
+ * One message in the thread between an admin and a seller applicant, held
+ * before (and after) the application is decided.
+ */
+export interface ApplicationMessage {
+  id: string;
+  fromAdmin: boolean;
+  senderName: string;
+  body: string;
+  createdAt: string;
+  /** Whether the side it was written to has opened the thread since. */
+  read: boolean;
+}

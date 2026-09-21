@@ -3,6 +3,7 @@ package com.campusmarket.web;
 import com.campusmarket.security.AuthPrincipal;
 import com.campusmarket.security.Principal;
 import com.campusmarket.service.PhoneVerificationService;
+import com.campusmarket.service.SellerApplicationChatService;
 import com.campusmarket.service.UserProfileService;
 import com.campusmarket.web.error.ApiException;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class UserController {
 
     private final UserProfileService userProfileService;
     private final PhoneVerificationService phoneVerificationService;
+    private final SellerApplicationChatService applicationChat;
 
     /** Public profile - guests may view it, minus any contact details. */
     @GetMapping("/{id}")
@@ -80,5 +82,30 @@ public class UserController {
     public Map<String, Object> verifyPhone(@AuthPrincipal Principal principal,
                                            @RequestBody CodeRequest request) {
         return phoneVerificationService.verifyCode(principal, request == null ? null : request.code());
+    }
+
+    // ------------------------------------------- seller application thread
+    public record ApplicationMessageRequest(String body) {}
+
+    /**
+     * The applicant's side of the conversation with an admin about their
+     * seller application. Reading marks the admin's messages read.
+     */
+    @GetMapping("/me/seller-application/messages")
+    public Map<String, Object> myApplicationThread(@AuthPrincipal Principal principal) {
+        return Map.of("messages", applicationChat.thread(principal, principal.id()));
+    }
+
+    @PostMapping("/me/seller-application/messages")
+    public Map<String, Object> replyToAdmin(@AuthPrincipal Principal principal,
+                                            @RequestBody ApplicationMessageRequest request) {
+        return Map.of("success", true,
+                "message", applicationChat.post(principal, principal.id(), request == null ? null : request.body()));
+    }
+
+    /** Unread admin messages about the application, for a badge. */
+    @GetMapping("/me/seller-application/unread")
+    public Map<String, Object> myApplicationUnread(@AuthPrincipal Principal principal) {
+        return Map.of("unread", applicationChat.unreadFromAdmin(principal));
     }
 }

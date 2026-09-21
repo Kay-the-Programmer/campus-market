@@ -8,6 +8,7 @@ import { AuthSession, AuditLogEntry, Listing, Order, zoneLabel } from '../types'
 import { api } from '../services/api';
 import { useLiveCounts } from '../hooks/useLiveCounts';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
+import { ApplicationThread } from './shared/ApplicationThread';
 import { PromoEditor } from './admin/PromoEditor';
 import { SpecialOffersEditor } from './admin/SpecialOffersEditor';
 import { CampaignComposer } from './admin/CampaignComposer';
@@ -358,6 +359,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [applicantId, setApplicantId] = useState<string | null>(null);
   const [applicant, setApplicant] = useState<SellerApplicant | null>(null);
   const [applicantLoading, setApplicantLoading] = useState(false);
+  /** Whether the conversation panel is open in the review modal. Reset per applicant. */
+  const [applicantChatOpen, setApplicantChatOpen] = useState(false);
+  /** applicantId -> messages from them no admin has opened yet. Badges the queue. */
+  const [applicantUnread, setApplicantUnread] = useState<Record<string, number>>({});
 
   /*
    * Chats. Every thread here is one this admin is mediating - they become a
@@ -455,6 +460,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setCategories((c.categories as CategoryRow[]) || []);
     setAuditLogs((a.logs as AuditLogEntry[]) || []);
     setPendingSellers((ps.sellers as AdminUserRow[]) || []);
+    setApplicantUnread(ps.unreadMessages ?? {});
     setHeldOrders(ho.orders || []);
     setLoading(false);
     setRefreshing(false);
@@ -984,9 +990,20 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               student from an account made ten minutes ago. */}
                           <button
                             onClick={() => setApplicantId(u.id)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors"
+                            className="relative px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-colors"
                           >
                             Review
+                            {/* An applicant has replied and nobody has read it.
+                                Surfaced on the row so a waiting answer is visible
+                                from the queue, not only once the review is open. */}
+                            {(applicantUnread[u.id] ?? 0) > 0 && (
+                              <span
+                                title={`${applicantUnread[u.id]} unread message(s) from the applicant`}
+                                className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center"
+                              >
+                                {applicantUnread[u.id]}
+                              </span>
+                            )}
                           </button>
                           <button
                             onClick={() => { setReason(''); setSellerAction({ user: u, kind: 'approve' }); }}
@@ -1531,13 +1548,39 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       {/* Applicant review - the step before a decision */}
       <Modal
         isOpen={!!applicantId}
-        onClose={() => setApplicantId(null)}
+        onClose={() => { setApplicantId(null); setApplicantChatOpen(false); }}
         title="Seller application"
         subtitle={applicant ? `${applicant.name} · ${applicant.email}` : undefined}
         footer={
-          <div className="grid grid-cols-3 gap-3">
-            <button onClick={() => setApplicantId(null)} className="btn-ghost !rounded-xl !text-sm">
+          <div className="grid grid-cols-4 gap-3">
+            <button
+              onClick={() => { setApplicantId(null); setApplicantChatOpen(false); }}
+              className="btn-ghost !rounded-xl !text-sm"
+            >
               Close
+            </button>
+            {/*
+              The step this modal was missing. Approve and Decline were the
+              only exits, so an admin with a question - "what will you sell?",
+              "is this really your campus address?" - had to guess or refuse.
+              Opening the thread here keeps the answer next to the decision.
+            */}
+            <button
+              onClick={() => setApplicantChatOpen((open) => !open)}
+              disabled={!applicant}
+              className={`px-4 py-3 rounded-xl border font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                applicantChatOpen
+                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Message
+              {!!applicantId && (applicantUnread[applicantId] ?? 0) > 0 && !applicantChatOpen && (
+                <span className="ml-1 min-w-5 h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                  {applicantUnread[applicantId]}
+                </span>
+              )}
             </button>
             <button
               onClick={() => {
@@ -1565,6 +1608,33 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         }
       >
         <MemberRecord record={applicant} loading={applicantLoading} context="application" />
+
+        {applicantChatOpen && applicantId && (
+          <div className="mt-5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+              Conversation with applicant
+            </p>
+            {/*
+              Keyed on the applicant so switching between two applications
+              never shows one person's thread under another's name - the
+              component fetches on mount, and a key change is a remount.
+            */}
+            <ApplicationThread
+              key={applicantId}
+              viewer="admin"
+              load={async () => {
+                const res = await api.admin.getApplicantMessages(applicantId);
+                // Opening the thread marked their messages read server-side;
+                // clear the badge locally too rather than waiting on a refetch.
+                setApplicantUnread((prev) => ({ ...prev, [applicantId]: 0 }));
+                return res;
+              }}
+              send={(body) => api.admin.messageApplicant(applicantId, body)}
+              emptyHint="Nothing yet. Ask the applicant anything you need to know before deciding - they are notified and can reply here."
+              placeholder="Ask the applicant a question…"
+            />
+          </div>
+        )}
       </Modal>
 
       {/* Seller approval decision */}
