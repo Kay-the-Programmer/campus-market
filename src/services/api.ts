@@ -22,6 +22,7 @@ import {
   Suggestion,
 } from '../types';
 import { readStored, removeStored, writeStored } from '../utils/storage';
+import { isGuestSaved } from './guestSaves';
 
 /**
  * Client for the Spring Boot API.
@@ -281,7 +282,18 @@ export function toListing(dto: any): Listing {
     seller: toSeller(dto?.seller),
     postedAt: relativeTime(dto?.createdAt),
     isAvailable: !!dto?.available,
-    isSaved: !!dto?.saved,
+    /*
+     * The server answers this for a signed-in viewer and always says false for
+     * a guest, who has no account to have saved anything on. A guest's hearts
+     * live on the device, so they are folded in here - at the one point every
+     * listing passes through - rather than in each of the four screens that
+     * fetch their own results and would each have to remember to do it.
+     *
+     * A no-op once signed in: the device list is handed to the account and
+     * cleared on sign-in, so there is nothing left to fold in. See
+     * services/guestSaves.
+     */
+    isSaved: !!dto?.saved || isGuestSaved(String(dto?.id ?? '')),
     badgeText: STATUS_BADGES[dto?.status] ?? undefined,
     stockInfo,
     pickupWindow: dto?.pickupWindow ?? undefined,

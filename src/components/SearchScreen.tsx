@@ -231,6 +231,20 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  /**
+   * Heart a result, and show it immediately.
+   *
+   * <p>Same reasoning as the feed's: these results are paged here, while the
+   * parent reconciles against a single page of the catalogue, so anything
+   * beyond it has no match to be corrected by and the heart would never fill.
+   * The effect below still has the last word.
+   */
+  const toggleSave = (listingId: string, e: React.MouseEvent) => {
+    setResults((prev) =>
+      prev.map((r) => (r.id === listingId ? { ...r, isSaved: !r.isSaved } : r)));
+    onToggleSave(listingId, e);
+  };
+
   /* Keep hearts in sync with saves made on other screens. */
   useEffect(() => {
     setResults((prev) =>
@@ -430,7 +444,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             {!unavailable && <DiscountFlag percent={item.discountPercent} />}
           </div>
           <button
-            onClick={(e) => onToggleSave(item.id, e)}
+            onClick={(e) => toggleSave(item.id, e)}
             aria-label={item.isSaved ? 'Remove from saved' : 'Save listing'}
             className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card transition-all duration-150"
           >

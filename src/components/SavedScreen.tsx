@@ -15,6 +15,8 @@ interface SavedScreenProps {
   /** Moves an item the other way: wishlist back into the cart. */
   onAddToCart?: AddToCart;
   currentUser?: AuthSession;
+  /** Opens the auth modal, from the guest banner. */
+  onSignIn?: () => void;
 }
 
 const SORTS = [
@@ -32,7 +34,9 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
   onBrowseMore,
   onAddToCart,
   currentUser,
+  onSignIn,
 }) => {
+  const isGuest = !currentUser || currentUser.role === 'guest';
   const [sortBy, setSortBy] = useState<SortValue>('Recent');
   const [sortOpen, setSortOpen] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -150,10 +154,36 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
             turn that on - it called nothing, had no off state, and took credit
             for something saving had already done. Said once, as a fact. */}
         {savedListings.length > 0 && (
-          <p className="flex items-center gap-2 text-xs text-[#434655] bg-white border border-[#e5eeff] rounded-xl px-3.5 py-2.5 mb-6">
-            <BellRing className="w-3.5 h-3.5 text-[#2563eb] shrink-0" />
-            <span>We'll notify you if anything here drops in price.</span>
-          </p>
+          isGuest ? (
+            /*
+             * A guest gets a different sentence because the other one would be
+             * a lie: price-drop alerts are attached to an account, and there
+             * is no account here to attach them to. What IS true - that this
+             * list is on this device and will not survive clearing the browser
+             * - is also the honest reason to sign in, so it does that work
+             * instead of an invented one.
+             */
+            <div className="flex items-center gap-3 text-xs bg-[#eff4ff] border border-[#dbe1ff] rounded-xl px-3.5 py-2.5 mb-6">
+              <Heart className="w-3.5 h-3.5 text-[#2563eb] shrink-0" />
+              <span className="text-[#434655] min-w-0">
+                These are saved on this device only. Sign in to keep them and get
+                told when one drops in price.
+              </span>
+              {onSignIn && (
+                <button
+                  onClick={onSignIn}
+                  className="ml-auto shrink-0 px-3 py-1.5 rounded-lg bg-[#2563eb] hover:bg-[#004ac6] text-white text-[11px] font-bold transition-colors"
+                >
+                  Sign in
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="flex items-center gap-2 text-xs text-[#434655] bg-white border border-[#e5eeff] rounded-xl px-3.5 py-2.5 mb-6">
+              <BellRing className="w-3.5 h-3.5 text-[#2563eb] shrink-0" />
+              <span>We'll notify you if anything here drops in price.</span>
+            </p>
+          )
         )}
 
         {sortedListings.length === 0 ? (

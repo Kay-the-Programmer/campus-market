@@ -71,6 +71,7 @@ import { api } from './services/api';
 import { completeGoogleRedirect } from './firebase';
 import { onForegroundPush, onNotificationClick, refreshToken } from './services/push';
 import { recordRecentlyViewed } from './services/recentlyViewed';
+import { getGuestSaves, toggleGuestSave, takeGuestSaves } from './services/guestSaves';
 
 // URL Routing Helpers
 function parsePathname(pathname: string): {
@@ -149,8 +150,17 @@ function buildPathname(
 }
 
 // Views that require a logged-in session (guest cannot access)
+/*
+ * Saved is no longer here.
+ *
+ * A guest's saves are kept on the device (services/guestSaves), so there is
+ * now something real to show them - and a shortlist they can look at is the
+ * thing most likely to bring them back and, eventually, sign up. Everything
+ * else on this list genuinely needs an account: there is no such thing as a
+ * guest's orders, messages or listings.
+ */
 const GUEST_PROTECTED_VIEWS: ViewType[] = [
-  'saved', 'sell', 'messages', 'profile', 'my-listings', 'cart', 'notifications', 'deals', 'orders'
+  'sell', 'messages', 'profile', 'my-listings', 'cart', 'notifications', 'deals', 'orders'
 ];
 
 /*
@@ -436,6 +446,25 @@ export default function App() {
     syncSearchUrl(next);
   };
 
+  /**
+   * Show the reduced listings.
+   *
+   * Lands on the feed rather than the results page, because the deals view IS
+   * the feed with one filter on - see parsePathname. Anything else narrowing
+   * the feed is cleared first: someone asking for deals from the search box
+   * means "show me the deals", not "show me the deals among the shoes I was
+   * looking at twenty minutes ago".
+   */
+  const handleShowDeals = () => {
+    setFeedQuery('');
+    setFeedType('All');
+    setFeedCategoryId('');
+    setFeedDealsOnly(true);
+    setCurrentView('browse');
+    updateUrl('browse');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   /** Suggestion rows jump straight to the listing, skipping the results page. */
   const handleOpenListingById = async (listingId: string) => {
     const existing = listings.find((l) => l.id === listingId);
@@ -622,6 +651,60 @@ export default function App() {
     }
   };
 
+  /**
+   * Fills a guest's saved page.
+   *
+   * <p>There is no server-side list to fetch for someone with no account, so
+   * the ids held on the device are resolved one by one - the same approach the
+   * feed's "Continue browsing" row takes for recently-viewed. Deliberately not
+   * filtered out of the loaded catalogue instead: that is one page of active
+   * listings, so a save made last week, or one now on page three, would
+   * silently vanish from a list that is supposed to be everything they kept.
+   *
+   * <p>Anything since removed or sold is dropped rather than rendered as a
+   * broken row, and the ids stay on the device - a listing that is merely
+   * unreachable right now is not the same as one the person unsaved.
+   */
+  const loadGuestSaves = async () => {
+    const ids = getGuestSaves();
+    if (ids.length === 0) {
+      setSavedListings([]);
+      return;
+    }
+    const results = await Promise.all(ids.map((id) => api.listings.getById(id)));
+    setSavedListings(
+      results.map((r) => r.listing).filter((l): l is Listing => !!l).map((l) => ({ ...l, isSaved: true })),
+    );
+  };
+
+  /**
+   * Hands a guest's device-held saves to the account that just appeared.
+   *
+   * <p>Runs once per sign-in, before the saved list is loaded, so the Saved
+   * page's first render already includes them rather than filling in a moment
+   * later. `api.saved.toggle` is a toggle, so anything the account had already
+   * saved is skipped - blindly toggling would UN-save exactly the items most
+   * likely to be in both lists.
+   *
+   * <p>Failures are deliberately quiet. Losing a device-held shortlist is a
+   * disappointment, not an error the person can do anything about, and a red
+   * banner on the first screen after signing up is a worse first impression
+   * than a shortlist that is one item short.
+   */
+  const mergeGuestSaves = async () => {
+    const pending = takeGuestSaves();
+    if (pending.length === 0) return;
+    try {
+      const existing = await api.saved.getAll();
+      const already = new Set((existing.saved ?? []).map((l: Listing) => l.id));
+      await Promise.all(
+        pending.filter((id) => !already.has(id)).map((id) => api.saved.toggle(id)),
+      );
+    } catch {
+      /* The saves are gone either way; nothing here is recoverable. */
+    }
+  };
+
   // Consumes ?token= from an emailed verification or reset link, then scrubs it
   // out of the address bar so the token is not left sitting in history.
   const consumeEmailLinkToken = async () => {
@@ -635,6 +718,9 @@ export default function App() {
       if (res.ok) {
         await loadServerSession({ registerPush: true });
         await loadServerListings();
+        // Verifying by email is a sign-in like any other, so anything hearted
+        // before the account existed comes across here too.
+        await mergeGuestSaves();
         await loadSavedListings();
         await loadServerCart();
       } else {
@@ -656,6 +742,11 @@ export default function App() {
      * two requests that could only ever come back 401, and logged two console
      * errors for a state that is perfectly normal - not being signed in.
      */
+    // Independent of the session check: a guest's saves are on the device, so
+    // there is nothing to wait for and the list should be there the moment
+    // they open it.
+    if (getGuestSaves().length > 0) loadGuestSaves();
+
     loadServerSession({ registerPush: true }).then((session) => {
       /*
        * Signed in is not enough: an admin has no cart and no saved list by
@@ -780,7 +871,10 @@ export default function App() {
      */
     if (newSession.role !== 'guest' && newSession.role !== 'admin') {
       loadServerCart();
-      loadSavedListings();
+      // Sequential on purpose: the merge has to finish before the list is
+      // read, or the Saved page renders without the items this person
+      // hearted moments ago as a guest and looks like it lost them.
+      mergeGuestSaves().then(loadSavedListings);
     }
     // Signing in is the other moment this device's push token should be
     // (re)registered, now that the routine refresh no longer does it.
@@ -843,9 +937,29 @@ export default function App() {
   const handleToggleSave = async (listingId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Enforce Rule: Guest cannot save items
+    /*
+     * A guest's saves live on the device until there is an account to put them
+     * on. Opening the login modal here used to be the entire response, which
+     * asked someone to commit to an account at the moment they were still
+     * deciding whether anything here was worth having - and threw away the
+     * shortlist that would have been the reason to come back. They are handed
+     * over on sign-in; see mergeGuestSaves.
+     */
     if (currentUser.role === 'guest') {
-      setIsAuthModalOpen(true);
+      const nowSaved = toggleGuestSave(listingId);
+      setListings((prev) =>
+        prev.map((item) => (item.id === listingId ? { ...item, isSaved: nowSaved } : item)),
+      );
+      if (selectedListing && selectedListing.id === listingId) {
+        setSelectedListing({ ...selectedListing, isSaved: nowSaved });
+      }
+      // Resolved from the device list rather than patched in place, so the
+      // saved page is right even for a listing the loaded catalogue does not
+      // happen to contain.
+      loadGuestSaves();
+      if (nowSaved) {
+        toast.info('Saved on this device. Sign in to keep it.', { title: 'Saved' });
+      }
       return;
     }
 
@@ -1214,6 +1328,7 @@ export default function App() {
                 onSubmitSearch={handleSubmitSearch}
                 onOpenListingById={handleOpenListingById}
                 onSearchCategory={handleSearchCategory}
+                onShowDeals={handleShowDeals}
               />
             )}
 
@@ -1373,6 +1488,7 @@ export default function App() {
                   onBrowseMore={() => handleNavigate('browse')}
                   onAddToCart={handleAddToCart}
                   currentUser={currentUser}
+                  onSignIn={() => setIsAuthModalOpen(true)}
                 />
               )}
 

@@ -42,6 +42,8 @@ interface TopNavProps {
   onOpenListingById: (listingId: string) => void;
   /** Browse one category, from a category suggestion. */
   onSearchCategory: (categoryId: string) => void;
+  /** Show the reduced listings, from the suggestions panel's deals row. */
+  onShowDeals: () => void;
 }
 
 const PLACEHOLDERS = ['Search textbooks…', 'Find a tutor…', 'Search meals near you…'];
@@ -78,6 +80,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   onSubmitSearch,
   onOpenListingById,
   onSearchCategory,
+  onShowDeals,
 }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
@@ -250,6 +253,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               onSearch={runSearch}
               onSelectListing={(id) => { setSuggestOpen(false); onOpenListingById(id); }}
               onSelectCategory={(id) => { setSuggestOpen(false); onSearchCategory(id); }}
+              onShowDeals={() => { setSuggestOpen(false); onShowDeals(); }}
             />
           </div>
 

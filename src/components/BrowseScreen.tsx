@@ -284,8 +284,20 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const [priceOpen, setPriceOpen] = useState(false);
   const [priceCeiling, setPriceCeiling] = useState(DEFAULT_PRICE_CEILING);
   const priceMenuRef = useRef<HTMLDivElement>(null);
-  /** Top of the result count + grid, so a filter change can scroll back to it. */
+  /**
+   * Zero-height marker at the top of the results.
+   *
+   * Deliberately not the results row itself, which is sticky: a stuck element
+   * reports its pinned position, so measuring the scroll target from it would
+   * send every "jump back to the results" to wherever the bar happens to be
+   * resting rather than to where the grid actually starts.
+   */
   const resultsRef = useRef<HTMLDivElement>(null);
+  /** The sticky category header, measured so the results bar can sit under it. */
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  /** True once the results bar has actually pinned, so it can grow a shadow. */
+  const [barStuck, setBarStuck] = useState(false);
 
   /* Scale comes from the catalogue's dearest listing so the thumbs span what
      actually exists. Fetched once - a scale that moved with every filter would
@@ -459,6 +471,47 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   }, []);
 
   /*
+   * How tall the category header is, so the results bar can pin directly
+   * beneath it instead of underneath it.
+   *
+   * Measured rather than hard-coded because the header is a different height
+   * at every breakpoint - the mobile category strip is replaced by a shorter
+   * desktop one - and a fixed number would leave a gap on one and overlap on
+   * the other. A ResizeObserver also covers the strip reflowing as categories
+   * load in, which changes the height after first paint.
+   */
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  /*
+   * Whether the results bar is currently pinned.
+   *
+   * Watched via a zero-height marker directly above it: the bar itself is
+   * sticky, so it is always "in view" and can say nothing about its own state.
+   * The marker leaving the top of the viewport is exactly the moment the bar
+   * stops travelling with the page.
+   */
+  useEffect(() => {
+    const node = resultsRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setBarStuck(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      // Offset by the header, so "gone" means gone behind the header rather
+      // than gone off the top of the window.
+      { rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px`, threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [headerHeight]);
+
+  /*
    * The sort actually applied, as opposed to the one held in state.
    *
    * Typing into the feed's search box turns it into a query, and a query wants
@@ -603,6 +656,26 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     observer.observe(node);
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore, page, runSearch]);
+
+  /**
+   * Heart a card, and show it immediately.
+   *
+   * <p>The parent's reconciliation arrives through the `listings` prop, which
+   * holds one page of the catalogue - but this grid pages independently and
+   * runs to thousands of rows. Anything hearted past that first page is not in
+   * `listings` to be reconciled against, so the effect below finds no match
+   * and the heart stays hollow: the tap appears to have done nothing, on the
+   * one control whose entire job is to confirm it did something.
+   *
+   * <p>So the flip happens here as well. The effect below still has the final
+   * say - if the server refuses a save, its rollback reaches `listings` and
+   * corrects this.
+   */
+  const toggleSave = (listingId: string, e: React.MouseEvent) => {
+    setResults((prev) =>
+      prev.map((r) => (r.id === listingId ? { ...r, isSaved: !r.isSaved } : r)));
+    onToggleSave(listingId, e);
+  };
 
   /* Keep saved-heart state in sync when the parent reconciles a save toggle. */
   useEffect(() => {
@@ -807,6 +880,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         keeping the header compact.
       */}
       <div
+        ref={headerRef}
         className={`sticky top-0 z-30 bg-[#f8f9ff]/95 backdrop-blur-md border-b border-[#c3c6d7]/40 transition-shadow duration-200 ${headerScrolled ? 'shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]' : ''
           }`}
       >
@@ -1380,8 +1454,29 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         )}
 
         {/* ─────────────────────────── Result count ───────────────────────── */}
-        <div ref={resultsRef} className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* The marker the scroll-to-results and the pinned-state watcher both
+            measure from. Zero height, so it changes nothing about the layout. */}
+        <div ref={resultsRef} aria-hidden="true" />
+
+        {/*
+          The results bar stays put.
+
+          The feed loads forever, so after three pages someone is thousands of
+          pixels from the controls that produced what they are looking at:
+          changing their mind about the sort, or turning Deals off, meant
+          scrolling all the way back up to find the row. Pinning it directly
+          under the category header keeps the count, the deals toggle and the
+          sort within reach however far down the grid they are, and carries a
+          way back to the full filter row for the rest.
+        */}
+        <div
+          className={`sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 mb-4 flex items-center justify-between gap-3 transition-all duration-200 ${barStuck
+            ? 'bg-[#f8f9ff]/95 backdrop-blur-md border-b border-[#c3c6d7]/40 shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]'
+            : 'bg-transparent'
+            }`}
+          style={{ top: headerHeight }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
             <span className="text-sm font-semibold text-[#434655] truncate">
               {loading ? 'Searching…'
                 // Counting "deals" rather than "listings" while the filter is on,
@@ -1389,8 +1484,43 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 : dealsOnly ? `${total} deal${total !== 1 ? 's' : ''}`
                   : `${total} listing${total !== 1 ? 's' : ''}`}
             </span>
-            {/* "Clear all" lives on the filter pill row directly above, next to
-                the individual filters it clears. */}
+
+            {/*
+              Only once pinned. Unpinned, the real Deals pill and the filter
+              chips are a few pixels above this row, and a second copy of both
+              would just be clutter; pinned, they are the only way to change
+              anything without a long scroll back.
+            */}
+            {barStuck && (
+              <>
+                <button
+                  onClick={() => setDealsOnly(!dealsOnly)}
+                  aria-pressed={dealsOnly}
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-150 ${dealsOnly
+                    ? 'bg-[#b3123c] text-white border-[#b3123c]'
+                    : 'bg-[#ffe8ec] text-[#b3123c] border-[#ffd0da] hover:border-[#b3123c]'
+                    }`}
+                >
+                  <Tag className="w-3 h-3" />
+                  Deals
+                </button>
+
+                {/* Back to the controls rather than a duplicate of them: the
+                    zone, price and category filters are too many to repeat in
+                    a bar this size, and one tap to reach them all beats five
+                    squeezed in. Counts what is applied so the trip is only
+                    offered when there is something to undo. */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border border-[#c3c6d7] bg-white text-[#434655] hover:border-[#2563eb] hover:text-[#2563eb] transition-colors"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    Filters
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           {/* Sort - small and unobtrusive, sitting at the top of the grid */}
@@ -1538,7 +1668,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
                       {/* Save - the one part of the card that doesn't navigate */}
                       <button
-                        onClick={(e) => onToggleSave(item.id, e)}
+                        onClick={(e) => toggleSave(item.id, e)}
                         aria-label={item.isSaved ? 'Remove from saved' : 'Save listing'}
                         className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card active:scale-90 transition-all duration-150"
                       >
