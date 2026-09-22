@@ -20,6 +20,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.Tuple;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -28,17 +29,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 /** Workflows 6, 7, 8 and 10: create, edit, delete and browse listings. */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ListingService {
 
     /*
@@ -50,13 +57,26 @@ public class ListingService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /**
+     * How far back "trending" and "most popular" look.
+     *
+     * <p>A week: long enough that a quiet Tuesday does not empty the shelf,
+     * short enough that it still means "now" on a campus where term-time
+     * demand turns over in days.
+     */
+    public static final int TRENDING_WINDOW_DAYS = 7;
+
     private final ListingRepository listingRepository;
+    /** Timestamped views, which is what trending is counted from. */
+    private final ListingViewRepository listingViewRepository;
     private final CategoryRepository categoryRepository;
     private final SavedListingRepository savedListingRepository;
     private final ConversationRepository conversationRepository;
     private final CartItemRepository cartItemRepository;
     private final NotificationService notificationService;
     private final SavedListingNotifier savedListingNotifier;
+    /** Alerts the people whose saved search a new listing satisfies. */
+    private final SavedSearchNotifier savedSearchNotifier;
     /** Records edits an admin makes to someone else's listing. */
     private final AuditService auditService;
     private final AccessGuard accessGuard;
@@ -118,8 +138,19 @@ public class ListingService {
         boolean byRelevance = hasTerm
                 && (sort == null || sort.isBlank() || "relevance".equalsIgnoreCase(sort.trim()));
 
+        /*
+         * "Most popular" is popularity over a window, not a lifetime total -
+         * see ListingSpecifications.orderByTrending. It needs a subquery, so
+         * like relevance and discount it is an ordering spec rather than
+         * something resolveSort can express.
+         */
+        boolean byPopular = "popular".equalsIgnoreCase(sort == null ? "" : sort.trim());
+
         Sort ordering;
-        if (byDiscount) {
+        if (byPopular) {
+            spec = and(spec, ListingSpecifications.orderByTrending(TRENDING_WINDOW_DAYS));
+            ordering = Sort.unsorted();
+        } else if (byDiscount) {
             // An explicit "best deals" beats relevance: someone who asked for
             // the deepest saving on "textbook" wants the most heavily reduced
             // textbook first, not the one whose title matches best.
@@ -138,8 +169,11 @@ public class ListingService {
                 PageRequest.of(safePage, safeSize, ordering));
 
         Set<UUID> saved = savedIdsFor(principal);
+        // One grouped query for the whole page, so "seen N times this week" on
+        // a grid of two dozen cards costs one round trip rather than 24.
+        Map<UUID, Long> recentViews = recentViewsFor(result.getContent());
         List<ListingDto> items = result.getContent().stream()
-                .map(listing -> mapper.listing(listing, principal, saved))
+                .map(listing -> mapper.listing(listing, principal, saved, recentViews))
                 .toList();
 
         return new PageDto<>(items, safePage, safeSize, result.getTotalElements(), result.getTotalPages());
@@ -179,10 +213,26 @@ public class ListingService {
                         listing.getPrice()))
                 .toList();
 
+        /*
+         * A category matches on ANY word of the query, not on the whole phrase.
+         *
+         * Category names are one or two words, so a phrase test meant a
+         * multi-word query never suggested one: "calculus textbook" does not
+         * contain-match "Textbooks", and the shelf holding exactly what was
+         * asked for went unmentioned. Any-word rather than every-word for the
+         * same reason - the other words are describing the item, not the shelf.
+         */
         String needle = query.toLowerCase();
+        List<String> words = Arrays.stream(needle.split("\\s+"))
+                .filter(w -> w.length() > 1)
+                .distinct()
+                .toList();
         List<Category> matching = categoryRepository.findAllByOrderBySortOrderAscNameAsc()
                 .stream()
-                .filter(c -> c.getName().toLowerCase().contains(needle))
+                .filter(c -> {
+                    String name = c.getName().toLowerCase();
+                    return name.contains(needle) || words.stream().anyMatch(name::contains);
+                })
                 .toList();
 
         /*
@@ -236,9 +286,132 @@ public class ListingService {
 
         if (!isOwner) {
             listing.setViewsCount(listing.getViewsCount() + 1);
+            recordView(listing, principal);
         }
 
         return mapper.listing(listing, principal, savedIdsFor(principal));
+    }
+
+    /**
+     * Files a timestamped view, for trending.
+     *
+     * <p>Alongside the lifetime counter rather than instead of it: the counter
+     * is what the seller's dashboard shows and what "N people have looked at
+     * this" means, while these rows are the only thing that can answer "what is
+     * the campus looking at THIS WEEK" - see V14__listing_views.sql.
+     *
+     * <p>Owners are already excluded by the caller. Admins are excluded here:
+     * moderating the catalogue means opening a lot of listings, and a
+     * moderation queue should not decide what the home page promotes.
+     *
+     * <p>Nothing in here may break the listing page. A view is a statistic, and
+     * failing to record one is not worth showing someone an error instead of
+     * the thing they asked to see.
+     */
+    private void recordView(Listing listing, Principal principal) {
+        if (principal.isAdmin()) {
+            return;
+        }
+        try {
+            UUID viewerId = principal.isGuest() ? null : principal.id();
+            // Checked rather than left to the unique index: a constraint
+            // violation would poison the transaction that is also serving the
+            // page. Guests have no id to de-duplicate on and are not checked.
+            if (viewerId != null && listingViewRepository
+                    .existsByListingIdAndViewerIdAndViewedOn(listing.getId(), viewerId, LocalDate.now())) {
+                return;
+            }
+            listingViewRepository.save(new ListingView(listing.getId(), viewerId));
+        } catch (RuntimeException e) {
+            log.warn("Could not record a view for listing {}: {}", listing.getId(), e.toString());
+        }
+    }
+
+    /**
+     * What the campus is actually looking at, over a recent window.
+     *
+     * <p>Ordered by views in the window, not by the lifetime counter - which is
+     * the distinction that makes this "trending" rather than "whatever has been
+     * up longest". Listings that have since sold, been removed or been hidden
+     * with their seller are dropped by the usual visibility rules, so the shelf
+     * never offers something that cannot be bought.
+     *
+     * <p>A floor applies. On a catalogue this size the busiest listing might
+     * have three views, and a row headed "Trending on campus" over three views
+     * is a claim the data does not support - so below the floor it returns
+     * nothing and the client renders no shelf at all.
+     */
+    @Transactional(readOnly = true)
+    public List<ListingDto> trending(Principal principal, int limit, int windowDays, int minViews) {
+        int cap = Math.min(Math.max(limit, 1), 24);
+        int days = Math.min(Math.max(windowDays, 1), 90);
+        Instant since = Instant.now().minus(Duration.ofDays(days));
+
+        // Over-fetch: some of the busiest ids will have sold or been removed
+        // since, and dropping those afterwards would otherwise return a short
+        // shelf - or an empty one - while perfectly good rows sat just outside
+        // the limit.
+        List<Object[]> rows = listingViewRepository.findTrending(since, PageRequest.of(0, cap * 3));
+
+        LinkedHashMap<UUID, Long> ranked = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            long count = ((Number) row[1]).longValue();
+            if (count >= minViews) {
+                ranked.put((UUID) row[0], count);
+            }
+        }
+        if (ranked.isEmpty()) {
+            return List.of();
+        }
+
+        // Re-read through the public visibility rules rather than trusting the
+        // ids: a view row survives its listing being sold or its seller being
+        // suspended, and neither belongs on the home page.
+        Specification<Listing> spec = and(ListingSpecifications.publiclyVisible(),
+                ListingSpecifications.withIds(ranked.keySet()));
+        List<Listing> visible = listingRepository.findAll(spec);
+
+        Set<UUID> saved = savedIdsFor(principal);
+        List<Listing> ordered = visible.stream()
+                // Back into view order, which findAll does not preserve.
+                .sorted(Comparator.comparingLong(
+                        (Listing l) -> ranked.getOrDefault(l.getId(), 0L)).reversed())
+                .limit(cap)
+                .toList();
+
+        // The counts are already in hand from the ranking query - no reason to
+        // ask the database for them a second time.
+        Map<UUID, Long> counts = ordered.stream()
+                .collect(Collectors.toMap(Listing::getId, l -> ranked.getOrDefault(l.getId(), 0L)));
+
+        return ordered.stream()
+                .map(listing -> mapper.listing(listing, principal, saved, counts))
+                .toList();
+    }
+
+    /**
+     * Views per listing inside the trending window, for a page of results.
+     *
+     * <p>Returns an empty map rather than failing when the lookup errors: the
+     * count is a decoration on a card, and losing the whole page of results to
+     * lose a footnote would be a poor trade.
+     */
+    private Map<UUID, Long> recentViewsFor(List<Listing> listings) {
+        if (listings.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            Instant since = Instant.now().minus(Duration.ofDays(TRENDING_WINDOW_DAYS));
+            List<UUID> ids = listings.stream().map(Listing::getId).toList();
+            Map<UUID, Long> counts = new LinkedHashMap<>();
+            for (Object[] row : listingViewRepository.countRecentByListingIds(since, ids)) {
+                counts.put((UUID) row[0], ((Number) row[1]).longValue());
+            }
+            return counts;
+        } catch (RuntimeException e) {
+            log.warn("Could not read recent view counts: {}", e.toString());
+            return Map.of();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -266,6 +439,10 @@ public class ListingService {
         validateForStatus(listing);
 
         listingRepository.save(listing);
+        /* Tell anyone who was waiting for exactly this. Runs in its own
+           transaction and swallows its own failures, so a broken alert can
+           never stop a seller publishing - see SavedSearchNotifier. */
+        savedSearchNotifier.listingPublished(listing);
         return mapper.listing(listing, principal, savedIdsFor(principal));
     }
 
@@ -349,6 +526,19 @@ public class ListingService {
          */
         if (previousStatus == ListingStatus.RESERVED && target == ListingStatus.ACTIVE) {
             savedListingNotifier.availableAgain(listing);
+        }
+
+        /*
+         * A draft going live is a first publication, whatever order it happened
+         * in - plenty of sellers save a draft, add photos later, and publish
+         * from here rather than from the create call. Alerting only on create
+         * would silently skip every listing posted that way.
+         *
+         * Guarded on the transition out of DRAFT specifically, so un-reserving
+         * an item does not re-alert people who were told about it days ago.
+         */
+        if (previousStatus == ListingStatus.DRAFT && target == ListingStatus.ACTIVE) {
+            savedSearchNotifier.listingPublished(listing);
         }
 
         return mapper.listing(listing, principal, savedIdsFor(principal));
@@ -599,9 +789,11 @@ public class ListingService {
         return switch (sort.trim().toLowerCase()) {
             case "price_asc" -> Sort.by(Sort.Order.asc("price"), Sort.Order.desc("createdAt"));
             case "price_desc" -> Sort.by(Sort.Order.desc("price"), Sort.Order.desc("createdAt"));
-            // Views are counted on every detail open, so this is a real measure
-            // of what the campus is actually looking at rather than a proxy.
-            case "popular" -> Sort.by(Sort.Order.desc("viewsCount"), Sort.Order.desc("createdAt"));
+            /* "popular" is handled before this, as an ordering spec: it counts
+               views within a window, which a property Sort cannot express. It
+               falls through to newest here only if it somehow reaches this
+               point, which is the right failure - a date order is at least
+               honest, unlike a lifetime counter labelled "popular". */
             default -> newest;
         };
     }

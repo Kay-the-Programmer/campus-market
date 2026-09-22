@@ -185,6 +185,35 @@ export interface Listing {
   availableStock?: number;
   /** Whole-percent saving. Server-computed, so every surface agrees. */
   discountPercent?: number;
+  /**
+   * Views in the last week.
+   *
+   * <p>Undefined means the endpoint did not measure it, which is not the same
+   * as zero and must render as nothing rather than "0 views" - see
+   * ListingDto.recentViews. Only the browse grid and the trending shelf ask.
+   */
+  recentViews?: number;
+}
+
+/**
+ * A search someone asked to be told about.
+ *
+ * <p>`alerts` rather than `notify`, matching the server: a Java record
+ * component cannot be named `notify` - it collides with `Object.notify()` -
+ * and the wire field follows the component name.
+ */
+export interface SavedSearchRow {
+  id: string;
+  label: string;
+  query?: string | null;
+  type?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  campusZone?: string | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  alerts: boolean;
+  createdAt: string;
 }
 
 export interface OrderDeal {
@@ -385,6 +414,7 @@ export type ViewType =
   | 'my-listings'
   | 'help'
   | 'legal'
+  | 'categories'
   | 'notFound'
   | 'admin'
   | 'support'

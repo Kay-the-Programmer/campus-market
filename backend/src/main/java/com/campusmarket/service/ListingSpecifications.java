@@ -1,13 +1,19 @@
 package com.campusmarket.service;
 
 import com.campusmarket.domain.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,16 +51,102 @@ public final class ListingSpecifications {
         };
     }
 
+    /**
+     * How many words of a query are used.
+     *
+     * <p>Each one costs four LIKEs, and nobody searching a campus marketplace
+     * means anything by the seventh word. Past this the tail is dropped rather
+     * than the query refused - a long query is clumsy, not invalid.
+     */
+    private static final int MAX_TOKENS = 6;
+
+    /**
+     * The words in a query that are worth matching on.
+     *
+     * <p>Single characters are dropped: they carry no intent and, because the
+     * words are ANDed, a stray "a" would narrow the results for no reason.
+     * Duplicates go too, so "bike bike" is one condition rather than two
+     * identical ones.
+     */
+    private static List<String> tokenize(String term) {
+        if (term == null || term.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(term.trim().toLowerCase().split("\\s+"))
+                .filter(t -> t.length() > 1)
+                .distinct()
+                .limit(MAX_TOKENS)
+                .toList();
+    }
+
+    /**
+     * The seller join, reused rather than remade.
+     *
+     * <p>{@code root.join} creates a NEW join every time it is called, and the
+     * visibility rules have already made one by the time any of this runs.
+     * Each extra join is a redundant pass over the same one-to-one
+     * relationship - harmless with two, wasteful once a six-word query wants
+     * one apiece.
+     */
+    @SuppressWarnings("unchecked")
+    private static Join<Listing, User> sellerJoin(Root<Listing> root) {
+        return root.getJoins().stream()
+                .filter(j -> "seller".equals(j.getAttribute().getName()))
+                .findFirst()
+                .map(j -> (Join<Listing, User>) j)
+                .orElseGet(() -> root.join("seller"));
+    }
+
+    /** One LIKE pattern tested against every field a search is allowed to read. */
+    private static Predicate matchesAnywhere(Root<Listing> root, Join<Listing, User> seller,
+                                             CriteriaBuilder cb, String like) {
+        return cb.or(
+                cb.like(cb.lower(root.get("title")), like),
+                cb.like(cb.lower(root.get("description")), like),
+                cb.like(cb.lower(root.get("brand")), like),
+                cb.like(cb.lower(seller.get("name")), like));
+    }
+
+    /**
+     * Free-text search, matched word by word.
+     *
+     * <p>This used to build ONE pattern out of the whole query - {@code
+     * %calculus textbook%} - which meant the words had to appear together, in
+     * that order, as a literal substring. So "calculus textbook" found nothing
+     * on a listing titled "Textbook - Calculus 101", and "lamp for desk" found
+     * nothing on "Desk lamp". Any query whose word order differed from the
+     * title came back empty, which reads as "the site has none" rather than
+     * "the site looked for the wrong thing".
+     *
+     * <p>Now every word has to appear SOMEWHERE in the listing - title,
+     * description, brand or seller - but they no longer have to be adjacent or
+     * in order. Words are ANDed rather than ORed, because a query is a
+     * description of one thing: someone typing two words wants the listings
+     * matching both, not the much larger pile matching either.
+     *
+     * <p>The whole phrase is still tried on its own and ORed in, so a listing
+     * that genuinely contains the exact phrase is never lost to a word the
+     * tokenizer dropped. A single-word query behaves exactly as it always did.
+     */
     public static Specification<Listing> textSearch(String term) {
         if (term == null || term.isBlank()) {
             return null;
         }
-        String like = "%" + term.trim().toLowerCase() + "%";
-        return (root, query, cb) -> cb.or(
-                cb.like(cb.lower(root.get("title")), like),
-                cb.like(cb.lower(root.get("description")), like),
-                cb.like(cb.lower(root.get("brand")), like),
-                cb.like(cb.lower(root.join("seller").get("name")), like));
+        String phrase = "%" + term.trim().toLowerCase() + "%";
+        List<String> tokens = tokenize(term);
+
+        return (root, query, cb) -> {
+            Join<Listing, User> seller = sellerJoin(root);
+            Predicate exactPhrase = matchesAnywhere(root, seller, cb, phrase);
+            if (tokens.size() < 2) {
+                return exactPhrase;
+            }
+            Predicate everyWord = cb.conjunction();
+            for (String token : tokens) {
+                everyWord = cb.and(everyWord, matchesAnywhere(root, seller, cb, "%" + token + "%"));
+            }
+            return cb.or(exactPhrase, everyWord);
+        };
     }
 
     /**
@@ -80,6 +172,8 @@ public final class ListingSpecifications {
         String cleaned = term.trim().toLowerCase();
         String prefix = cleaned + "%";
         String anywhere = "%" + cleaned + "%";
+        List<String> tokens = tokenize(term);
+        boolean multiWord = tokens.size() > 1;
 
         return (root, query, cb) -> {
             /*
@@ -90,15 +184,33 @@ public final class ListingSpecifications {
              */
             Class<?> resultType = query.getResultType();
             if (resultType != Long.class && resultType != long.class) {
-                Expression<Integer> rank = cb.<Integer>selectCase()
-                        .when(cb.equal(cb.lower(root.get("title")), cleaned), 0)
-                        .when(cb.like(cb.lower(root.get("title")), prefix), 1)
-                        .when(cb.like(cb.lower(root.get("title")), anywhere), 2)
-                        .when(cb.like(cb.lower(root.get("brand")), anywhere), 3)
-                        .when(cb.like(cb.lower(root.get("description")), anywhere), 4)
-                        // Everything left matched on the seller's name, which is
-                        // a real hit but the weakest one.
-                        .otherwise(5)
+                Expression<String> title = cb.lower(root.get("title"));
+
+                /* Every word present in the title, in any order. Only built
+                   for a real multi-word query - an empty conjunction is TRUE,
+                   which would rank every row as a title hit. */
+                Predicate allWordsInTitle = cb.conjunction();
+                for (String token : tokens) {
+                    allWordsInTitle = cb.and(allWordsInTitle, cb.like(title, "%" + token + "%"));
+                }
+
+                CriteriaBuilder.Case<Integer> ranked = cb.<Integer>selectCase()
+                        .when(cb.equal(title, cleaned), 0)
+                        .when(cb.like(title, prefix), 1)
+                        .when(cb.like(title, anywhere), 2);
+                if (multiWord) {
+                    /* The whole reason the search now finds these at all, so
+                       they rank directly under a contiguous title match and
+                       above anything that only matched a description. */
+                    ranked = ranked.when(allWordsInTitle, 3);
+                }
+                Expression<Integer> rank = ranked
+                        .when(cb.like(cb.lower(root.get("brand")), anywhere), 4)
+                        .when(cb.like(cb.lower(root.get("description")), anywhere), 5)
+                        // Everything left matched on the seller's name, or on
+                        // words scattered across several fields - a real hit
+                        // either way, and the weakest one.
+                        .otherwise(6)
                         .as(Integer.class);
                 // Newest breaks ties, so equally-relevant rows still page stably.
                 query.orderBy(cb.asc(rank), cb.desc(root.get("createdAt")));
@@ -254,6 +366,71 @@ public final class ListingSpecifications {
             return (root, query, cb) -> cb.disjunction();
         }
         return (root, query, cb) -> cb.equal(root.get("campusZone"), parsed);
+    }
+
+    /**
+     * Busiest recently, rather than busiest ever.
+     *
+     * <p>"Most popular" used to be {@code ORDER BY views_count DESC} - a
+     * lifetime counter with no memory of when it was incremented. A listing
+     * posted in September with 400 views therefore outranked today's hottest
+     * item permanently, and the sort got more wrong every week it stayed up.
+     * What people mean by popular on a marketplace is "what is moving now".
+     *
+     * <p>Counted with a correlated subquery over the view events rather than a
+     * join, so listings with no recent views score zero and still appear -
+     * ordered last, which is right - instead of being dropped from a sort that
+     * was only ever meant to reorder the results, not filter them.
+     *
+     * <p>Contributes ordering only, like {@link #orderByRelevance}. The
+     * lifetime counter is untouched and still what the seller's dashboard
+     * reports; see V14__listing_views.sql.
+     */
+    public static Specification<Listing> orderByTrending(int windowDays) {
+        Instant since = Instant.now().minus(Duration.ofDays(Math.max(windowDays, 1)));
+
+        return (root, query, cb) -> {
+            // The derived COUNT query does not select this, same as elsewhere.
+            Class<?> resultType = query.getResultType();
+            if (resultType != Long.class && resultType != long.class) {
+                Subquery<Long> recentViews = query.subquery(Long.class);
+                Root<ListingView> view = recentViews.from(ListingView.class);
+                recentViews.select(cb.count(view))
+                        .where(cb.and(
+                                cb.equal(view.get("listingId"), root.get("id")),
+                                cb.greaterThanOrEqualTo(view.<Instant>get("viewedAt"), since)));
+
+                // Lifetime views break ties, so a page with no recent activity
+                // at all still comes back in a sensible order rather than by
+                // whatever the planner happened to return.
+                query.orderBy(cb.desc(recentViews),
+                        cb.desc(root.get("viewsCount")),
+                        cb.desc(root.get("createdAt")));
+            }
+            return cb.conjunction();
+        };
+    }
+
+    /**
+     * Exactly these listings, in no particular order.
+     *
+     * <p>For callers that have already decided WHICH rows they want elsewhere -
+     * the trending shelf ranks ids by view count first - and need them passed
+     * back through the public visibility rules before anyone sees them. A view
+     * row outlives its listing being sold or its seller being suspended, and
+     * neither belongs on the home page.
+     *
+     * <p>An empty set matches nothing, which is the honest answer: "any of
+     * these" over none of them is not everything.
+     */
+    public static Specification<Listing> withIds(Collection<UUID> ids) {
+        if (ids == null) {
+            return null;
+        }
+        if (ids.isEmpty()) {
+            return (root, query, cb) -> cb.disjunction();
+        }
+        return (root, query, cb) -> root.get("id").in(ids);
     }
 
     public static Specification<Listing> bySeller(UUID sellerId) {

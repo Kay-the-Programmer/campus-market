@@ -1,4 +1,5 @@
 import React from 'react';
+import { Eye } from 'lucide-react';
 import { Listing } from '../../types';
 import { formatPrice } from '../../utils/currency';
 
@@ -60,6 +61,45 @@ export const PriceTag: React.FC<PriceTagProps> = ({ listing, size = 'md', classN
         </>
       )}
     </div>
+  );
+};
+
+/**
+ * "Seen N times this week", when that is actually worth saying.
+ *
+ * <p>Social proof is the one number on a card that answers "is this any good"
+ * without anyone having written a review, and the app was collecting it -
+ * every listing carries a view count - while showing it to nobody but the
+ * seller.
+ *
+ * <p>Three rules keep it honest, and they are why this is a component rather
+ * than an inline span repeated in four grids:
+ *
+ * <ul>
+ *   <li>`undefined` means the endpoint did not measure views, which is not
+ *       zero. It renders nothing.
+ *   <li>A genuine zero renders nothing too. "0 people looked at this" is true,
+ *       useless, and actively discouraging.
+ *   <li>Below the floor it renders nothing. "Seen once this week" is noise
+ *       dressed as a signal, and a grid where every card claims something is
+ *       a grid where the claim stops meaning anything.
+ * </ul>
+ */
+export const ViewsNote: React.FC<{ count?: number; className?: string }> = ({
+  count,
+  className = '',
+}) => {
+  /** Below this it is not a crowd, it is a coincidence. */
+  const FLOOR = 3;
+  if (count == null || count < FLOOR) return null;
+
+  return (
+    <p className={`flex items-center gap-1 text-[10px] font-semibold text-[#737686] ${className}`}>
+      <Eye className="w-3 h-3 text-[#a0a3b1] shrink-0" />
+      <span className="truncate">
+        Seen {count} {count === 1 ? 'time' : 'times'} this week
+      </span>
+    </p>
   );
 };
 

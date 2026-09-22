@@ -19,6 +19,7 @@ import { DetailScreen } from './components/DetailScreen';
 import { SellScreen } from './components/SellScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { SavedScreen } from './components/SavedScreen';
+import { CategoriesScreen } from './components/CategoriesScreen';
 import { MessagesScreen } from './components/MessagesScreen';
 import { SupportScreen } from './components/SupportScreen';
 import { CartScreen } from './components/CartScreen';
@@ -70,7 +71,8 @@ import { useLiveCounts } from './hooks/useLiveCounts';
 import { api } from './services/api';
 import { completeGoogleRedirect } from './firebase';
 import { onForegroundPush, onNotificationClick, refreshToken } from './services/push';
-import { recordRecentlyViewed } from './services/recentlyViewed';
+import { recordRecentlyViewed, mergeGuestHistory } from './services/recentlyViewed';
+import { mergeGuestIntent } from './services/intent';
 import { getGuestSaves, toggleGuestSave, takeGuestSaves } from './services/guestSaves';
 
 // URL Routing Helpers
@@ -120,6 +122,7 @@ function parsePathname(pathname: string): {
   if (path === '/admin') return { view: 'admin' };
   if (path === '/support' || path === '/help') return { view: 'support' };
   if (path === '/legal') return { view: 'legal' };
+  if (path === '/categories') return { view: 'categories' };
 
   return { view: 'notFound' };
 }
@@ -144,6 +147,7 @@ function buildPathname(
     case 'admin': return '/admin';
     case 'support': return '/support';
     case 'legal': return '/legal';
+    case 'categories': return '/categories';
     case 'notFound': return '/404';
     default: return '/browse';
   }
@@ -463,6 +467,31 @@ export default function App() {
     setCurrentView('browse');
     updateUrl('browse');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /**
+   * Turns the filters currently on screen into a standing alert.
+   *
+   * <p>Resolves to whether it stuck, so the button confirms what happened
+   * rather than assuming. "Already saved" is reported as success: the person
+   * asked to be told when one appears, and they will be - saying so is more
+   * useful than an error about a duplicate they cannot see.
+   */
+  const handleSaveSearch = async (filters: {
+    query?: string; type?: string; categoryId?: string;
+    campusZone?: string; minPrice?: number; maxPrice?: number;
+  }): Promise<boolean> => {
+    const res = await api.savedSearches.create(filters);
+    if (res.success) {
+      toast.success("We'll notify you when something matches.", { title: 'Search saved' });
+      return true;
+    }
+    if (res.code === 'ALREADY_SAVED') {
+      toast.info("You're already watching this search.", { title: 'Already saved' });
+      return true;
+    }
+    toast.error(res.error || 'Could not save that search.');
+    return false;
   };
 
   /** Suggestion rows jump straight to the listing, skipping the results page. */
@@ -875,6 +904,10 @@ export default function App() {
       // read, or the Saved page renders without the items this person
       // hearted moments ago as a guest and looks like it lost them.
       mergeGuestSaves().then(loadSavedListings);
+      /* The trail that brought them here comes too. Signing up should not
+         empty "Continue browsing" as its first act. */
+      mergeGuestHistory(newSession.id);
+      mergeGuestIntent(newSession.id);
     }
     // Signing in is the other moment this device's push token should be
     // (re)registered, now that the routine refresh no longer does it.
@@ -1365,6 +1398,11 @@ export default function App() {
                   onCategoryChange={setFeedCategoryId}
                   dealsOnly={feedDealsOnly}
                   onDealsOnlyChange={setFeedDealsOnly}
+                  onBrowseCategories={() => handleNavigate('categories')}
+                  /* Withheld from guests: an alert needs an account to be
+                     delivered to, so the button is simply not offered rather
+                     than offered and then refused. */
+                  onSaveSearch={currentUser.role === 'customer' ? handleSaveSearch : undefined}
                 />
               )}
 
@@ -1489,6 +1527,31 @@ export default function App() {
                   onAddToCart={handleAddToCart}
                   currentUser={currentUser}
                   onSignIn={() => setIsAuthModalOpen(true)}
+                />
+              )}
+
+              {currentView === 'categories' && (
+                <CategoriesScreen
+                  onBack={handleBack}
+                  onSelectCategory={(id) => {
+                    /* Straight into the feed with that category applied, rather
+                       than a category-shaped screen of its own: one grid to
+                       maintain, and every other filter still works from there. */
+                    setFeedQuery('');
+                    setFeedType('All');
+                    setFeedDealsOnly(false);
+                    setFeedCategoryId(id);
+                    handleNavigate('browse');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onSelectType={(type) => {
+                    setFeedQuery('');
+                    setFeedCategoryId('');
+                    setFeedDealsOnly(false);
+                    setFeedType(type);
+                    handleNavigate('browse');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 />
               )}
 

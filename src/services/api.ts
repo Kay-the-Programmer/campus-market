@@ -19,6 +19,7 @@ import {
   PromoSlot,
   SellerApprovalStatus,
   SellerProfile,
+  SavedSearchRow,
   Suggestion,
 } from '../types';
 import { readStored, removeStored, writeStored } from '../utils/storage';
@@ -315,6 +316,9 @@ export function toListing(dto: any): Listing {
     // usual price is zero" have to stay distinguishable at the render site.
     compareAtPrice: dto?.compareAtPrice ?? undefined,
     discountPercent: dto?.discountPercent ?? undefined,
+    // `?? undefined` and never `?? 0`: the server sends null when it did not
+    // measure recent views, and a zero would claim nobody looked.
+    recentViews: dto?.recentViews ?? undefined,
     availableStock: dto?.availableStock ?? undefined,
   };
 }
@@ -620,6 +624,23 @@ export const api = {
       };
     },
 
+    /**
+     * What the campus is looking at this week.
+     *
+     * An empty list is a real answer, not a failure: the server withholds the
+     * shelf entirely when nothing clears its minimum view count, because
+     * "Trending" over three views is a claim the data does not support.
+     */
+    async trending(limit = 8, signal?: AbortSignal) {
+      const res = await get(`/api/listings/trending?limit=${limit}`, signal);
+      return {
+        listings: ((res.data?.listings ?? []) as unknown[]).map(toListing),
+        aborted: res.code === 'ABORTED',
+        error: res.error,
+        status: res.status,
+      };
+    },
+
     /** Search-as-you-type. Fires per keystroke, so keep the caller debounced. */
     async suggestions(q: string, limit = 6, signal?: AbortSignal) {
       const res = await get(
@@ -773,6 +794,54 @@ export const api = {
         error: res.error,
         status: res.status,
       };
+    },
+  },
+
+  /**
+   * Searches someone is waiting on.
+   *
+   * The counterpart of an empty result set: "nobody has one today" is only a
+   * dead end if there is no way to hear about it when somebody does.
+   */
+  savedSearches: {
+    async getAll() {
+      const res = await get('/api/saved-searches');
+      return {
+        searches: (res.data?.searches ?? []) as SavedSearchRow[],
+        error: res.error,
+        status: res.status,
+      };
+    },
+
+    async create(payload: {
+      query?: string;
+      type?: string;
+      categoryId?: string;
+      campusZone?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      label?: string;
+    }) {
+      const res = await post('/api/saved-searches', payload);
+      return {
+        success: res.ok,
+        search: res.data?.search as SavedSearchRow | undefined,
+        error: res.error,
+        // Carried through so the caller can tell "already saved" - which is a
+        // mis-tap worth a gentle note - from a real failure.
+        code: res.code,
+        status: res.status,
+      };
+    },
+
+    async setAlerts(id: string, alerts: boolean) {
+      const res = await post(`/api/saved-searches/${id}/alerts`, { alerts });
+      return { success: res.ok, error: res.error, status: res.status };
+    },
+
+    async remove(id: string) {
+      const res = await del(`/api/saved-searches/${id}`);
+      return { success: res.ok, error: res.error, status: res.status };
     },
   },
 

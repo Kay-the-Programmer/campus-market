@@ -14,6 +14,7 @@ import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { useToast } from './shared/ToastProvider';
 import { formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
+import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 interface DetailScreenProps {
   listing: Listing;
@@ -1048,16 +1049,21 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
+                      {/* This row was the last grid in the app still quoting a
+                          bare price, which made the cheaper alternative to
+                          what you are looking at the one place its saving was
+                          invisible. */}
+                      <div className="absolute top-2.5 left-2.5">
+                        <DiscountFlag percent={item.discountPercent} />
+                      </div>
                     </div>
                     <div className="p-3 sm:p-4">
                       <h3 className="font-bold text-slate-900 text-sm truncate group-hover:text-blue-600 transition-colors">
                         {item.title}
                       </h3>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-blue-600 font-extrabold text-sm">
-                          {formatPrice(item.price)}
-                        </span>
-                        <span className="text-xs text-slate-400 font-medium">
+                      <div className="flex items-center justify-between gap-2 mt-1.5">
+                        <PriceTag listing={item} size="sm" />
+                        <span className="text-xs text-slate-400 font-medium shrink-0">
                           {item.categoryName || item.category}
                         </span>
                       </div>

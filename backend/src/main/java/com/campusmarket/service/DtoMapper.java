@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -80,6 +81,18 @@ public class DtoMapper {
     }
 
     public ListingDto listing(Listing listing, Principal viewer, Set<UUID> savedListingIds) {
+        return listing(listing, viewer, savedListingIds, null);
+    }
+
+    /**
+     * @param recentViews views per listing inside the trending window, or null
+     *   where the caller did not measure them. Passed in as a whole map rather
+     *   than looked up here, because the alternative is one grouped query per
+     *   card: the browse grid maps two dozen listings per request, and this
+     *   turns that into a single round trip made by the caller.
+     */
+    public ListingDto listing(Listing listing, Principal viewer, Set<UUID> savedListingIds,
+                              Map<UUID, Long> recentViews) {
         List<String> imageUrls = listing.getImages().stream()
                 .map(ListingImage::getUrl)
                 .toList();
@@ -112,6 +125,10 @@ public class DtoMapper {
                 listing.getCompareAtPrice(),
                 Listings.availableStock(listing),
                 discountPercent(listing),
+                // Absent from the map means nobody viewed it in the window, which
+                // is a real zero; a null map means the caller did not ask, which
+                // has to stay distinguishable so the client can render nothing.
+                recentViews == null ? null : recentViews.getOrDefault(listing.getId(), 0L),
                 listing.getCreatedAt());
     }
 

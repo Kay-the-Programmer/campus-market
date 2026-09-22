@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag } from 'lucide-react';
+import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag, Search } from 'lucide-react';
 import { ViewType, AuthSession } from '../../types';
 import { badgeText, GUEST_ALLOWED, HIDES_BOTTOM_NAV, isSellerState } from './navShared';
 
@@ -117,9 +117,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
     if (!isHorizontal || !isFastEnough || !isFarEnough) return;
 
+    // Must stay in the order the tabs are drawn, or a swipe jumps somewhere
+    // other than the tab next to the one you are on.
     const views: ViewType[] = isSeller
-      ? ['browse', 'my-listings', 'sell', 'messages', 'cart']
-      : ['browse', 'saved', 'sell', 'messages', 'cart'];
+      ? ['browse', 'search', 'my-listings', 'sell', 'messages', 'cart']
+      : ['browse', 'search', 'saved', 'sell', 'messages', 'cart'];
 
     const currentIdx = views.indexOf(activeTab);
     const newIdx = deltaX < 0 ? Math.min(currentIdx + 1, views.length - 1) : Math.max(currentIdx - 1, 0);
@@ -127,8 +129,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   };
 
   const tabBase = `
-    flex flex-col items-center justify-center gap-0.5 px-2 py-1 
-    rounded-xl transition-all duration-200 min-w-[56px] relative
+    flex flex-col items-center justify-center gap-0.5 px-1.5 py-1 
+    rounded-xl transition-all duration-200 min-w-[48px] relative
     active:scale-90 transform-gpu select-none
   `;
 
@@ -211,6 +213,24 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       >
         <div className="max-w-md mx-auto flex items-end justify-between">
           {tab('browse', 'Home', Home)}
+
+          {/*
+            Search, in the primary nav.
+
+            It lived only in the top bar, which on a phone is the one thing
+            that scrolls away - so the single most common way of finding
+            anything was missing from the only navigation always on screen,
+            while Cart and Messages (which you cannot use until you have found
+            something) both had a permanent slot.
+
+            Added rather than swapped in. Cart and Messages live ONLY here on
+            mobile - the top bar's small-screen cluster carries Orders,
+            Notifications and the avatar, and nothing else - so neither can give
+            up its slot. Five tabs around the button is tight, which is why the
+            labels below are the smallest thing in the bar; it is still a better
+            trade than hiding the primary action.
+          */}
+          {tab('search', 'Search', Search)}
 
           {isSeller
             ? tab('my-listings', 'Listings', Tag, { activeColor: 'text-[#007d55]' })

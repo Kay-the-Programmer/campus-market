@@ -47,6 +47,22 @@ public class ListingController {
                 page, size);
     }
 
+    /**
+     * What the campus is looking at this week.
+     *
+     * <p>Public, like browse. Returns an empty list rather than a short one
+     * when nothing clears {@code minViews} - a shelf headed "Trending" over
+     * three views is a claim the data does not support, and the client renders
+     * no shelf at all in that case.
+     */
+    @GetMapping("/api/listings/trending")
+    public Map<String, List<ListingDto>> trending(@AuthPrincipal Principal principal,
+                                                  @RequestParam(defaultValue = "8") int limit,
+                                                  @RequestParam(defaultValue = "7") int windowDays,
+                                                  @RequestParam(defaultValue = "3") int minViews) {
+        return Map.of("listings", listingService.trending(principal, limit, windowDays, minViews));
+    }
+
     /** Public search-as-you-type. Runs on every keystroke, so it stays cheap. */
     @GetMapping("/api/listings/suggestions")
     public SuggestionsDto suggestions(@RequestParam(required = false) String q,

@@ -5,7 +5,12 @@ import { AuthSession, ViewType } from '../../types';
  * instead of a dead link or a raw 403 (RBAC rule 6).
  */
 export const GUEST_ALLOWED: ViewType[] = [
-  'browse', 'search', 'detail', 'support', 'legal', 'notFound',
+  // 'saved' belongs here now that a guest's shortlist is real and kept on the
+  // device (services/guestSaves). App's own guard was updated when that
+  // landed; this one was not, so the bottom bar still answered a tap on the
+  // Saved tab with the login modal - hiding the list from the person it was
+  // built for.
+  'browse', 'search', 'detail', 'saved', 'categories', 'support', 'legal', 'notFound',
 ];
 
 /**

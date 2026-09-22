@@ -54,6 +54,17 @@ public final class ListingDtos {
             Integer availableStock,
             /** Whole-percent saving, or null when there is nothing to compare. */
             Integer discountPercent,
+            /**
+             * Views in the trending window, for the "N people looked at this
+             * this week" note on a card.
+             *
+             * <p>Null when the caller did not ask for it, which is most of
+             * them - it costs a grouped query over the view events and only
+             * the browse grid and the trending shelf show it. Null means "not
+             * measured here", NOT "nobody looked", and the client must render
+             * nothing rather than a zero.
+             */
+            Long recentViews,
             Instant createdAt
     ) {}
 

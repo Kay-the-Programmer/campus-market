@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Heart, ShoppingBag, Briefcase, Utensils, MapPin, Sparkles, X,
   ArrowUpDown, Images, ShieldCheck, Layers, Loader2, Tag,
-  ChevronLeft, ChevronRight, ChevronDown, Pause, Play, SlidersHorizontal,
+  ChevronLeft, ChevronRight, ChevronDown, Pause, Play, SlidersHorizontal, Flame, LayoutGrid,
+  BellRing,
   Check,
 } from 'lucide-react';
 import {
@@ -11,13 +12,15 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import { getRecentlyViewed } from '../services/recentlyViewed';
+import { getIntent, setIntent, type Intent } from '../services/intent';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
+import { IntentPicker } from './browse/IntentPicker';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
-import { PriceTag, DiscountFlag } from './shared/PriceTag';
+import { PriceTag, DiscountFlag, ViewsNote } from './shared/PriceTag';
 
 interface BrowseScreenProps {
   listings: Listing[];
@@ -52,6 +55,23 @@ interface BrowseScreenProps {
    */
   dealsOnly: boolean;
   onDealsOnlyChange: (on: boolean) => void;
+  /** Opens the full category index. Optional - without it the link is omitted. */
+  onBrowseCategories?: () => void;
+  /**
+   * Saves the current filters as a standing alert. Resolves to whether it
+   * stuck, so the button can confirm rather than assume.
+   *
+   * Optional, and App withholds it from guests - an alert needs somewhere to
+   * be delivered, and a guest has no account to deliver it to.
+   */
+  onSaveSearch?: (filters: {
+    query?: string;
+    type?: string;
+    categoryId?: string;
+    campusZone?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }) => Promise<boolean>;
 }
 
 const PAGE_SIZE = 24;
@@ -266,6 +286,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   onCategoryChange: setCategoryId,
   dealsOnly,
   onDealsOnlyChange: setDealsOnly,
+  onBrowseCategories,
+  onSaveSearch,
 }) => {
   // Sort stays local - it's a property of the feed, not of the navigation.
   const [sort, setSort] = useState(readUrlFilters().sort);
@@ -405,11 +427,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
   /* ── "Continue browsing": literally the listings this user opened ──────── */
   useEffect(() => {
-    if (isGuest || !currentUser) {
-      setRecent([]);
-      return;
-    }
-    const ids = getRecentlyViewed(currentUser.id);
+    /*
+     * Guests included. This row used to be signed-in only, which withheld it
+     * from the exact person who most needs it: someone on their first visit,
+     * with no account, no saved items, and a listing they liked two screens
+     * ago and can no longer find. Their history is kept on the device, like
+     * their saves - see services/recentlyViewed.
+     */
+    const ids = getRecentlyViewed(currentUser?.id ?? '');
     if (ids.length === 0) {
       setRecent([]);
       return;
@@ -422,6 +447,73 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     });
     return () => { cancelled = true; };
   }, [currentUser?.id, isGuest]);
+
+  /*
+   * The first-run question, asked once.
+   *
+   * Held in state rather than read at render time so answering it updates the
+   * feed immediately instead of on the next mount. Read for the current user
+   * id, so signing in mid-session does not resurrect a question the account
+   * has already answered - and a shared machine asks the next person fresh.
+   */
+  const [intent, setIntentState] = useState<Intent | null>(
+    () => getIntent(currentUser?.id ?? ''),
+  );
+  useEffect(() => {
+    setIntentState(getIntent(currentUser?.id ?? ''));
+  }, [currentUser?.id]);
+
+  const answerIntent = (choice: Intent) => {
+    setIntent(currentUser?.id ?? '', choice);
+    setIntentState(choice);
+    // "Just browsing" is an answer, not a filter: it stops the question coming
+    // back and changes nothing about what is on screen.
+    if (choice !== 'browsing') {
+      setCoreType(choice);
+      setCategoryId('');
+    }
+  };
+
+  /* ── "Tell me when one is listed" ─────────────────────────────────────── */
+  const [savingSearch, setSavingSearch] = useState(false);
+  /** Reset whenever the filters move, so the confirmation always refers to
+   *  the search actually on screen rather than the last one saved. */
+  const [searchSaved, setSearchSaved] = useState(false);
+
+  const handleSaveSearch = async () => {
+    if (!onSaveSearch || savingSearch || searchSaved) return;
+    setSavingSearch(true);
+    const ok = await onSaveSearch({
+      query: searchQuery.trim() || undefined,
+      type: TYPE_PARAM[coreType],
+      categoryId: categoryId || undefined,
+      campusZone: zone || undefined,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    });
+    setSavingSearch(false);
+    setSearchSaved(ok);
+  };
+
+  /* ── "Trending on campus": what the week's views actually say ─────────── */
+  const [trending, setTrending] = useState<Listing[]>([]);
+  useEffect(() => {
+    api.listings.trending(8).then((res) => {
+      if (!res.aborted) setTrending(res.listings);
+    });
+  }, []);
+
+  /* Saves made elsewhere have to reach these rows too, or one listing shows
+     two different hearts depending on which shelf you are looking at. */
+  useEffect(() => {
+    const sync = (prev: Listing[]) =>
+      prev.map((r) => {
+        const fresh = listings.find((l) => l.id === r.id);
+        return fresh ? { ...r, isSaved: fresh.isSaved } : r;
+      });
+    setTrending(sync);
+    setRecent(sync);
+  }, [listings]);
 
   /* ── Carousel Auto-play ───────────────────────────────────────────────── */
   // `setCarouselIndex` uses a functional update, so the tick itself doesn't
@@ -626,6 +718,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
    * often past its end, staring at the footer. Skipped on the first run, which
    * is a page load rather than a change of mind.
    */
+  /* A new set of filters is a new search, so the "we'll tell you"
+     confirmation has to stop referring to the previous one. */
+  useEffect(() => { setSearchSaved(false); }, [settledFeed]);
+
   const firstFeedRender = useRef(true);
   useEffect(() => {
     if (firstFeedRender.current) {
@@ -772,8 +868,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     [searchQuery, dealsOnly],
   );
 
-  const showRecentRow = !isGuest && recent.length > 0 && !searchQuery.trim()
-    && coreType === 'All' && !categoryId;
+  /** Shelves only belong on an unfiltered feed - once someone has narrowed it,
+   *  the results ARE the answer and a shelf above them is in the way. */
+  const onHomeFeed = !searchQuery.trim() && coreType === 'All' && !categoryId && !dealsOnly;
+  const showRecentRow = recent.length > 0 && onHomeFeed;
+  /* The server withholds the shelf when nothing clears its view floor, so an
+     empty list here means "nothing is trending", not "the call failed". */
+  const showTrendingRow = trending.length > 0 && onHomeFeed;
 
   const isCoreActive = (type?: CoreType) => {
     if (type === undefined) return coreType === 'All' && !categoryId;
@@ -994,6 +1095,25 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                   </button>
                 );
               })}
+
+              {/*
+                The way out of the strip.
+
+                A horizontally-scrolling row can only ever show three or four
+                categories at a time, so "what else is on this site" was a
+                question you answered by swiping and hoping. This is the last
+                thing in the scroller for a reason: someone who has reached the
+                end of the visible chips is exactly the person still looking.
+              */}
+              {categories.length > 0 && onBrowseCategories && (
+                <button
+                  onClick={onBrowseCategories}
+                  className="snap-start shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-dashed border-[#b4c5ff] bg-[#f8f9ff] text-[#2563eb] hover:bg-[#eff4ff] hover:border-[#2563eb] transition-all duration-200 active:scale-95"
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  All categories
+                </button>
+              )}
             </div>
           </div>
 
@@ -1030,6 +1150,16 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 </button>
               );
             })}
+
+            {onBrowseCategories && (
+              <button
+                onClick={onBrowseCategories}
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#2563eb] hover:text-[#004ac6] shrink-0"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                All categories
+              </button>
+            )}
 
             {hasActiveFilters && (
               <button
@@ -1213,6 +1343,112 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         )}
 
 
+
+        {/*
+          Asked once, of someone who has not browsed yet.
+
+          Gated on having no history as well as no answer: a returning visitor
+          whose storage was cleared does not need to be interviewed, and
+          "Continue browsing" below already tells us what they are interested
+          in far more reliably than a self-report would.
+        */}
+        {intent === null && recent.length === 0 && onHomeFeed && (
+          <IntentPicker onChoose={answerIntent} />
+        )}
+
+        {/* ═══════════════════ TRENDING ON CAMPUS ═══════════════════ */}
+        {/*
+          What people are actually opening this week, counted from timestamped
+          view events rather than the lifetime counter - see V14__listing_views.
+
+          Above "Continue browsing" on purpose: this is the row that answers
+          "what is going on here", which is the first question a newcomer has;
+          continuing is only useful once you have already started.
+
+          The server sends nothing at all when no listing clears its view
+          floor, so this section cannot appear over data too thin to support
+          the word "trending".
+        */}
+        {showTrendingRow && (
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#fff1e0] text-[#9a4b00] text-[10px] font-extrabold uppercase tracking-wider">
+                  <Flame className="w-3 h-3" />
+                  Trending
+                </span>
+                <h2 className="text-sm font-bold text-[#0b1c30]">on campus this week</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setSort('popular');
+                  setSortTouched(true);
+                  const el = resultsRef.current;
+                  if (el) {
+                    const top = el.getBoundingClientRect().top + window.scrollY - 120;
+                    window.scrollTo({ top, behavior: 'smooth' });
+                  }
+                }}
+                className="flex items-center gap-1 text-[11px] font-bold text-[#2563eb] hover:text-[#004ac6] transition-colors shrink-0"
+              >
+                See more
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+              {trending.map((item, i) => {
+                const unavailable = item.badgeText === 'Sold' || item.badgeText === 'Reserved';
+                return (
+                  <article
+                    key={item.id}
+                    onClick={() => onSelectListing(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectListing(item);
+                      }
+                    }}
+                    className="snap-start shrink-0 w-40 sm:w-44 bg-white rounded-2xl border border-[#e5eeff]/80 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+                  >
+                    <div className="relative aspect-[4/3] bg-[#e5eeff] overflow-hidden">
+                      <ListingImage
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {/* Rank, because "third most looked at" is a different
+                          and more useful claim than "popular". */}
+                      <span className="absolute top-2 left-2 w-5 h-5 rounded-full bg-[#0b1c30]/80 backdrop-blur-sm text-white text-[10px] font-extrabold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <div className="absolute top-2 right-2">
+                        <DiscountFlag percent={unavailable ? undefined : item.discountPercent} />
+                      </div>
+                      {unavailable && (
+                        <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1">
+                          <span className="block text-center text-[10px] font-bold text-white uppercase tracking-widest">
+                            {item.badgeText}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-medium text-[#0b1c30] text-xs truncate group-hover:text-[#2563eb] transition-colors">
+                        {item.title}
+                      </h3>
+                      <PriceTag listing={item} size="sm" className="mt-0.5" />
+                      <ViewsNote count={item.recentViews} className="mt-1.5" />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ────────────────────── Continue browsing row ───────────────────── */}
         {showRecentRow && (
@@ -1590,6 +1826,39 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 Show everything
               </button>
             )}
+            {/*
+              The way out of a search that genuinely has no answer yet.
+
+              An empty grid used to be the end of the road: nobody has a spare
+              monitor today, so the person leaves, and nothing connects them to
+              the week three appear. This turns the dead end into a standing
+              request - the alert fires when a listing matching these exact
+              filters is published (SavedSearchNotifier).
+
+              Offered only when something was actually asked for. "Save this
+              search" over an unfiltered feed would mean "notify me about every
+              listing", which is not an alert, it is a firehose.
+            */}
+            {hasNonDealFilters && onSaveSearch && (
+              <button
+                onClick={handleSaveSearch}
+                disabled={searchSaved || savingSearch}
+                className={`mt-5 mx-auto flex items-center gap-2 px-5 h-10 rounded-lg text-xs font-bold transition-colors disabled:opacity-70 ${searchSaved
+                  ? 'bg-[#e6f9f1] text-[#006242] border border-[#c8f0e0]'
+                  : 'bg-[#0b1c30] text-white hover:bg-[#213145]'
+                  }`}
+              >
+                {savingSearch ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : searchSaved ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <BellRing className="w-3.5 h-3.5" />
+                )}
+                {searchSaved ? "We'll tell you" : 'Tell me when one is listed'}
+              </button>
+            )}
+
             {/* Not shown when Deals is the only thing applied - "Show
                 everything" above already is that button, and two controls
                 doing one job is a choice nobody wants to make. */}
@@ -1701,6 +1970,12 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       {/* Price - the loudest text on the card, carrying the
                           saving beside it when the seller has marked it down */}
                       <PriceTag listing={item} size="md" className="mt-0.5" />
+
+                      {/* Renders nothing unless enough people have actually
+                          looked - see ViewsNote. Above the location rather
+                          than below it so the interest reads as part of the
+                          item, not part of the pickup arrangements. */}
+                      <ViewsNote count={item.recentViews} className="mt-1.5" />
 
                       <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
                         <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />
