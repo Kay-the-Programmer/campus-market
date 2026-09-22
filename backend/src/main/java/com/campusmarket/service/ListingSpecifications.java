@@ -161,6 +161,58 @@ public final class ListingSpecifications {
         return (root, query, cb) -> cb.isTrue(root.get("specialOffer"));
     }
 
+    /**
+     * Listings priced genuinely below what they usually go for.
+     *
+     * <p>The test is the one {@code DtoMapper.discountPercent} already applies,
+     * so the filter and the badge can never disagree: a comparison price has to
+     * exist and has to be above the asking price. A "was" at or below the
+     * current price is not a discount, and a shelf carrying those rows would be
+     * quoting a saving of zero or less.
+     *
+     * <p>Only ever filters positively, like {@link #onlySpecialOffers} - false
+     * would mean "everything that is not reduced", which nothing asks for.
+     */
+    public static Specification<Listing> hasDiscount(Boolean discounted) {
+        if (discounted == null || !discounted) {
+            return null;
+        }
+        return (root, query, cb) -> cb.and(
+                cb.isNotNull(root.get("compareAtPrice")),
+                cb.greaterThan(root.<BigDecimal>get("compareAtPrice"),
+                        root.<BigDecimal>get("price")));
+    }
+
+    /**
+     * Deepest saving first, as a proportion rather than an amount.
+     *
+     * <p>Percent is what a shopper compares: K10 off a K20 lamp is a better
+     * deal than K50 off a K5,000 laptop, and ordering by the cash difference
+     * would rank them the other way round.
+     *
+     * <p>Callers must pair this with {@link #hasDiscount}, which
+     * {@code ListingService.search} does for them. The division is by the
+     * comparison price, so a row without one has no defined position here and
+     * would divide by null. Contributes ordering only, exactly like
+     * {@link #orderByRelevance}.
+     */
+    public static Specification<Listing> orderByDiscount() {
+        return (root, query, cb) -> {
+            // Same reasoning as orderByRelevance: the COUNT query Spring Data
+            // derives does not select this expression, so it must not order by
+            // it either.
+            Class<?> resultType = query.getResultType();
+            if (resultType != Long.class && resultType != long.class) {
+                Expression<BigDecimal> compareAt = root.get("compareAtPrice");
+                Expression<Number> saving = cb.quot(
+                        cb.diff(compareAt, root.<BigDecimal>get("price")), compareAt);
+                // Newest breaks ties, so two equal percentages still page stably.
+                query.orderBy(cb.desc(saving), cb.desc(root.get("createdAt")));
+            }
+            return cb.conjunction();
+        };
+    }
+
     public static Specification<Listing> priceAtMost(BigDecimal max) {
         if (max == null) {
             return null;

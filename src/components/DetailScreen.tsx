@@ -596,12 +596,28 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                   {listing.title}
                 </h1>
 
-                <div className="mt-4 flex items-baseline gap-1">
+                <div className="mt-4 flex items-baseline gap-2 flex-wrap">
                   <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                     {formatPrice(listing.price)}
                   </span>
                   {listing.priceUnit && (
                     <span className="text-base font-semibold text-slate-500">{listing.priceUnit}</span>
+                  )}
+                  {/* The saving, on the one screen where the decision is
+                      actually made. Gated on discountPercent rather than on
+                      compareAtPrice: the server only sends a percentage when
+                      the comparison is real, so this can never strike through
+                      a "was" price that is at or below what is being asked. */}
+                  {listing.discountPercent != null && listing.compareAtPrice != null && (
+                    <>
+                      <span className="text-base font-semibold text-slate-400 line-through">
+                        <span className="sr-only">Was </span>
+                        {formatPrice(listing.compareAtPrice)}
+                      </span>
+                      <span className="text-sm font-extrabold text-[#b3123c] bg-[#ffe8ec] rounded-full px-2 py-0.5">
+                        Save {listing.discountPercent}%
+                      </span>
+                    </>
                   )}
                 </div>
 
@@ -1109,6 +1125,16 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     {listing.priceUnit && (
                       <span className="text-xs font-semibold text-slate-500 ml-0.5">
                         {listing.priceUnit}
+                      </span>
+                    )}
+                    {/* The saving travels with the price for the same reason
+                        the price is here at all: this bar is the last thing
+                        seen before committing, and "K80" alone is a weaker
+                        number than "K80, down from K120". */}
+                    {listing.discountPercent != null && listing.compareAtPrice != null && (
+                      <span className="text-xs font-semibold text-slate-400 line-through ml-1.5">
+                        <span className="sr-only">Was </span>
+                        {formatPrice(listing.compareAtPrice)}
                       </span>
                     )}
                   </span>

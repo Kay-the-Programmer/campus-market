@@ -11,8 +11,24 @@ import { ListingImage } from '../shared/ListingImage';
 
 const MIN_QUERY = 2;
 
-/** Shown to someone who has never searched, so the panel is never empty. */
-const STARTER_TERMS = ['textbook', 'desk lamp', 'tutor', 'bike', 'lunch'];
+/** How many busiest categories to offer someone who has not typed yet. */
+const POPULAR_LIMIT = 5;
+
+/**
+ * The last-resort starters.
+ *
+ * <p>Only reached when the categories call fails - a brand new visitor opening
+ * an empty panel would otherwise be shown nothing at all, which reads as a
+ * broken search box rather than an empty one. Everything above this comes from
+ * the catalogue itself.
+ */
+const FALLBACK_TERMS = ['textbook', 'desk lamp', 'tutor', 'bike', 'lunch'];
+
+interface PopularCategory {
+  id: string;
+  name: string;
+  listingCount: number;
+}
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   PRODUCT: <ShoppingBag className="w-3 h-3" />,

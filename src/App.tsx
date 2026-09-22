@@ -83,7 +83,16 @@ function parsePathname(pathname: string): {
     return { view: 'orders', orderId: path.replace('/orders/', '') };
   }
 
-  if (path === '/' || path === '/browse') {
+  /*
+   * /offers is the feed with one filter already on, not a screen of its own.
+   *
+   * A separate deals page would be a second grid to keep in step with the
+   * first - its own paging, its own zone filter, its own empty state - and the
+   * moment someone wanted "cheap textbooks" rather than "cheap anything" they
+   * would have to leave it. Routing it into browse means the deals view is the
+   * feed, and every way of narrowing the feed still works from inside it.
+   */
+  if (path === '/' || path === '/browse' || path === '/offers') {
     return { view: 'browse' };
   }
   if (path.startsWith('/listing/')) {
@@ -239,11 +248,22 @@ export default function App() {
       q: p.get('q') || '',
       type: (['Product', 'Service', 'Food'].includes(t || '') ? t : 'All') as FeedType,
       categoryId: p.get('categoryId') || '',
+      /* /offers is an entry point, not a screen - see parsePathname. It is
+         read here as well as from ?deals=1 so the link works whether someone
+         typed the friendly URL or shared a filtered feed. */
+      deals: p.get('deals') === '1' || window.location.pathname === '/offers',
     };
   })();
   const [feedQuery, setFeedQuery] = useState(initialFeed.q);
   const [feedType, setFeedType] = useState<FeedType>(initialFeed.type);
   const [feedCategoryId, setFeedCategoryId] = useState(initialFeed.categoryId);
+  /*
+   * "Only reduced items" is owned here for the same reason the search term and
+   * the category are: the nav offers a Deals link, and a link that set a piece
+   * of BrowseScreen's private state would do nothing at all when pressed from
+   * the feed itself, which is exactly where it will be pressed most.
+   */
+  const [feedDealsOnly, setFeedDealsOnly] = useState(initialFeed.deals);
   const [navCategories, setNavCategories] = useState<CategoryLink[]>([]);
   const [pendingReports, setPendingReports] = useState(0);
   const [pendingSellers, setPendingSellers] = useState(0);
@@ -1228,6 +1248,8 @@ export default function App() {
                   onFeedTypeChange={setFeedType}
                   categoryId={feedCategoryId}
                   onCategoryChange={setFeedCategoryId}
+                  dealsOnly={feedDealsOnly}
+                  onDealsOnlyChange={setFeedDealsOnly}
                 />
               )}
 

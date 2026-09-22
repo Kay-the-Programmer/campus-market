@@ -55,19 +55,19 @@ const SUPPORT: FooterLink[] = [
 const SOCIAL_LINKS: { label: string; url: string; icon: React.ReactNode; hover: string }[] = [
   {
     label: 'Facebook',
-    url: 'https://facebook.com/',
+    url: 'https://www.facebook.com/profile.php?id=61593716265353&mibextid=wwXIfr&mibextid=wwXIfr',
     hover: 'hover:text-[#1877f2] hover:border-[#1877f2]',
     icon: <Facebook className="w-4 h-4" />,
   },
   {
     label: 'WhatsApp channel',
-    url: 'https://whatsapp.com/channel/',
+    url: 'https://whatsapp.com/channel/0029Vb7qiIlADTO5fqOBq91s',
     hover: 'hover:text-[#25d366] hover:border-[#25d366]',
     icon: <MessageCircle className="w-4 h-4" />,
   },
   {
     label: 'TikTok',
-    url: 'https://tiktok.com/',
+    url: 'https://www.tiktok.com/@campus.market.mu',
     hover: 'hover:text-[#0b1c30] hover:border-[#0b1c30]',
     icon: <Music2 className="w-4 h-4" />,
   },
@@ -139,7 +139,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({
                 height={32}
                 className="w-8 h-8 object-contain rounded-lg group-hover:scale-105 transition-transform duration-150"
               />
-              <span className="font-extrabold text-[#0b1c30] tracking-tight">QuickBine</span>
+              <span className="font-extrabold text-[#0b1c30] tracking-tight">Campus Market</span>
             </button>
             <p className="text-sm text-[#737686] mt-3 max-w-xs leading-relaxed">
               Buy, sell and trade with students you can actually meet.

@@ -57,7 +57,7 @@ const AVAILABILITY_CHIPS = [
 
 const FIELD_LABEL: Record<string, string> = {
   title: 'Title', price: 'Price', photos: 'Photos', location: 'Location',
-  campusZone: 'Campus zone',
+  campusZone: 'Campus zone', compareAtPrice: 'Original price',
   rateType: 'Rate type', quantity: 'Servings', pickupWindow: 'Pickup window',
 };
 
@@ -108,6 +108,12 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [price, setPrice] = useState(editingListing ? String(editingListing.price) : '');
+  /* The optional "was" price. Held as text like `price` so an empty box stays
+     distinguishable from zero, and seeded from the listing on edit so saving an
+     unrelated change never silently drops an existing markdown. */
+  const [compareAtPrice, setCompareAtPrice] = useState(
+    editingListing?.compareAtPrice != null ? String(editingListing.compareAtPrice) : '',
+  );
   const [description, setDescription] = useState(editingListing?.description ?? '');
   const [location, setLocation] = useState(editingListing?.location ?? '');
   // Pre-filled from the seller's own zone: people overwhelmingly hand over
@@ -170,12 +176,22 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   }, []);
 
   const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''));
+  /* NaN while the box is empty, which is what every check below tests for -
+     an absent markdown is not a zero one. */
+  const numericCompareAt = parseFloat(compareAtPrice.replace(/[^0-9.]/g, ''));
+  const hasCompareAt = compareAtPrice.trim() !== '' && !Number.isNaN(numericCompareAt);
+  /** What the buyer will see on the badge - and what the server will compute. */
+  const discountPreview = hasCompareAt && numericCompareAt > numericPrice
+    ? Math.round(((numericCompareAt - numericPrice) / numericCompareAt) * 100)
+    : null;
   const availability = [...availabilityChips, availabilityNotes.trim()].filter(Boolean).join(', ');
 
   const isDirty =
     title !== (editingListing?.title ?? '') ||
     description !== (editingListing?.description ?? '') ||
     price !== (editingListing ? String(editingListing.price) : '') ||
+    compareAtPrice !== (editingListing?.compareAtPrice != null
+      ? String(editingListing.compareAtPrice) : '') ||
     location !== (editingListing?.location ?? '') ||
     campusZone !== (editingListing?.campusZone ?? currentUser?.campusZone ?? '') ||
     photos.length !== (editingListing?.gallery ?? []).length ||
@@ -188,6 +204,15 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     if (!title.trim()) next.title = 'Give your listing a title.';
     if (!price.trim() || Number.isNaN(numericPrice)) next.price = 'Enter a price.';
     else if (numericPrice < 0) next.price = 'Price cannot be negative.';
+    /* Mirrors ListingService.applyCompareAtPrice, so the form refuses what the
+       server would refuse rather than letting someone hit Publish and bounce.
+       Only checked when they actually entered one - it is an optional field. */
+    if (hasCompareAt) {
+      if (numericCompareAt <= 0) next.compareAtPrice = 'The original price must be more than zero.';
+      else if (!Number.isNaN(numericPrice) && numericCompareAt <= numericPrice) {
+        next.compareAtPrice = "The original price has to be higher than what you're asking now.";
+      }
+    }
     if (photos.length === 0) next.photos = 'Add at least one photo before publishing.';
     if (!campusZone) next.campusZone = 'Choose which part of campus.';
     if (!location.trim()) next.location = 'Add a pickup or meetup location.';
@@ -226,6 +251,10 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     title: title.trim(),
     description: description.trim(),
     price: Number.isNaN(numericPrice) ? 0 : numericPrice,
+    /* Sent as an explicit null when cleared, not omitted: clearing the box is
+       how a seller ends a sale, and an absent key would leave the old "was"
+       price on the listing. */
+    compareAtPrice: hasCompareAt ? numericCompareAt : null,
     priceUnit: offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
     categoryId: categoryId || undefined,
     location: location.trim(),
@@ -350,6 +379,10 @@ export const SellScreen: React.FC<SellScreenProps> = ({
       id: editingListing?.id ?? 'preview',
       title: title.trim() || 'Untitled listing',
       price: Number.isNaN(numericPrice) ? 0 : numericPrice,
+      // The preview has to show the markdown too, or "see how it looks" is
+      // answering a different question than the one the seller asked.
+      compareAtPrice: discountPreview !== null ? numericCompareAt : undefined,
+      discountPercent: discountPreview ?? undefined,
       priceUnit: offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
       category: offeringType,
       condition: offeringType === 'Product' ? (condition as any) : 'N/A',
@@ -379,8 +412,9 @@ export const SellScreen: React.FC<SellScreenProps> = ({
       dietaryTags: offeringType === 'Food' ? dietaryTags : undefined,
       categoryName: categories.find((c) => c.id === categoryId)?.name,
     };
-  }, [previewOpen, offeringType, title, numericPrice, rateType, condition, brand, location, photos,
-    description, currentUser, pickupWindow, availability, quantity, dietaryTags, categoryId, categories, editingListing]);
+  }, [previewOpen, offeringType, title, numericPrice, numericCompareAt, discountPreview, rateType,
+    condition, brand, location, photos, description, currentUser, pickupWindow, availability,
+    quantity, dietaryTags, categoryId, categories, editingListing]);
 
   // Lightweight always-on summary for the desktop sidebar - separate from
   // `previewListing` above so the glance-card doesn't wait on the full
@@ -669,6 +703,46 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                         </p>
                       )}
                       <FieldError name="price" />
+
+                      {/*
+                        The markdown, tucked under the price it belongs to
+                        rather than given a row of its own: it is an optional
+                        embellishment on one number, and a full-width field
+                        would imply every seller is expected to fill it in.
+                        Hidden on sold listings for the same reason the price
+                        is locked there.
+                      */}
+                      {!isSoldListing && (
+                        <div className="mt-3">
+                          <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                            Original price{' '}
+                            <span className="font-medium text-slate-400">(optional)</span>
+                          </label>
+                          <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={compareAtPrice}
+                              onChange={(e) => setCompareAtPrice(e.target.value)}
+                              placeholder="What it used to cost"
+                              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            />
+                          </div>
+                          {discountPreview !== null ? (
+                            <p className="mt-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
+                              Shows as <span className="font-extrabold">{discountPreview}% off</span> and
+                              appears under Deals.
+                            </p>
+                          ) : (
+                            <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+                              Set this above your asking price to show a strike-through and list
+                              your item under Deals. Leave it blank if it isn't reduced.
+                            </p>
+                          )}
+                          <FieldError name="compareAtPrice" />
+                        </div>
+                      )}
                     </div>
 
                     <div>

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, MapPin, ShoppingBag, MessageSquare, Tag, Loader2 } from 'lucide-react';
+import { Heart, MapPin, ShoppingBag, MessageSquare, Tag, Loader2, ChevronRight } from 'lucide-react';
 import { AddToCart, AuthSession, Listing } from '../../types';
 import { api } from '../../services/api';
-import { formatPrice } from '../../utils/currency';
 import { useChatSeller, ConnectingToSellerOverlay } from '../../hooks/useChatSeller';
 import { ListingImage } from '../shared/ListingImage';
+import { PriceTag } from '../shared/PriceTag';
 
 interface SpecialOffersProps {
   onSelectListing: (listing: Listing) => void;
@@ -14,6 +14,15 @@ interface SpecialOffersProps {
   currentUser?: AuthSession;
   /** Saves made elsewhere, mirrored onto the hearts here. */
   listings: Listing[];
+  /**
+   * Turns on the feed's Deals filter.
+   *
+   * <p>The shelf is editorial and holds eight items; the filter is every
+   * reduced listing on the site. Without a way across, a curated shelf is a
+   * dead end - someone who likes what is on it has nowhere to go but back to
+   * the unfiltered feed.
+   */
+  onSeeAllDeals?: () => void;
 }
 
 const MAX_OFFERS = 8;
@@ -37,6 +46,7 @@ export const SpecialOffers: React.FC<SpecialOffersProps> = ({
   onOpenChat,
   currentUser,
   listings,
+  onSeeAllDeals,
 }) => {
   const [offers, setOffers] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,9 +115,19 @@ export const SpecialOffers: React.FC<SpecialOffersProps> = ({
             Quick Deals
           </span>
         </div>
-        <h2 className="text-[11px] font-semibold text-[#737686]">
-          Unbeatable prices
-        </h2>
+        {onSeeAllDeals ? (
+          <button
+            onClick={onSeeAllDeals}
+            className="flex items-center gap-1 text-[11px] font-bold text-[#2563eb] hover:text-[#004ac6] transition-colors"
+          >
+            See all deals
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <h2 className="text-[11px] font-semibold text-[#737686]">
+            Unbeatable prices
+          </h2>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -165,18 +185,11 @@ export const SpecialOffers: React.FC<SpecialOffersProps> = ({
                   {item.title}
                 </h3>
 
-                <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
-                  <span className="text-[#b3123c] font-extrabold text-lg tracking-tight">
-                    {formatPrice(item.price)}
-                  </span>
-                  {/* Only shown when the server sent one, so the strike-through
-                      is always a real previous price rather than decoration. */}
-                  {typeof item.compareAtPrice === 'number' && (
-                    <span className="text-xs font-semibold text-[#a0a3b1] line-through">
-                      {formatPrice(item.compareAtPrice)}
-                    </span>
-                  )}
-                </div>
+                {/* Shared with the feed, the search results and the deals page
+                    so one item never quotes two different savings. The shelf
+                    keeps its own red price via the wrapper below rather than
+                    forking the component. */}
+                <PriceTag listing={item} size="sm" className="mt-0.5 [&>span:first-child]:text-[#b3123c]" />
 
                 <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
                   <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />

@@ -14,6 +14,7 @@ import { FilterPill } from './search/FilterPill';
 import { formatPrice } from '../utils/currency';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { ListingImage } from './shared/ListingImage';
+import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 const PAGE_SIZE = 24;
 
@@ -421,11 +422,12 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute top-2.5 left-2.5">
+          <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5">
             <span className={TYPE_STYLE[item.category].chip}>
               {TYPE_STYLE[item.category].icon}
               {item.category}
             </span>
+            {!unavailable && <DiscountFlag percent={item.discountPercent} />}
           </div>
           <button
             onClick={(e) => onToggleSave(item.id, e)}
@@ -452,12 +454,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           <h3 className="font-medium text-[#0b1c30] text-sm truncate group-hover:text-[#2563eb] transition-colors duration-150">
             {item.title}
           </h3>
-          <div className="text-[#2563eb] font-extrabold text-lg sm:text-xl mt-0.5 tracking-tight">
-            {formatPrice(item.price)}
-            {item.priceUnit && (
-              <span className="text-xs font-semibold text-[#737686] ml-0.5">{item.priceUnit}</span>
-            )}
-          </div>
+          <PriceTag listing={item} size="md" className="mt-0.5" />
           <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
             <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />
             <span className="truncate">{item.location}</span>

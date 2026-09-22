@@ -39,10 +39,12 @@ public class ListingController {
                                       @RequestParam(required = false) UUID sellerId,
                                       @RequestParam(required = false) String sort,
                                       @RequestParam(required = false) Boolean specialOffer,
+                                      @RequestParam(required = false) Boolean hasDiscount,
                                       @RequestParam(defaultValue = "0") int page,
                                       @RequestParam(defaultValue = "24") int size) {
         return listingService.search(principal, search, type, categoryId, minPrice, maxPrice,
-                condition, location, campusZone, sellerId, sort, specialOffer, page, size);
+                condition, location, campusZone, sellerId, sort, specialOffer, hasDiscount,
+                page, size);
     }
 
     /** Public search-as-you-type. Runs on every keystroke, so it stays cheap. */

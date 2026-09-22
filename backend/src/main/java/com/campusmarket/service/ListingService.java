@@ -76,8 +76,21 @@ public class ListingService {
                                       UUID sellerId,
                                       String sort,
                                       Boolean specialOffer,
+                                      Boolean hasDiscount,
                                       int page,
                                       int size) {
+
+        /*
+         * "Biggest discount first" over a list that also contains full-price
+         * rows is not a ranking anybody asked for - the rows with nothing to
+         * compare against have no position in it at all. So the sort implies
+         * the filter, which also keeps the reported total honest: it counts the
+         * deals, which is what the caller is looking at.
+         */
+        boolean byDiscount = "discount".equalsIgnoreCase(sort == null ? "" : sort.trim());
+        if (byDiscount) {
+            hasDiscount = Boolean.TRUE;
+        }
 
         Specification<Listing> spec = ListingSpecifications.publiclyVisible();
         spec = and(spec, ListingSpecifications.textSearch(search));
@@ -90,6 +103,7 @@ public class ListingService {
         spec = and(spec, ListingSpecifications.inZone(campusZone));
         spec = and(spec, ListingSpecifications.bySeller(sellerId));
         spec = and(spec, ListingSpecifications.onlySpecialOffers(specialOffer));
+        spec = and(spec, ListingSpecifications.hasDiscount(hasDiscount));
 
         int safeSize = Math.min(Math.max(size, 1), 60);
         int safePage = Math.max(page, 0);
@@ -105,7 +119,13 @@ public class ListingService {
                 && (sort == null || sort.isBlank() || "relevance".equalsIgnoreCase(sort.trim()));
 
         Sort ordering;
-        if (byRelevance) {
+        if (byDiscount) {
+            // An explicit "best deals" beats relevance: someone who asked for
+            // the deepest saving on "textbook" wants the most heavily reduced
+            // textbook first, not the one whose title matches best.
+            spec = and(spec, ListingSpecifications.orderByDiscount());
+            ordering = Sort.unsorted();
+        } else if (byRelevance) {
             spec = and(spec, ListingSpecifications.orderByRelevance(search));
             // The spec owns the ORDER BY. Anything here would be appended after
             // it by Spring Data and, being unique per row, would win outright.
@@ -430,6 +450,7 @@ public class ListingService {
         listing.setTitle(request.title().trim());
         listing.setDescription(request.description() == null ? "" : request.description().trim());
         listing.setPrice(request.price());
+        applyCompareAtPrice(listing, request.compareAtPrice());
         listing.setPriceUnit(blankToNull(request.priceUnit()));
         listing.setLocation(blankToNull(request.location()));
         listing.setCampusZone(parseCampusZone(request.campusZone()));
@@ -470,6 +491,41 @@ public class ListingService {
                     .map(ImageStorageService::toStoredForm)
                     .forEach(listing::addImage);
         }
+    }
+
+    /**
+     * The seller's own "was" price.
+     *
+     * <p>Self-service on purpose, and deliberately NOT the same thing as the
+     * Special Offers shelf: marking your own item down is an ordinary price
+     * change that any seller may make, whereas being promoted on the home feed
+     * is an editorial decision that stays with admins (see
+     * {@code AdminService.setSpecialOffer}). A seller can therefore reduce a
+     * price and be found under "Deals"; they still cannot put themselves on the
+     * shelf.
+     *
+     * <p>The comparison has to be above the asking price or it is not a saving.
+     * Rejecting it rather than silently dropping it matters: a seller who typed
+     * the two figures the wrong way round has made a mistake worth telling them
+     * about, and quietly discarding it would leave them believing their item is
+     * listed as reduced when it is not.
+     */
+    private void applyCompareAtPrice(Listing listing, BigDecimal compareAtPrice) {
+        if (compareAtPrice == null) {
+            // Clearing it is how a seller ends a sale, so null is a real value
+            // here rather than "leave whatever was there".
+            listing.setCompareAtPrice(null);
+            return;
+        }
+        if (compareAtPrice.signum() <= 0) {
+            throw ApiException.badRequest("INVALID_COMPARE_PRICE",
+                    "The original price must be more than zero.");
+        }
+        if (listing.getPrice() != null && compareAtPrice.compareTo(listing.getPrice()) <= 0) {
+            throw ApiException.badRequest("INVALID_COMPARE_PRICE",
+                    "The original price has to be higher than what you're asking now.");
+        }
+        listing.setCompareAtPrice(compareAtPrice);
     }
 
     /** Sold listings accept description and nothing else that could mislead. */

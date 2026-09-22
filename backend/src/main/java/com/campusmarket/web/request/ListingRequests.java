@@ -28,6 +28,19 @@ public final class ListingRequests {
             @PositiveOrZero(message = "Price cannot be negative.")
             BigDecimal price,
 
+            /**
+             * What the seller was asking before, shown struck through beside the
+             * live price and used to rank the deals shelf. Optional and
+             * self-service: a seller marking their OWN item down is an ordinary
+             * price change, unlike the admin-curated Special Offers shelf, which
+             * stays admin-only - see AdminService.setSpecialOffer.
+             *
+             * <p>Range-checked in ListingService rather than here because the
+             * rule is relational: it has to be above {@code price}, which a
+             * field-level constraint cannot see.
+             */
+            BigDecimal compareAtPrice,
+
             String priceUnit,
             UUID categoryId,
             /** Free-text meetup spot, e.g. "Hall 4 Dorms". */

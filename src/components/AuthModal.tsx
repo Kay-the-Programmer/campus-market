@@ -527,7 +527,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 delivery - the number exists so the two of you can find each
                 other at a handover that happens in person, which is why the
                 hint says what it is FOR rather than just asking for it. */}
-            <Field label="Phone number (optional)">
+            <Field label="Phone number">
+
+
               <input
                 type="tel"
                 value={phone}

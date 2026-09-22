@@ -17,6 +17,7 @@ import { SpecialOffers } from './browse/SpecialOffers';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
+import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 interface BrowseScreenProps {
   listings: Listing[];
@@ -41,6 +42,16 @@ interface BrowseScreenProps {
   onFeedTypeChange: (type: CoreType) => void;
   categoryId: string;
   onCategoryChange: (id: string) => void;
+  /**
+   * "Only listings priced below what they usually go for."
+   *
+   * Owned by App alongside the search term and the category, because the nav's
+   * Deals link has to be able to turn it on while the feed is already the
+   * screen being looked at - which is where it will be pressed most, and where
+   * a piece of state private to this component would simply not respond.
+   */
+  dealsOnly: boolean;
+  onDealsOnlyChange: (on: boolean) => void;
 }
 
 const PAGE_SIZE = 24;
@@ -121,11 +132,17 @@ const iconForLink = (link?: string): React.ReactNode => {
  * someone types - see `effectiveSort` below.
  */
 const SORTS = [
-  { value: 'relevance', label: 'Best match', needsQuery: true },
-  { value: 'newest', label: 'Newest', needsQuery: false },
-  { value: 'popular', label: 'Most popular', needsQuery: false },
-  { value: 'price_asc', label: 'Price: Low to High', needsQuery: false },
-  { value: 'price_desc', label: 'Price: High to Low', needsQuery: false },
+  { value: 'relevance', label: 'Best match', needsQuery: true, needsDeals: false },
+  /* Offered only while the deals filter is on, for the same reason as "Best
+     match": a saving is something only a reduced listing has, so ranking the
+     whole catalogue by it would put every full-price row in an arbitrary order
+     behind the handful that are reduced. The server takes the same view and
+     applies the filter itself - see ListingService.search. */
+  { value: 'discount', label: 'Biggest saving', needsQuery: false, needsDeals: true },
+  { value: 'newest', label: 'Newest', needsQuery: false, needsDeals: false },
+  { value: 'popular', label: 'Most popular', needsQuery: false, needsDeals: false },
+  { value: 'price_asc', label: 'Price: Low to High', needsQuery: false, needsDeals: false },
+  { value: 'price_desc', label: 'Price: High to Low', needsQuery: false, needsDeals: false },
 ] as const;
 
 type CoreType = 'All' | 'Product' | 'Service' | 'Food';
@@ -163,6 +180,25 @@ function readUrlFilters() {
     maxPrice: p.get('maxPrice') || '',
   };
 }
+
+/**
+ * One-tap price bands.
+ *
+ * <p>The slider is precise and the two boxes are exact, but both are a
+ * deliberate act: on a phone, narrowing to "cheap stuff" costs a drag or six
+ * keystrokes behind a dropdown. These are the three answers people actually
+ * want, at the cost of one tap, with the slider still there underneath for
+ * anyone who means something more specific.
+ *
+ * <p>Held as the same strings the filters use, so a preset and a dragged range
+ * are indistinguishable downstream - a preset IS a range, not a fourth kind of
+ * filter with its own state to keep in step.
+ */
+const PRICE_PRESETS: { label: string; min: string; max: string }[] = [
+  { label: 'Under K50', min: '', max: '50' },
+  { label: 'K50–200', min: '50', max: '200' },
+  { label: 'K200+', min: '200', max: '' },
+];
 
 /* ── Per-type visual language, shared by chips and cards ───────────────── */
 const TYPE_STYLE: Record<ListingCategory, { chip: string; solid: string; icon: React.ReactNode }> = {
@@ -228,6 +264,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   onFeedTypeChange: setCoreType,
   categoryId,
   onCategoryChange: setCategoryId,
+  dealsOnly,
+  onDealsOnlyChange: setDealsOnly,
 }) => {
   // Sort stays local - it's a property of the feed, not of the navigation.
   const [sort, setSort] = useState(readUrlFilters().sort);
@@ -431,6 +469,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
    * never overridden either way.
    */
   const effectiveSort = (() => {
+    /* Turning the deals filter off strands a "Biggest saving" selection with
+       nothing to rank, exactly as clearing the box strands "Best match". */
+    if (!dealsOnly && sort === 'discount') return 'newest';
+    /* Switching it on, having expressed no preference, means the deepest
+       savings first - which is what asking for deals asks for. An explicit
+       choice is never overridden, and neither is a query's relevance ranking
+       once someone has chosen it. */
+    if (dealsOnly && !sortTouched) return 'discount';
     if (!searchQuery.trim()) return sort === 'relevance' ? 'newest' : sort;
     if (!sortTouched && sort === 'newest') return 'relevance';
     return sort;
@@ -460,6 +506,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         campusZone: zone || undefined,
         minPrice: minPrice || undefined,
         maxPrice: maxPrice || undefined,
+        hasDiscount: dealsOnly ? 'true' : undefined,
         sort: effectiveSort !== 'newest' ? effectiveSort : undefined,
         page: nextPage,
         size: PAGE_SIZE,
@@ -483,7 +530,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
       setLoading(false);
       setLoadingMore(false);
     },
-    [searchQuery, coreType, categoryId, zone, effectiveSort, minPrice, maxPrice],
+    [searchQuery, coreType, categoryId, zone, effectiveSort, minPrice, maxPrice, dealsOnly],
   );
 
   /*
@@ -494,7 +541,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const settledFeed = useDebouncedValue(
     JSON.stringify({
       q: searchQuery.trim(), coreType, categoryId, zone,
-      sort: effectiveSort, minPrice, maxPrice,
+      sort: effectiveSort, minPrice, maxPrice, dealsOnly,
     }),
   );
 
@@ -508,6 +555,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     if (zone) params.set('campusZone', zone);
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
+    if (dealsOnly) params.set('deals', '1');
     if (effectiveSort !== 'newest') params.set('sort', effectiveSort);
     const qs = params.toString();
     window.history.replaceState({}, '', qs ? `/browse?${qs}` : '/browse');
@@ -580,6 +628,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setZone('');
     setMinPrice('');
     setMaxPrice('');
+    setDealsOnly(false);
     setSort('newest');
     // Back to a feed nobody has expressed a preference about.
     setSortTouched(false);
@@ -599,6 +648,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setZone('');
     setMinPrice('');
     setMaxPrice('');
+    setDealsOnly(false);
     setCategoryId(id);
   };
 
@@ -630,10 +680,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setTimeout(() => setAddedId((current) => (current === item.id ? null : current)), 1400);
   };
 
-  /** Anything narrowing the feed right now - what "Clear" would undo. */
-  const hasActiveFilters = Boolean(
+  /** Everything narrowing the feed except the deals toggle, which the empty
+   *  state offers to undo on its own. */
+  const hasNonDealFilters = Boolean(
     searchQuery.trim() || coreType !== 'All' || categoryId || zone || minPrice || maxPrice,
   );
+
+  /** Anything narrowing the feed right now - what "Clear" would undo. */
+  const hasActiveFilters = hasNonDealFilters || dealsOnly;
 
   const activeSortLabel = useMemo(
     () => SORTS.find((s) => s.value === effectiveSort)?.label ?? 'Newest',
@@ -641,8 +695,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   );
 
   const visibleSorts = useMemo(
-    () => SORTS.filter((s) => !s.needsQuery || searchQuery.trim()),
-    [searchQuery],
+    () => SORTS.filter((s) => (!s.needsQuery || searchQuery.trim()) && (!s.needsDeals || dealsOnly)),
+    [searchQuery, dealsOnly],
   );
 
   const showRecentRow = !isGuest && recent.length > 0 && !searchQuery.trim()
@@ -1135,81 +1189,19 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             onOpenChat={onOpenChat}
             currentUser={currentUser}
             listings={listings}
+            onSeeAllDeals={() => {
+              setDealsOnly(true);
+              // Straight to the results: the filter is applied below the shelf,
+              // so without this the page looks like the tap did nothing.
+              const el = resultsRef.current;
+              if (el) {
+                const top = el.getBoundingClientRect().top + window.scrollY - 120;
+                window.scrollTo({ top, behavior: 'smooth' });
+              }
+            }}
           />
         )}
 
-        {/* ═══════════════════════ BENTO GRID ═══════════════════════ */}
-        {!searchQuery.trim() && coreType === 'All' && !categoryId && bentoItems.length > 0 && (
-          <section className="mb-7">
-            <div className="flex items-center justify-between mb-3">
-              {/* These panels are marketing routes into the catalogue, not
-                  priced goods; the offers shelf above now owns that job. */}
-              <h2 className="text-sm font-bold text-[#0b1c30]">Explore the marketplace</h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[110px] sm:auto-rows-[120px]">
-              {bentoItems.map((item) => {
-                const tile = PROMO_THEME_TILE[item.theme];
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => followPromoLink(item.ctaLink)}
-                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${item.imageUrl ? 'bg-[#0b1c30]' : tile.bg
-                      } border border-white/60 p-4 text-left overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]`}
-                  >
-                    {item.imageUrl ? (
-                      <>
-                        <ListingImage
-                          src={item.imageUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div
-                          className="absolute inset-0 bg-[#0b1c30]"
-                          style={{ opacity: item.imageOverlay / 100 }}
-                        />
-                      </>
-                    ) : (
-                      <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-white/40 group-hover:scale-110 transition-transform duration-300" />
-                    )}
-
-                    <div className="relative z-10 flex flex-col h-full justify-between">
-                      <div className="flex items-start justify-between">
-                        <div
-                          className={`p-2 rounded-xl backdrop-blur-sm ${item.imageUrl ? 'bg-white/20 text-white' : `bg-white/70 ${tile.text}`
-                            }`}
-                        >
-                          {iconForLink(item.ctaLink)}
-                        </div>
-                        {item.badge && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-[#0b1c30] shadow-sm">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <h3
-                          className={`text-sm font-bold leading-tight ${item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
-                            }`}
-                        >
-                          {item.title}
-                        </h3>
-                        {item.subtitle && (
-                          <p
-                            className={`text-[11px] mt-0.5 leading-snug line-clamp-2 ${item.imageUrl ? 'text-white/80' : 'text-[#737686]'
-                              }`}
-                          >
-                            {item.subtitle}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* ── Campus zone filter. Sits above the results rather than in the
              category menu because it cuts across every type - someone wants
@@ -1223,6 +1215,54 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           edge and appeared to vanish behind the results. No z-index can escape
           a clip, so the control moves out of the scroller instead.
         */}
+        {/*
+          Deals and price bands, above the zone row.
+
+          These are the two questions a newcomer arrives with - "what's cheap"
+          and "what's a bargain" - and until now neither had an answer that did
+          not involve opening a dropdown. The zone row below is the
+          narrower-down you reach for second, once you know what you're after.
+        */}
+        <div className="flex items-center gap-2 mb-2.5 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setDealsOnly(!dealsOnly)}
+            aria-pressed={dealsOnly}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 ${dealsOnly
+              ? 'bg-[#b3123c] text-white border-[#b3123c] shadow-card'
+              : 'bg-[#ffe8ec] text-[#b3123c] border-[#ffd0da] hover:border-[#b3123c]'
+              }`}
+          >
+            <Tag className="w-3 h-3" />
+            Deals
+          </button>
+
+          <span className="shrink-0 w-px h-4 bg-[#c3c6d7]/60" aria-hidden="true" />
+
+          {PRICE_PRESETS.map((preset) => {
+            // A preset is "on" only when it is exactly the band in force -
+            // a hand-dragged K60-K180 is inside K50-200 but is not that
+            // choice, and lighting the chip up would misreport the filter.
+            const active = minPrice === preset.min && maxPrice === preset.max;
+            return (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  // Tapping the lit one clears it, like every other chip here.
+                  if (active) { setMinPrice(''); setMaxPrice(''); return; }
+                  setMinPrice(preset.min);
+                  setMaxPrice(preset.max);
+                }}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${active
+                  ? 'bg-[#2563eb] text-white border-[#2563eb]'
+                  : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
+                  }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex items-center gap-2 mb-4" data-onboarding="feed-zones">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
             <span className="shrink-0 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
@@ -1322,6 +1362,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 onRemove={() => setCategoryId('')}
               />
             )}
+            {dealsOnly && <FilterPill label="Deals only" onRemove={() => setDealsOnly(false)} />}
             {zone && <FilterPill label={zoneLabel(zone)} onRemove={() => setZone('')} />}
             {(minPrice || maxPrice) && (
               <FilterPill
@@ -1342,7 +1383,11 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         <div ref={resultsRef} className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-sm font-semibold text-[#434655] truncate">
-              {loading ? 'Searching…' : `${total} listing${total !== 1 ? 's' : ''}`}
+              {loading ? 'Searching…'
+                // Counting "deals" rather than "listings" while the filter is on,
+                // so the number visibly answers the question that was asked.
+                : dealsOnly ? `${total} deal${total !== 1 ? 's' : ''}`
+                  : `${total} listing${total !== 1 ? 's' : ''}`}
             </span>
             {/* "Clear all" lives on the filter pill row directly above, next to
                 the individual filters it clears. */}
@@ -1393,14 +1438,32 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               <Sparkles className="w-8 h-8 text-[#2563eb]" />
             </div>
             <h3 className="text-lg font-bold text-[#0b1c30]">
-              {searchQuery.trim() ? <>Nothing matched “{searchQuery.trim()}”</> : 'No listings found'}
+              {searchQuery.trim() ? <>Nothing matched “{searchQuery.trim()}”</>
+                : dealsOnly ? 'No deals right now'
+                  : 'No listings found'}
             </h3>
             <p className="text-sm text-[#737686] mt-1.5 max-w-sm mx-auto">
-              {hasActiveFilters
-                ? 'Try removing a filter, or search for something broader.'
-                : 'Nothing has been listed here yet — check back soon.'}
+              {/* An empty deals shelf is the one case where the fix is a single
+                  specific tap, so it gets said rather than folded into the
+                  generic "remove a filter". */}
+              {dealsOnly
+                ? 'Nothing here is marked down at the moment. Turn off Deals to see everything that is listed.'
+                : hasActiveFilters
+                  ? 'Try removing a filter, or search for something broader.'
+                  : 'Nothing has been listed here yet — check back soon.'}
             </p>
-            {hasActiveFilters && (
+            {dealsOnly && (
+              <button
+                onClick={() => setDealsOnly(false)}
+                className="btn-primary !h-10 !px-5 !text-xs mt-5 !rounded-lg mx-auto"
+              >
+                Show everything
+              </button>
+            )}
+            {/* Not shown when Deals is the only thing applied - "Show
+                everything" above already is that button, and two controls
+                doing one job is a choice nobody wants to make. */}
+            {hasNonDealFilters && (
               <button onClick={resetToHome} className="btn-primary !h-10 !px-5 !text-xs mt-5 !rounded-lg mx-auto">
                 Clear filters
               </button>
@@ -1461,12 +1524,16 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
 
-                      {/* Type tag - always visible, never behind a tap */}
-                      <div className="absolute top-2.5 left-2.5">
+                      {/* Type tag, and the saving beneath it when there is one.
+                          Stacked rather than placed opposite: the top-right
+                          corner belongs to Save, and a flag there would be the
+                          one thing people tap by accident. */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5">
                         <span className={TYPE_STYLE[item.category].chip}>
                           {TYPE_STYLE[item.category].icon}
                           {item.category}
                         </span>
+                        {!unavailable && <DiscountFlag percent={item.discountPercent} />}
                       </div>
 
                       {/* Save - the one part of the card that doesn't navigate */}
@@ -1501,13 +1568,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         {item.title}
                       </h3>
 
-                      {/* Price - the loudest text on the card */}
-                      <div className="text-[#2563eb] font-extrabold text-lg sm:text-xl mt-0.5 tracking-tight">
-                        {formatPrice(item.price)}
-                        {item.priceUnit && (
-                          <span className="text-xs font-semibold text-[#737686] ml-0.5">{item.priceUnit}</span>
-                        )}
-                      </div>
+                      {/* Price - the loudest text on the card, carrying the
+                          saving beside it when the seller has marked it down */}
+                      <PriceTag listing={item} size="md" className="mt-0.5" />
 
                       <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
                         <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />
@@ -1580,6 +1643,89 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               <p className="text-center text-xs text-[#737686] py-8">That's everything for now.</p>
             )}
           </>
+        )}
+
+        {/* ═══════════════════════ BENTO GRID ═══════════════════════ */}
+        {/*
+          Below the results, not above them.
+
+          These are marketing routes into the catalogue, and they used to sit
+          between the offers shelf and the first real listing - so a phone
+          arriving at the home page scrolled past a carousel, a shelf and three
+          promo tiles before seeing a single thing that was for sale. They earn
+          their place as somewhere to go NEXT, once the grid has been scanned
+          and nothing caught the eye; they do not earn the space above it.
+        */}
+        {!searchQuery.trim() && coreType === 'All' && !categoryId && bentoItems.length > 0 && (
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3">
+              {/* These panels are marketing routes into the catalogue, not
+                  priced goods; the offers shelf above now owns that job. */}
+              <h2 className="text-sm font-bold text-[#0b1c30]">Explore the marketplace</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[110px] sm:auto-rows-[120px]">
+              {bentoItems.map((item) => {
+                const tile = PROMO_THEME_TILE[item.theme];
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => followPromoLink(item.ctaLink)}
+                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${item.imageUrl ? 'bg-[#0b1c30]' : tile.bg
+                      } border border-white/60 p-4 text-left overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]`}
+                  >
+                    {item.imageUrl ? (
+                      <>
+                        <ListingImage
+                          src={item.imageUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div
+                          className="absolute inset-0 bg-[#0b1c30]"
+                          style={{ opacity: item.imageOverlay / 100 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-white/40 group-hover:scale-110 transition-transform duration-300" />
+                    )}
+
+                    <div className="relative z-10 flex flex-col h-full justify-between">
+                      <div className="flex items-start justify-between">
+                        <div
+                          className={`p-2 rounded-xl backdrop-blur-sm ${item.imageUrl ? 'bg-white/20 text-white' : `bg-white/70 ${tile.text}`
+                            }`}
+                        >
+                          {iconForLink(item.ctaLink)}
+                        </div>
+                        {item.badge && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-[#0b1c30] shadow-sm">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h3
+                          className={`text-sm font-bold leading-tight ${item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
+                            }`}
+                        >
+                          {item.title}
+                        </h3>
+                        {item.subtitle && (
+                          <p
+                            className={`text-[11px] mt-0.5 leading-snug line-clamp-2 ${item.imageUrl ? 'text-white/80' : 'text-[#737686]'
+                              }`}
+                          >
+                            {item.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         )}
       </div>
 
