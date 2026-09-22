@@ -7,7 +7,7 @@ import {
   Check,
 } from 'lucide-react';
 import {
-  AddToCart, AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory,
+  AddToCart, AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, SavedSearchRow,
   PromoSlot, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, zoneLabel,
 } from '../types';
 import { api } from '../services/api';
@@ -55,6 +55,24 @@ interface BrowseScreenProps {
    */
   dealsOnly: boolean;
   onDealsOnlyChange: (on: boolean) => void;
+  /** Campus zone, or '' for anywhere. Owned by App - see the note at the top
+   *  of the component for why these two are not local. */
+  zone: CampusZone | '';
+  onZoneChange: (zone: CampusZone | '') => void;
+  /** Price bounds as strings: '' means "no bound", which 0 cannot express. */
+  minPrice: string;
+  maxPrice: string;
+  onPriceChange: (min: string, max: string) => void;
+  /**
+   * Searches this person is waiting on, shown as one-tap chips.
+   *
+   * <p>For a returning visitor these are the shortest route to what they came
+   * for - they already said what they want, so making them re-enter it is the
+   * app forgetting on their behalf. Empty for guests and anyone who has saved
+   * none, in which case the row is not drawn.
+   */
+  watchedSearches?: SavedSearchRow[];
+  onRunSearch?: (search: SavedSearchRow) => void;
   /** Opens the full category index. Optional - without it the link is omitted. */
   onBrowseCategories?: () => void;
   /**
@@ -288,21 +306,41 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   onDealsOnlyChange: setDealsOnly,
   onBrowseCategories,
   onSaveSearch,
+  zone,
+  onZoneChange: setZone,
+  minPrice,
+  maxPrice,
+  onPriceChange,
+  watchedSearches = [],
+  onRunSearch,
 }) => {
+  /*
+   * There is deliberately no setMinPrice/setMaxPrice pair.
+   *
+   * Every site below sets BOTH bounds, and two single-value setters built on
+   * one `onPriceChange` would each read the props they were rendered with -
+   * so the second call would overwrite the first with a stale value and
+   * clearing a band would silently leave half of it applied. A range is one
+   * decision; it gets one setter. SearchScreen learned this the same way.
+   */
+  const setPrice = (min: string, max: string) => onPriceChange(min, max);
   // Sort stays local - it's a property of the feed, not of the navigation.
   const [sort, setSort] = useState(readUrlFilters().sort);
   const [sortOpen, setSortOpen] = useState(false);
   /* Whether the sort showing is a choice or just the default. A link that
      carried one counts as a choice; nothing else has been picked yet. */
   const [sortTouched, setSortTouched] = useState(() => !!readUrlFilters().sortParam);
-  // Zone is a feed filter too. Empty means "anywhere", which stays the default:
-  // opening the app pre-filtered to one zone would silently hide most of it.
-  const [zone, setZone] = useState<CampusZone | ''>(readUrlFilters().campusZone);
-
-  /* Price lives here as strings for the same reason the search screen holds it
-     that way: '' means "no bound", which 0 cannot express. */
-  const [minPrice, setMinPrice] = useState(readUrlFilters().minPrice);
-  const [maxPrice, setMaxPrice] = useState(readUrlFilters().maxPrice);
+  /*
+   * Zone and price are owned by App, like the search term and the category.
+   *
+   * They used to live here, which was fine while the feed's own controls were
+   * the only thing that set them. Re-running a saved search is not: it arrives
+   * from the Saved screen carrying a zone and a price band, and a filter held
+   * in this component's private state cannot be set from outside it - so those
+   * two filters were silently dropped and the person got a broader feed than
+   * the one they saved. Same reason the search box and category strip were
+   * lifted before them.
+   */
   const [priceOpen, setPriceOpen] = useState(false);
   const [priceCeiling, setPriceCeiling] = useState(DEFAULT_PRICE_CEILING);
   const priceMenuRef = useRef<HTMLDivElement>(null);
@@ -795,8 +833,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setCoreType('All');
     setCategoryId('');
     setZone('');
-    setMinPrice('');
-    setMaxPrice('');
+    setPrice('', '');
     setDealsOnly(false);
     setSort('newest');
     // Back to a feed nobody has expressed a preference about.
@@ -815,8 +852,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     onSearchChange('');
     setCoreType('All');
     setZone('');
-    setMinPrice('');
-    setMaxPrice('');
+    setPrice('', '');
     setDealsOnly(false);
     setCategoryId(id);
   };
@@ -1356,6 +1392,37 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           <IntentPicker onChoose={answerIntent} />
         )}
 
+        {/*
+          What you already told us you were after.
+
+          A single row of chips rather than another card shelf: this is
+          navigation, not merchandise, and a returning visitor should reach
+          what they asked for in one tap without three shelves of scrolling
+          first. Deliberately slim for the same reason the promo tiles moved
+          below the grid - vertical space above the results is the scarcest
+          thing on this page.
+        */}
+        {watchedSearches.length > 0 && onRunSearch && onHomeFeed && (
+          <section className="mb-5">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
+                <BellRing className="w-3 h-3" />
+                Watching
+              </span>
+              {watchedSearches.slice(0, 6).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => onRunSearch(s)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[#dbe1ff] bg-white text-[#434655] hover:border-[#2563eb] hover:text-[#2563eb] transition-all duration-150 active:scale-95"
+                >
+                  <span className="truncate max-w-[180px]">{s.label}</span>
+                  <ChevronRight className="w-3 h-3 shrink-0 opacity-60" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ═══════════════════ TRENDING ON CAMPUS ═══════════════════ */}
         {/*
           What people are actually opening this week, counted from timestamped
@@ -1558,9 +1625,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 key={preset.label}
                 onClick={() => {
                   // Tapping the lit one clears it, like every other chip here.
-                  if (active) { setMinPrice(''); setMaxPrice(''); return; }
-                  setMinPrice(preset.min);
-                  setMaxPrice(preset.max);
+                  if (active) { setPrice('', ''); return; }
+                  setPrice(preset.min, preset.max);
                 }}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${active
                   ? 'bg-[#2563eb] text-white border-[#2563eb]'
@@ -1636,7 +1702,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                   min={minPrice}
                   max={maxPrice}
                   ceiling={priceCeiling}
-                  onCommit={(lo, hi) => { setMinPrice(lo); setMaxPrice(hi); }}
+                  onCommit={(lo, hi) => setPrice(lo, hi)}
                 />
                 <button
                   onClick={() => setPriceOpen(false)}
@@ -1677,7 +1743,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             {(minPrice || maxPrice) && (
               <FilterPill
                 label={priceButtonLabel}
-                onRemove={() => { setMinPrice(''); setMaxPrice(''); }}
+                onRemove={() => setPrice('', '')}
               />
             )}
             <button

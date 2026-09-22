@@ -9,6 +9,7 @@ import com.campusmarket.security.Principal;
 import com.campusmarket.util.Money;
 import com.campusmarket.web.error.ApiException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,10 +92,20 @@ public class SavedSearchService {
                 : describe(query, type, category, campusZone, minPrice, maxPrice));
 
         try {
-            return savedSearchRepository.save(search);
-        } catch (RuntimeException e) {
-            // The unique index catches the same filters saved twice, which is a
-            // mis-tap rather than an error worth a stack trace.
+            /*
+             * saveAndFlush, not save.
+             *
+             * `save` only queues the insert; the unique index does not reject
+             * anything until the transaction commits, which is long after this
+             * catch block has gone out of scope. The duplicate then escaped as
+             * a generic INTERNAL_ERROR, so saving the same search twice told
+             * the person something had broken rather than that they were
+             * already watching it. Flushing here puts the violation inside the
+             * try, where it can be turned into an answer.
+             */
+            return savedSearchRepository.saveAndFlush(search);
+        } catch (DataIntegrityViolationException e) {
+            // Saving the same filters twice is a mis-tap, not a failure.
             throw ApiException.badRequest("ALREADY_SAVED", "You have already saved this search.");
         }
     }

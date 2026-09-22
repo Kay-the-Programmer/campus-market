@@ -80,7 +80,11 @@ public class SavedSearchNotifier {
                 notificationService.notify(
                         search.getUser(),
                         NotificationType.SAVED_UPDATE,
-                        "New match for \"" + search.getLabel() + "\"",
+                        /* No quotes around the label. It is generated from the
+                           filters and already contains its own where there is a
+                           search term - wrapping it produced
+                           New match for ""monitor" · under K500". */
+                        "New match for " + search.getLabel(),
                         listing.getTitle() + " was just listed.",
                         "/listing/" + listing.getId());
 

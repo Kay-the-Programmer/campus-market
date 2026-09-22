@@ -6,7 +6,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Listing, ViewType, SellerProfile, AuthSession, AddToCartOptions,
-  SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES,
+  SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES, CampusZone, SavedSearchRow,
 } from './types';
 import { TopNav, FeedType, CategoryLink } from './components/nav/TopNav';
 import { BottomNav } from './components/nav/BottomNav';
@@ -266,6 +266,10 @@ export default function App() {
          read here as well as from ?deals=1 so the link works whether someone
          typed the friendly URL or shared a filtered feed. */
       deals: p.get('deals') === '1' || window.location.pathname === '/offers',
+      zone: (CAMPUS_ZONES.some((z) => z.value === p.get('campusZone'))
+        ? p.get('campusZone') : '') as CampusZone | '',
+      minPrice: p.get('minPrice') || '',
+      maxPrice: p.get('maxPrice') || '',
     };
   })();
   const [feedQuery, setFeedQuery] = useState(initialFeed.q);
@@ -278,6 +282,19 @@ export default function App() {
    * the feed itself, which is exactly where it will be pressed most.
    */
   const [feedDealsOnly, setFeedDealsOnly] = useState(initialFeed.deals);
+  /*
+   * Zone and price, lifted for the same reason: re-running a saved search from
+   * the Saved screen has to be able to set them, and a filter living inside
+   * BrowseScreen cannot be set from outside it. Held as strings because ''
+   * means "no bound", which 0 cannot express.
+   */
+  /** Searches this account is waiting on, plus which row is mid-request. */
+  const [savedSearches, setSavedSearches] = useState<SavedSearchRow[]>([]);
+  const [savedSearchesLoading, setSavedSearchesLoading] = useState(false);
+  const [busySearchId, setBusySearchId] = useState<string | null>(null);
+  const [feedZone, setFeedZone] = useState<CampusZone | ''>(initialFeed.zone);
+  const [feedMinPrice, setFeedMinPrice] = useState(initialFeed.minPrice);
+  const [feedMaxPrice, setFeedMaxPrice] = useState(initialFeed.maxPrice);
   const [navCategories, setNavCategories] = useState<CategoryLink[]>([]);
   const [pendingReports, setPendingReports] = useState(0);
   const [pendingSellers, setPendingSellers] = useState(0);
@@ -469,6 +486,51 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /** Re-runs a saved search: its filters become the feed's, and we go there. */
+  const handleRunSavedSearch = (s: SavedSearchRow) => {
+    setFeedQuery(s.query ?? '');
+    setFeedType((['PRODUCT', 'SERVICE', 'FOOD'].includes(s.type ?? '')
+      ? (s.type!.charAt(0) + s.type!.slice(1).toLowerCase())
+      : 'All') as FeedType);
+    setFeedCategoryId(s.categoryId ?? '');
+    setFeedZone((CAMPUS_ZONES.some((z) => z.value === s.campusZone)
+      ? s.campusZone : '') as CampusZone | '');
+    setFeedMinPrice(s.minPrice != null ? String(s.minPrice) : '');
+    setFeedMaxPrice(s.maxPrice != null ? String(s.maxPrice) : '');
+    // A saved search is about what exists, not about what is reduced. Carrying
+    // a stale deals filter into it would show a narrower feed than the one
+    // they saved.
+    setFeedDealsOnly(false);
+    handleNavigate('browse');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleSearchAlerts = async (s: SavedSearchRow) => {
+    setBusySearchId(s.id);
+    const res = await api.savedSearches.setAlerts(s.id, !s.alerts);
+    setBusySearchId(null);
+    if (!res.success) {
+      toast.error(res.error || 'Could not change that.');
+      return;
+    }
+    // Patched in place rather than refetched: one field changed, and a reload
+    // would make the row flicker for no new information.
+    setSavedSearches((prev) =>
+      prev.map((row) => (row.id === s.id ? { ...row, alerts: !s.alerts } : row)));
+  };
+
+  const handleRemoveSearch = async (s: SavedSearchRow) => {
+    setBusySearchId(s.id);
+    const res = await api.savedSearches.remove(s.id);
+    setBusySearchId(null);
+    if (!res.success) {
+      toast.error(res.error || 'Could not delete that search.');
+      return;
+    }
+    setSavedSearches((prev) => prev.filter((row) => row.id !== s.id));
+    toast.success('Search deleted.');
+  };
+
   /**
    * Turns the filters currently on screen into a standing alert.
    *
@@ -484,6 +546,9 @@ export default function App() {
     const res = await api.savedSearches.create(filters);
     if (res.success) {
       toast.success("We'll notify you when something matches.", { title: 'Search saved' });
+      // So it is already there when they next open Saved, rather than
+      // appearing only after a reload.
+      loadSavedSearches();
       return true;
     }
     if (res.code === 'ALREADY_SAVED') {
@@ -720,6 +785,21 @@ export default function App() {
    * banner on the first screen after signing up is a worse first impression
    * than a shortlist that is one item short.
    */
+  /**
+   * Loads the saved searches.
+   *
+   * <p>Customers only: admins have no buying side, and a guest has no account
+   * for an alert to be delivered to. Failures are silent - this decorates a
+   * screen rather than being it, and an error banner over the wishlist would
+   * be reporting a problem the person cannot act on.
+   */
+  const loadSavedSearches = async () => {
+    setSavedSearchesLoading(true);
+    const res = await api.savedSearches.getAll();
+    setSavedSearches(res.searches ?? []);
+    setSavedSearchesLoading(false);
+  };
+
   const mergeGuestSaves = async () => {
     const pending = takeGuestSaves();
     if (pending.length === 0) return;
@@ -786,6 +866,7 @@ export default function App() {
       if (!session || session.role === 'admin') return;
       loadServerCart();
       loadSavedListings();
+      loadSavedSearches();
     });
     loadServerListings();
     consumeEmailLinkToken();
@@ -904,6 +985,7 @@ export default function App() {
       // read, or the Saved page renders without the items this person
       // hearted moments ago as a guest and looks like it lost them.
       mergeGuestSaves().then(loadSavedListings);
+      loadSavedSearches();
       /* The trail that brought them here comes too. Signing up should not
          empty "Continue browsing" as its first act. */
       mergeGuestHistory(newSession.id);
@@ -1403,6 +1485,13 @@ export default function App() {
                      delivered to, so the button is simply not offered rather
                      than offered and then refused. */
                   onSaveSearch={currentUser.role === 'customer' ? handleSaveSearch : undefined}
+                  zone={feedZone}
+                  onZoneChange={setFeedZone}
+                  minPrice={feedMinPrice}
+                  maxPrice={feedMaxPrice}
+                  onPriceChange={(min, max) => { setFeedMinPrice(min); setFeedMaxPrice(max); }}
+                  watchedSearches={savedSearches}
+                  onRunSearch={handleRunSavedSearch}
                 />
               )}
 
@@ -1527,6 +1616,12 @@ export default function App() {
                   onAddToCart={handleAddToCart}
                   currentUser={currentUser}
                   onSignIn={() => setIsAuthModalOpen(true)}
+                  savedSearches={savedSearches}
+                  savedSearchesLoading={savedSearchesLoading}
+                  onRunSearch={handleRunSavedSearch}
+                  onToggleSearchAlerts={handleToggleSearchAlerts}
+                  onRemoveSearch={handleRemoveSearch}
+                  busySearchId={busySearchId}
                 />
               )}
 

@@ -3,9 +3,10 @@ import {
   Trash2, SlidersHorizontal, ShieldCheck, MapPin, Heart,
   ChevronDown, ShoppingBag, BellRing, Loader2,
 } from 'lucide-react';
-import { AddToCart, AuthSession, Listing } from '../types';
+import { AddToCart, AuthSession, Listing, SavedSearchRow } from '../types';
 import { formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
+import { SavedSearchList } from './shared/SavedSearchList';
 
 interface SavedScreenProps {
   savedListings: Listing[];
@@ -17,6 +18,20 @@ interface SavedScreenProps {
   currentUser?: AuthSession;
   /** Opens the auth modal, from the guest banner. */
   onSignIn?: () => void;
+  /**
+   * Searches this person is waiting on.
+   *
+   * <p>Here rather than on a screen of their own, because "things I saved" and
+   * "things I am waiting for" are the same question asked about the present
+   * and the future - and a returning visitor should not have to remember which
+   * of two destinations holds which half of their shortlist.
+   */
+  savedSearches?: SavedSearchRow[];
+  savedSearchesLoading?: boolean;
+  onRunSearch?: (search: SavedSearchRow) => void;
+  onToggleSearchAlerts?: (search: SavedSearchRow) => void;
+  onRemoveSearch?: (search: SavedSearchRow) => void;
+  busySearchId?: string | null;
 }
 
 const SORTS = [
@@ -35,6 +50,12 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
   onAddToCart,
   currentUser,
   onSignIn,
+  savedSearches = [],
+  savedSearchesLoading = false,
+  onRunSearch,
+  onToggleSearchAlerts,
+  onRemoveSearch,
+  busySearchId,
 }) => {
   const isGuest = !currentUser || currentUser.role === 'guest';
   const [sortBy, setSortBy] = useState<SortValue>('Recent');
@@ -148,6 +169,40 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
             </div>
           )}
         </div>
+
+        {/*
+          Searches you are waiting on, above the wishlist.
+
+          For a returning visitor this is the shortest route in the app between
+          opening it and seeing what they came for: one tap re-runs the whole
+          filter set. Saved items are the slower half of the same question -
+          things that already exist and you have not decided about - so they
+          come second.
+
+          Absent entirely when there are none. A heading over nothing, or an
+          invitation to save a search on a page where no search is happening,
+          would be two kinds of noise.
+        */}
+        {!isGuest && (savedSearchesLoading || savedSearches.length > 0) && onRunSearch && (
+          <section className="mb-7">
+            <h2 className="text-sm font-bold text-[#0b1c30] mb-2.5">
+              Searches you're watching
+              {savedSearches.length > 0 && (
+                <span className="ml-2 text-xs font-semibold text-[#737686]">
+                  {savedSearches.length}
+                </span>
+              )}
+            </h2>
+            <SavedSearchList
+              searches={savedSearches}
+              loading={savedSearchesLoading}
+              onRun={onRunSearch}
+              onToggleAlerts={onToggleSearchAlerts ?? (() => {})}
+              onRemove={onRemoveSearch ?? (() => {})}
+              busyId={busySearchId}
+            />
+          </section>
+        )}
 
         {/* Saving a listing already subscribes you to its price drops, in
             ListingService. There used to be a bell on every card offering to
