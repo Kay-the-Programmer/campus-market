@@ -412,23 +412,18 @@ export const TopNav: React.FC<TopNavProps> = ({
                 </button>
               </div>
             ) : (
-              <>
-                <div className="hidden lg:block" data-onboarding="nav-account">
-                  <AccountMenu currentUser={currentUser} onNavigate={onNavigate} onLogout={onLogout} />
-                </div>
-                <button
-                  onClick={() => onNavigate('profile')}
-                  className="lg:hidden"
-                  data-onboarding="nav-account"
-                  aria-label="Profile"
-                >
-                  {currentUser.avatar ? (
-                    <img src={currentUser.avatar} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-[#2563eb]/30" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#dbe1ff]" />
-                  )}
-                </button>
-              </>
+              /*
+               * One menu at every width.
+               *
+               * The phone used to get its own avatar button that went straight
+               * to Profile, which made Log Out, Settings and Deal History
+               * unreachable from the header on the device most people use -
+               * Profile is one of nine things in this menu, not a substitute
+               * for it. AccountMenu handles its own responsive trigger.
+               */
+              <div data-onboarding="nav-account">
+                <AccountMenu currentUser={currentUser} onNavigate={onNavigate} onLogout={onLogout} />
+              </div>
             )}
           </div>
         </div>

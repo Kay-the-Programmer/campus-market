@@ -12,7 +12,16 @@ interface AccountMenuProps {
   onLogout?: () => void;
 }
 
-/** Desktop account dropdown. Sellers get My Listings pinned to the top. */
+/**
+ * The account dropdown, at every width. Sellers get My Listings pinned to the
+ * top.
+ *
+ * <p>The phone used to get a bare avatar that navigated straight to Profile,
+ * so half of what this menu offers - Deal History, Settings, "Start selling",
+ * and Log Out above all - had no route on a phone at all. Same menu, same
+ * order, both widths; only the trigger differs, because a bordered pill with
+ * a chevron costs width the mobile header does not have to spare.
+ */
 export const AccountMenu: React.FC<AccountMenuProps> = ({ currentUser, onNavigate, onLogout }) => {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -21,14 +30,20 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ currentUser, onNavigat
 
   useEffect(() => {
     if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
+    const onDocClick = (e: MouseEvent | TouchEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onDocClick);
+    /* iOS does not reliably deliver a synthesised mousedown to a document
+       listener for taps that land on non-interactive elements, which is most
+       of a page - so on a phone the menu could be left with no way to dismiss
+       it but choosing something. Both fire into the same idempotent close. */
+    document.addEventListener('touchstart', onDocClick);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('touchstart', onDocClick);
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
@@ -40,29 +55,37 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ currentUser, onNavigat
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
+      {/* Below lg this is the avatar on its own, which is what the header had
+          before and all the room it has. The pill, the first name and the
+          chevron are desktop affordances layered on top of it. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-full border border-[#c3c6d7]/80 hover:bg-[#eff4ff] hover:border-[#2563eb]/40 transition-all duration-150"
+        aria-label="Account menu"
+        className="flex items-center gap-2 rounded-full transition-all duration-150 lg:pl-1.5 lg:pr-2 lg:py-1 lg:border lg:border-[#c3c6d7]/80 lg:hover:bg-[#eff4ff] lg:hover:border-[#2563eb]/40"
+        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
         {currentUser.avatar ? (
-          <img src={currentUser.avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-[#2563eb]/30" />
+          <img src={currentUser.avatar} alt="" className="w-8 h-8 lg:w-7 lg:h-7 rounded-full object-cover ring-2 ring-[#2563eb]/30" />
         ) : (
-          <div className="w-7 h-7 rounded-full bg-[#dbe1ff] flex items-center justify-center ring-2 ring-[#2563eb]/20">
+          <div className="w-8 h-8 lg:w-7 lg:h-7 rounded-full bg-[#dbe1ff] flex items-center justify-center ring-2 ring-[#2563eb]/20">
             <UserIcon className="w-4 h-4 text-[#2563eb]" />
           </div>
         )}
         <span className="text-xs font-semibold text-[#0b1c30] hidden xl:inline max-w-[90px] truncate">
           {currentUser.name.split(' ')[0]}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-[#737686] transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`hidden lg:block w-3.5 h-3.5 text-[#737686] transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-60 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1 z-50 animate-fade-in"
+          /* max-w guard for the narrow end of the range: w-60 plus the
+             header's own gutters overflows a 320px screen, and an off-screen
+             menu edge is not something the user can scroll back into view. */
+          className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1 z-50 animate-fade-in"
         >
           <div className="px-4 py-3 border-b border-[#e5eeff]">
             <p className="text-sm font-bold text-[#0b1c30] truncate">{currentUser.name}</p>
