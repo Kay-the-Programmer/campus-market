@@ -177,6 +177,62 @@ const OrderTimeline: React.FC<{ order: Order }> = ({ order }) => {
   );
 };
 
+/**
+ * What happens next, in a sentence, for the person reading.
+ *
+ * <p>The status pill names the state and the timeline shows the shape of the
+ * journey, but neither answers the question people actually open an order to
+ * ask: is this on me, or am I waiting on them? "Accepted" reads as finished
+ * to a buyer and as a to-do to a seller, and the same three dots were shown
+ * to both. This is the only part of the page that differs by side.
+ *
+ * <p>Which side is decided by availableActions, not by role. The server is
+ * the authority on who may do what next (OrderService#availableActions), and
+ * a sentence derived independently from the buttons it sits above is a
+ * sentence that will eventually contradict them - telling someone to wait
+ * directly underneath the button only they can press.
+ */
+function nextStepHint(order: Order): { text: string; tone: 'wait' | 'you' | 'done' } | null {
+  const them = order.counterparty.name;
+  switch (order.status) {
+    case 'HELD':
+      return { text: 'Our team is reviewing this order. Nothing is needed from you yet.', tone: 'wait' };
+    case 'PENDING':
+      return order.availableActions.includes('accept')
+        ? { text: 'Waiting on you — accept or decline so the buyer knows where they stand.', tone: 'you' }
+        : { text: `Waiting on ${them} to accept. You can cancel while it is pending.`, tone: 'wait' };
+    case 'ACCEPTED':
+      return order.availableActions.includes('complete')
+        ? { text: `Agree a time and place with ${them} in chat, then mark it handed over once you have met.`, tone: 'you' }
+        : { text: `${them} accepted. Agree a time in chat — they confirm the handover when you meet.`, tone: 'wait' };
+    case 'COMPLETED':
+      return { text: 'Handed over. Nothing left to do.', tone: 'done' };
+    case 'DECLINED':
+      return { text: 'Declined, and the items went back to being available.', tone: 'done' };
+    case 'CANCELLED':
+      return { text: 'Cancelled. Nothing was charged.', tone: 'done' };
+    default:
+      return null;
+  }
+}
+
+/** The one-line "what now", styled by whether it is on the reader. */
+const NextStep: React.FC<{ order: Order }> = ({ order }) => {
+  const hint = nextStepHint(order);
+  if (!hint) return null;
+  const tone =
+    hint.tone === 'you'
+      ? 'bg-amber-50 border-amber-200 text-amber-900'
+      : hint.tone === 'wait'
+        ? 'bg-[#eff4ff] border-[#dbe1ff] text-[#0b1c30]'
+        : 'bg-[#f8f9ff] border-[#e5eeff] text-[#737686]';
+  return (
+    <p className={`mt-3 rounded-xl border px-3 py-2 text-xs font-medium ${tone}`}>
+      {hint.text}
+    </p>
+  );
+};
+
 /** One labelled fact in the detail page's summary block. */
 const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex items-baseline justify-between gap-4 py-2 border-b border-[#f1f2f7] last:border-0">
@@ -260,6 +316,7 @@ const OrderDetail: React.FC<{
         </div>
 
         <OrderTimeline order={order} />
+        <NextStep order={order} />
       </div>
 
       {/* ── The goods ── */}
@@ -357,34 +414,67 @@ const OrderDetail: React.FC<{
         </div>
       )}
 
-      {/* ── What can be done about it ── */}
-      <div className="bg-white rounded-2xl border border-[#e5eeff] p-5 shadow-card flex flex-wrap items-center gap-2">
-        {order.availableActions.map((action) => {
-          const destructive = action === 'decline' || action === 'cancel';
-          const primary = action === 'accept' || action === 'complete';
-          return (
-            <button
-              key={action}
-              disabled={busy}
-              onClick={() => (action === 'decline' ? onDecline(order) : onAct(order, action))}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 ${
-                primary
-                  ? 'bg-[#007d55] text-white hover:bg-[#006242]'
-                  : destructive
-                    ? 'text-red-600 border border-red-200 hover:bg-red-50'
-                    : 'text-[#434655] border border-[#c3c6d7] hover:bg-[#f8f9ff]'
-              }`}
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : ACTION_LABEL[action]}
-            </button>
-          );
-        })}
-        <button
-          onClick={onOpenMessages}
-          className="px-4 py-2 rounded-xl text-sm font-semibold text-[#2563eb] hover:bg-[#eff4ff] flex items-center gap-1.5 transition-colors"
-        >
-          <MessageSquare className="w-4 h-4" /> Open chat
-        </button>
+      {/*
+        ── What can be done about it ──
+
+        Sticky, and above the mobile bottom bar rather than behind it.
+
+        This used to be the last card on a page with four above it, so on a
+        phone "Mark handed over" - the whole point of opening the order - was
+        a full screen of scrolling below the fold, and the two people doing it
+        are standing in front of each other at the time. Keeping it in view
+        costs a strip of the transcript above and saves the one interaction
+        that has to happen while someone is waiting.
+      */}
+      <div className="sticky bottom-[84px] lg:bottom-4 z-20 bg-white/95 backdrop-blur-md rounded-2xl border border-[#e5eeff] p-3 shadow-modal">
+        <div className="flex flex-wrap items-center gap-2">
+          {order.availableActions.map((action) => {
+            const destructive = action === 'decline' || action === 'cancel';
+            const primary = action === 'accept' || action === 'complete';
+            return (
+              <button
+                key={action}
+                disabled={busy}
+                onClick={() => (action === 'decline' ? onDecline(order) : onAct(order, action))}
+                /* The primary action takes the row; everything else shrinks to
+                   what it needs. A decline sitting at equal width to an accept
+                   is how the wrong one gets tapped in a hurry. */
+                className={`rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                  primary
+                    ? 'flex-1 min-w-[160px] px-4 py-3 bg-[#007d55] text-white hover:bg-[#006242] active:scale-[0.99]'
+                    : destructive
+                      ? 'px-4 py-3 text-red-600 border border-red-200 hover:bg-red-50'
+                      : 'px-4 py-3 text-[#434655] border border-[#c3c6d7] hover:bg-[#f8f9ff]'
+                }`}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                {busy ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    {action === 'complete' && <CheckCircle2 className="w-4 h-4" />}
+                    {ACTION_LABEL[action]}
+                  </>
+                )}
+              </button>
+            );
+          })}
+          <button
+            onClick={onOpenMessages}
+            className={`rounded-xl text-sm font-semibold text-[#2563eb] hover:bg-[#eff4ff] flex items-center justify-center gap-1.5 transition-colors px-4 py-3 border border-[#dbe1ff] ${
+              order.availableActions.length === 0 ? 'flex-1' : ''
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" /> Open chat
+          </button>
+        </div>
+        {/* Says what the green button will do before it is pressed. Completing
+            is terminal - there is no action list afterwards. */}
+        {order.availableActions.includes('complete') && (
+          <p className="mt-2 px-1 text-[11px] text-[#737686]">
+            Only mark this handed over once you have the item and have paid. It cannot be undone.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -566,6 +656,20 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
   const activeOrders = orders.filter(isActive);
   const pastOrders = orders.filter((o) => !isActive(o));
 
+  /*
+   * Orders the reader is the blocker on.
+   *
+   * "Active" lumps together an order waiting on you to accept and one waiting
+   * on the other person to show up, and those are opposite situations - the
+   * first is a task, the second is a diary entry. Derived from
+   * availableActions rather than from status, so the server stays the single
+   * authority on who may do what next and this cannot disagree with the
+   * buttons it is describing.
+   */
+  const needsYou = activeOrders.filter(
+    (o) => o.availableActions.includes('accept') || o.availableActions.includes('complete'));
+  const waitingOnThem = activeOrders.filter((o) => !needsYou.includes(o));
+
   /* ------------------------------------------------------------------ */
   const renderActions = (order: Order) => {
     if (order.availableActions.length === 0) return null;
@@ -744,6 +848,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
         )}
 
         <OrderTimeline order={order} />
+        <NextStep order={order} />
 
         {renderActions(order)}
       </div>
@@ -951,13 +1056,24 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
           emptyState()
         ) : (
           <div className="space-y-8">
-            {activeOrders.length > 0 && (
+            {needsYou.length > 0 && (
+              <section>
+                <h2 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Waiting on you
+                  <span className="text-amber-600">{needsYou.length}</span>
+                </h2>
+                <div className="space-y-4">{needsYou.map(renderOrder)}</div>
+              </section>
+            )}
+
+            {waitingOnThem.length > 0 && (
               <section>
                 <h2 className="text-xs font-bold text-[#a0a3b1] uppercase tracking-wider mb-3">
-                  {side === 'incoming' ? 'Needs your response' : side === 'all' ? 'Open' : 'In progress'}
-                  <span className="ml-1.5 text-[#2563eb]">{activeOrders.length}</span>
+                  In progress
+                  <span className="ml-1.5 text-[#2563eb]">{waitingOnThem.length}</span>
                 </h2>
-                <div className="space-y-4">{activeOrders.map(renderOrder)}</div>
+                <div className="space-y-4">{waitingOnThem.map(renderOrder)}</div>
               </section>
             )}
 

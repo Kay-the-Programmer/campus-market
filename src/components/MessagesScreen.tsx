@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MessageSquare, Send, ArrowLeft, ShoppingBag, History, Loader2, Tag, Star,
-  CheckCircle2, Search, X,
+  CheckCircle2, Search, X, Check, CheckCheck, Clock, AlertCircle, ChevronDown,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useLiveCounts } from '../hooks/useLiveCounts';
@@ -103,6 +103,54 @@ const timeOnly = (iso: string) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+/**
+ * A message the viewer has sent that the server has not confirmed yet.
+ *
+ * <p>Sending used to be: POST, wait, refetch the entire thread, re-render. On
+ * campus wifi that is a second or more where the composer has emptied and
+ * nothing has appeared - which reads as a dropped message, so people send it
+ * twice. Every chat app people actually use paints the bubble immediately and
+ * settles the truth behind it, and that single difference is most of what
+ * "feels native" means here.
+ */
+interface OutboxMessage {
+  clientId: string;
+  threadId: string;
+  body: string;
+  createdAt: string;
+  state: 'sending' | 'failed';
+}
+
+/** One row in the rendered transcript: a real message or an unconfirmed one. */
+interface UiMessage {
+  key: string;
+  mine: boolean;
+  body: string;
+  createdAt: string;
+  readAt?: string | null;
+  pending?: 'sending' | 'failed';
+  clientId?: string;
+  /** First / last of a run by the same sender, for bubble tails and spacing. */
+  firstOfRun: boolean;
+  lastOfRun: boolean;
+}
+
+/**
+ * The state of one outgoing message, as a glyph.
+ *
+ * <p>Clock while it is in flight, one tick once the server has it, two
+ * coloured ticks once the other person has opened the thread. This replaced
+ * the words " · Seen" appended to the timestamp, which only ever appeared on
+ * the read state - so the three cases before it were indistinguishable from
+ * each other and from a message that had silently failed.
+ */
+const DeliveryTick: React.FC<{ m: UiMessage }> = ({ m }) => {
+  if (m.pending === 'sending') return <Clock className="w-3 h-3" />;
+  if (m.pending === 'failed') return <AlertCircle className="w-3 h-3" />;
+  if (m.readAt) return <CheckCheck className="w-3.5 h-3.5 text-[#9fd8ff]" />;
+  return <Check className="w-3.5 h-3.5" />;
+};
+
 export const MessagesScreen: React.FC<MessagesScreenProps> = ({
   initialTab = 'chat', initialConversationId, onBack, onViewListing,
 }) => {
@@ -117,8 +165,8 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>('all');
   const [search, setSearch] = useState('');
   const [replyText, setReplyText] = useState('');
+  const [outbox, setOutbox] = useState<OutboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -149,6 +197,35 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
    */
   const messagePaneRef = useRef<HTMLDivElement>(null);
 
+  /*
+   * Whether the reader is at the live end of the conversation.
+   *
+   * Auto-scrolling on every arrival is right only while they are already at
+   * the bottom. Someone scrolled up reading yesterday gets yanked to the
+   * newest message mid-sentence otherwise - so above the threshold the new
+   * message is announced with a pill instead, and they choose when to jump.
+   * Mirrored into a ref because the scroll effects would close over a stale
+   * copy of the state.
+   */
+  const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
+  const setAtBottomBoth = React.useCallback((v: boolean) => {
+    atBottomRef.current = v;
+    setAtBottom(v);
+  }, []);
+  const [hasNewBelow, setHasNewBelow] = useState(false);
+
+  const handlePaneScroll = React.useCallback(() => {
+    const el = messagePaneRef.current;
+    if (!el) return;
+    // 80px of slack: a reader a line or two off the bottom still counts as
+    // "at the end", which is how it feels to them.
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const bottom = gap < 80;
+    setAtBottomBoth(bottom);
+    if (bottom) setHasNewBelow(false);
+  }, [setAtBottomBoth]);
+
   const pinToNewest = React.useCallback(() => {
     const el = messagePaneRef.current;
     if (!el) return;
@@ -172,9 +249,26 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
     if (node) pinToNewest();
   }, [pinToNewest]);
 
+  /* A different conversation always opens at its newest message. */
   React.useLayoutEffect(() => {
+    setAtBottomBoth(true);
+    setHasNewBelow(false);
     pinToNewest();
-  }, [thread?.id, thread?.messages.length, chatCardHeight, pinToNewest]);
+  }, [thread?.id, chatCardHeight, pinToNewest, setAtBottomBoth]);
+
+  /* A new message follows the reader only if the reader is at the end. */
+  const messageCount = thread?.messages.length ?? 0;
+  React.useLayoutEffect(() => {
+    if (atBottomRef.current) pinToNewest();
+    else setHasNewBelow(true);
+  }, [messageCount, outbox.length, pinToNewest]);
+
+  const jumpToNewest = React.useCallback(() => {
+    setAtBottomBoth(true);
+    setHasNewBelow(false);
+    const el = messagePaneRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [setAtBottomBoth]);
 
   const measureChatCard = React.useCallback(() => {
     const el = chatCardRef.current;
@@ -354,19 +448,64 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
     loadDeals();
   }, [initialConversationId]);
 
+  /**
+   * Put the message on screen, then send it.
+   *
+   * <p>The composer clears and the bubble appears in the same frame as the
+   * tap; the network happens behind it, and the bubble carries its own state
+   * (clock -> tick) rather than the screen carrying a spinner. Nothing is
+   * disabled while it is in flight, so a fast typer can send three in a row
+   * the way they can anywhere else.
+   *
+   * <p>The outbox entry is removed only AFTER the refreshed thread has come
+   * back holding the real message. Dropping it on the success response alone
+   * leaves a frame where the server copy has not arrived and the local copy is
+   * already gone, which shows up as the message blinking out and back.
+   */
+  const deliver = async (threadId: string, clientId: string, body: string) => {
+    const res = await api.messages.send(threadId, body);
+    if (!res.success) {
+      setOutbox((prev) => prev.map((o) => (o.clientId === clientId ? { ...o, state: 'failed' } : o)));
+      return;
+    }
+    await refreshOpenThread(threadId);
+    setOutbox((prev) => prev.filter((o) => o.clientId !== clientId));
+    // The inbox preview and the unread badges describe this thread too.
+    loadThreads(true);
+  };
+
   const sendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim() || !thread) return;
-    setSending(true);
-    const res = await api.messages.send(thread.id, replyText.trim());
-    setSending(false);
-    if (res.success) {
-      setReplyText('');
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
-      await openThread(thread.id);
-    } else {
-      setError(res.error || 'Message could not be sent.');
-    }
+    const body = replyText.trim();
+    if (!body || !thread) return;
+
+    const clientId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setOutbox((prev) => [
+      ...prev,
+      { clientId, threadId: thread.id, body, createdAt: new Date().toISOString(), state: 'sending' },
+    ]);
+    setReplyText('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    // Sending is an act of joining the live end, whatever was being read.
+    setAtBottomBoth(true);
+    setHasNewBelow(false);
+    requestAnimationFrame(pinToNewest);
+
+    deliver(thread.id, clientId, body);
+  };
+
+  /** A failed bubble is a button; this is what it does. */
+  const retrySend = (msg: { clientId?: string; body: string }) => {
+    if (!msg.clientId || !thread) return;
+    setOutbox((prev) =>
+      prev.map((o) => (o.clientId === msg.clientId ? { ...o, state: 'sending' } : o)));
+    deliver(thread.id, msg.clientId, msg.body);
+  };
+
+  /** Give up on a message that will not send, without leaving it stuck. */
+  const discardFailed = (clientId?: string) => {
+    if (!clientId) return;
+    setOutbox((prev) => prev.filter((o) => o.clientId !== clientId));
   };
 
   const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -398,19 +537,62 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
     });
   }, [threads, threadFilter, search]);
 
-  // Buckets messages into day groups so the thread reads like a real chat
-  // client instead of a flat, unlabelled list.
+  /**
+   * The transcript as it is drawn: server messages, then anything still in
+   * flight, bucketed by day and annotated with where each message sits in a
+   * run by the same sender.
+   *
+   * <p>The run flags are what turn a column of identical bubbles into
+   * something that reads like a conversation. Six messages from one person
+   * used to be six avatars, six tails and six timestamps - the same visual
+   * weight as six separate turns. Only the last of a run gets a tail and an
+   * avatar, and the ones before it sit tight against each other, which is
+   * the shape every messaging app converged on.
+   */
   const messageGroups = useMemo(() => {
     if (!thread) return [];
-    const groups: { label: string; messages: ThreadDetail['messages'] }[] = [];
-    thread.messages.forEach((m) => {
+
+    const pending = outbox.filter((o) => o.threadId === thread.id);
+    const flat: Omit<UiMessage, 'firstOfRun' | 'lastOfRun'>[] = [
+      ...thread.messages.map((m) => ({
+        key: m.id,
+        mine: m.mine,
+        body: m.body,
+        createdAt: m.createdAt,
+        readAt: m.readAt,
+      })),
+      ...pending.map((o) => ({
+        key: o.clientId,
+        clientId: o.clientId,
+        mine: true,
+        body: o.body,
+        createdAt: o.createdAt,
+        pending: o.state,
+      })),
+    ];
+
+    const groups: { label: string; messages: UiMessage[] }[] = [];
+    flat.forEach((m) => {
       const label = dayLabel(m.createdAt);
       const last = groups[groups.length - 1];
-      if (last && last.label === label) last.messages.push(m);
-      else groups.push({ label, messages: [m] });
+      const row: UiMessage = { ...m, firstOfRun: true, lastOfRun: true };
+      if (last && last.label === label) last.messages.push(row);
+      else groups.push({ label, messages: [row] });
     });
+
+    // Second pass, once neighbours are known. A run never spans a day
+    // divider, which is why this walks each group rather than the flat list.
+    groups.forEach((g) => {
+      g.messages.forEach((m, i) => {
+        const prev = g.messages[i - 1];
+        const next = g.messages[i + 1];
+        m.firstOfRun = !prev || prev.mine !== m.mine;
+        m.lastOfRun = !next || next.mine !== m.mine;
+      });
+    });
+
     return groups;
-  }, [thread]);
+  }, [thread, outbox]);
 
   const tabCls = (active: boolean) =>
     `pb-3 font-semibold text-sm transition-all duration-150 ${active ? 'text-[#2563eb] border-b-2 border-[#2563eb]' : 'text-[#737686] hover:text-[#0b1c30]'
@@ -648,19 +830,67 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
             >
               {thread ? (
                 <>
-                  {/* Mobile-only header with back button (mirrors the slide-over pattern) */}
-                  <div className="lg:hidden shrink-0 flex items-center gap-3 px-4 py-3 bg-white border-b border-[#e5eeff]">
+                  {/*
+                    Mobile chat header.
+
+                    Carries the listing as well as the person. The pinned
+                    listing bar below is lg-only, so on a phone - where most of
+                    this app is used - the conversation gave no clue which item
+                    it was about or what was being asked for it. In a
+                    marketplace chat that is the single most relevant fact on
+                    screen, and people were scrolling back through the thread
+                    to find it.
+                  */}
+                  <div
+                    className="lg:hidden shrink-0 flex items-center gap-2.5 px-3 py-2 bg-white border-b border-[#e5eeff]"
+                    style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+                  >
                     <button
                       onClick={() => setMobileChatOpen(false)}
-                      className="p-2 -ml-2 rounded-full hover:bg-[#eff4ff] text-[#2563eb]"
+                      className="p-2 -ml-1 rounded-full text-[#434655] active:bg-[#eff4ff]"
                       aria-label="Back to conversations"
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <img src={thread.peer.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover bg-[#e5eeff]" />
-                    <h3 className="text-sm font-bold text-[#0b1c30] truncate">{thread.peer.name}</h3>
+                    <img
+                      src={thread.peer.avatarUrl}
+                      alt=""
+                      className="w-9 h-9 rounded-full object-cover bg-[#e5eeff] shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-bold text-[#0b1c30] truncate leading-tight">
+                        {thread.peer.name}
+                      </h3>
+                      <p className="text-[11px] text-[#737686] truncate leading-tight">
+                        {thread.listing.removed ? (
+                          <span className="italic">Listing removed</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-[#2563eb]">
+                              {formatPrice(thread.listing.price)}
+                            </span>
+                            {' · '}
+                            {thread.listing.title}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    {!thread.listing.removed && onViewListing && (
+                      <button
+                        onClick={() => onViewListing(thread.listing.id)}
+                        aria-label="View listing"
+                        className="shrink-0 active:opacity-70"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <ListingImage
+                          src={thread.listing.image}
+                          alt=""
+                          className="w-9 h-9 rounded-lg object-cover border border-[#e5eeff]"
+                        />
+                      </button>
+                    )}
                   </div>
-
                   {/* Pinned listing bar */}
                   <div className="hidden lg:flex shrink-0 items-center justify-between gap-3 px-5 py-3 bg-white border-b border-[#e5eeff] shadow-sm z-10">
                     <div className="flex items-center gap-3 min-w-0">
@@ -708,40 +938,106 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                     </span>
                   </div>
 
-                  {/* Messages */}
-                  <div ref={attachMessagePane} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-1">
-                    {messageGroups.map((group) => (
-                      <div key={group.label}>
-                        <div className="flex justify-center my-3">
-                          <span className="px-3 py-1 bg-[#f1f4fb] text-[#a0a3b1] text-[10px] font-bold uppercase tracking-widest rounded-full">
-                            {group.label}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {group.messages.map((m) => (
-                            <div key={m.id} className={`flex items-end gap-2 ${m.mine ? 'justify-end' : 'justify-start'}`}>
-                              {!m.mine && (
-                                <img src={thread.peer.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover bg-[#e5eeff] shrink-0 mb-4" />
-                              )}
-                              <div className={`flex flex-col max-w-[80%] ${m.mine ? 'items-end' : 'items-start'}`}>
-                                <div
-                                  className={`px-4 py-2.5 rounded-2xl text-sm font-medium whitespace-pre-wrap ${m.mine
-                                      ? 'bg-[#2563eb] text-white rounded-br-none shadow-sm'
-                                      : 'bg-white text-[#0b1c30] border border-[#e5eeff] rounded-bl-none shadow-card'
-                                    }`}
-                                >
-                                  {m.body}
+                  {/* ── Messages ─────────────────────────────────────── */}
+                  <div className="relative flex-1 min-h-0 flex flex-col">
+                    <div
+                      ref={attachMessagePane}
+                      onScroll={handlePaneScroll}
+                      /* A tinted pane, not white. Incoming bubbles are white,
+                         and a white bubble on a white pane is only a border -
+                         the tint is what makes the two sides read as sides. */
+                      className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 py-4 bg-[#eef1f8]"
+                    >
+                      {messageGroups.map((group) => (
+                        <div key={group.label}>
+                          <div className="flex justify-center my-3 sticky top-0 z-10">
+                            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-[#737686] text-[10px] font-bold uppercase tracking-widest rounded-full shadow-sm">
+                              {group.label}
+                            </span>
+                          </div>
+
+                          {group.messages.map((m) => {
+                            const failed = m.pending === 'failed';
+                            return (
+                              <div
+                                key={m.key}
+                                className={`flex items-end gap-2 ${m.mine ? 'justify-end' : 'justify-start'} ${
+                                  m.firstOfRun ? 'mt-3' : 'mt-0.5'
+                                }`}
+                              >
+                                {/* Avatar on the last of a run only; a spacer
+                                    holds the column for the ones above it so
+                                    the run stays aligned. */}
+                                {!m.mine && (
+                                  m.lastOfRun ? (
+                                    <img
+                                      src={thread.peer.avatarUrl}
+                                      alt=""
+                                      className="w-7 h-7 rounded-full object-cover bg-[#e5eeff] shrink-0"
+                                    />
+                                  ) : (
+                                    <span className="w-7 shrink-0" aria-hidden="true" />
+                                  )
+                                )}
+
+                                <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${m.mine ? 'items-end' : 'items-start'}`}>
+                                  <div
+                                    onClick={failed ? () => retrySend(m) : undefined}
+                                    role={failed ? 'button' : undefined}
+                                    className={`px-3 py-2 text-sm font-medium shadow-sm rounded-2xl ${
+                                      m.mine
+                                        ? `text-white ${failed ? 'bg-red-500 cursor-pointer' : 'bg-[#2563eb]'} ${
+                                            m.lastOfRun ? 'rounded-br-sm' : ''
+                                          }`
+                                        : `bg-white text-[#0b1c30] ${m.lastOfRun ? 'rounded-bl-sm' : ''}`
+                                    } ${m.pending === 'sending' ? 'opacity-80' : ''}`}
+                                  >
+                                    <span className="whitespace-pre-wrap break-words">{m.body}</span>
+                                    {/* Floated, so a short message sits beside
+                                        its timestamp instead of above it, and a
+                                        long one wraps around it. */}
+                                    <span
+                                      className={`float-right ml-2 mt-1.5 inline-flex items-center gap-0.5 text-[10px] leading-none ${
+                                        m.mine ? 'text-white/70' : 'text-[#a0a3b1]'
+                                      }`}
+                                    >
+                                      {timeOnly(m.createdAt)}
+                                      {m.mine && <DeliveryTick m={m} />}
+                                    </span>
+                                  </div>
+
+                                  {failed && (
+                                    <span className="mt-1 px-1 text-[10px] font-semibold text-red-600">
+                                      Not sent · tap to retry ·{' '}
+                                      <button
+                                        onClick={() => discardFailed(m.clientId)}
+                                        className="underline hover:text-red-700"
+                                      >
+                                        discard
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="text-[10px] text-[#a0a3b1] mt-1 px-1">
-                                  {timeOnly(m.createdAt)}
-                                  {m.mine && m.readAt ? ' · Seen' : ''}
-                                </span>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    {/* Jump to the live end. Only drawn once the reader has
+                        actually left it, so it never covers a message they
+                        are reading at the bottom. */}
+                    {!atBottom && (
+                      <button
+                        onClick={jumpToNewest}
+                        aria-label="Jump to newest message"
+                        className="absolute bottom-3 right-4 z-20 flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full bg-white shadow-modal border border-[#e5eeff] text-xs font-bold text-[#2563eb] active:scale-95 transition-transform"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        {hasNewBelow ? 'New messages' : 'Latest'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Contextual seller action - only offered to the seller, and
@@ -763,36 +1059,45 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                     </div>
                   )}
 
-                  {/* Input bar */}
+                  {/* ── Composer ─────────────────────────────────────── */}
                   <form
                     onSubmit={sendReply}
                     data-onboarding="messages-composer"
-                    className="shrink-0 p-4 sm:p-5 bg-white border-t border-[#e5eeff]"
+                    className="shrink-0 px-3 py-2.5 sm:px-5 sm:py-3 bg-white border-t border-[#e5eeff]"
+                    style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
                   >
-                    <div className="flex items-end gap-2 bg-[#f8f9ff] p-2 rounded-2xl border border-[#e5eeff] focus-within:ring-2 focus-within:ring-[#2563eb]/30 focus-within:border-[#2563eb] transition-all">
-                      <textarea
-                        ref={textareaRef}
-                        rows={1}
-                        value={replyText}
-                        onChange={(e) => {
-                          setReplyText(e.target.value);
-                          autoResize(e.target);
-                        }}
-                        onKeyDown={handleReplyKeyDown}
-                        placeholder={`Message ${thread.peer.name}…`}
-                        className="flex-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-sm py-2 px-2 max-h-32"
-                      />
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 min-w-0 flex items-end bg-[#f1f4fb] rounded-3xl border border-[#e5eeff] focus-within:border-[#2563eb] transition-colors">
+                        <textarea
+                          ref={textareaRef}
+                          rows={1}
+                          value={replyText}
+                          onChange={(e) => {
+                            setReplyText(e.target.value);
+                            autoResize(e.target);
+                          }}
+                          onKeyDown={handleReplyKeyDown}
+                          placeholder="Message"
+                          aria-label={`Message ${thread.peer.name}`}
+                          /* text-base is not styling: iOS Safari zooms the page
+                             in on any focused field under 16px, and a composer
+                             that zooms the conversation away on every tap is
+                             the single most obviously-not-an-app thing a chat
+                             screen can do. */
+                          className="no-zoom-field flex-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-base py-2.5 px-4 max-h-32 placeholder:text-[#a0a3b1]"
+                        />
+                      </div>
+                      {/* Round, constant, and never disabled mid-send - the
+                          message is already on screen by the time this would
+                          have finished spinning. */}
                       <button
                         type="submit"
-                        disabled={!replyText.trim() || sending}
-                        className="h-10 px-4 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] disabled:bg-[#e5eeff] disabled:text-[#a0a3b1] text-white shadow-sm flex items-center justify-center gap-1.5 shrink-0 text-sm font-semibold"
+                        disabled={!replyText.trim()}
+                        aria-label="Send message"
+                        className="w-11 h-11 shrink-0 rounded-full bg-[#2563eb] hover:bg-[#004ac6] disabled:bg-[#c3c6d7] text-white flex items-center justify-center transition-colors active:scale-95"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
-                        {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                          <>
-                            <span className="hidden sm:inline">Send</span>
-                            <Send className="w-4 h-4" />
-                          </>
-                        )}
+                        <Send className="w-[18px] h-[18px] translate-x-[-1px]" />
                       </button>
                     </div>
                   </form>
