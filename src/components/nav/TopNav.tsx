@@ -6,7 +6,7 @@ import { AuthSession, ViewType } from '../../types';
 import { AccountMenu } from './AccountMenu';
 import { SearchSuggestions } from '../search/SearchSuggestions';
 import { recordSearch } from '../../services/recentSearches';
-import { badgeText, GUEST_ALLOWED, isSellerState } from './navShared';
+import { badgeText, canSell, GUEST_ALLOWED, isSellerState } from './navShared';
 
 export type FeedType = 'All' | 'Product' | 'Service' | 'Food';
 
@@ -92,6 +92,11 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
+  /* Same rule as the bottom bar's Sell button: offered only to accounts that
+     may actually post. Buyers reach the upgrade through "Start selling" in
+     the account menu below, which says what it will do before it is pressed
+     rather than after. */
+  const showSell = canSell(currentUser);
   /* Counts a seller's unanswered queue. A buyer's own orders are not a number
      that needs chasing, so they get the icon without a badge rather than a
      badge that never clears. */
@@ -308,6 +313,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           </div>
 
           {/* Sell - a labelled call to action on desktop, never buried */}
+          {showSell && (
           <button
             onClick={() => go('sell')}
             data-onboarding="nav-sell"
@@ -319,6 +325,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             <Plus className="w-4 h-4" strokeWidth={2.5} />
             <span>Sell an Item</span>
           </button>
+          )}
 
           {/* Desktop icon cluster - fixed order so muscle memory holds */}
           <div className="hidden lg:flex items-center gap-0.5 shrink-0">

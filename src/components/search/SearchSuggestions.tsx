@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, Clock, X, Layers, ShoppingBag, Briefcase, Utensils, Loader2, TrendingUp, Tag,
 } from 'lucide-react';
-import { Suggestion } from '../../types';
+import { Listing, Suggestion } from '../../types';
 import { api } from '../../services/api';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { getRecentSearches, removeRecentSearch, clearRecentSearches } from '../../services/recentSearches';
@@ -13,6 +13,9 @@ const MIN_QUERY = 2;
 
 /** How many busiest categories to offer someone who has not typed yet. */
 const POPULAR_LIMIT = 5;
+
+/** Cards on the full-screen variant's opening screen. Six is two full rows. */
+const TRENDING_LIMIT = 6;
 
 /**
  * The last-resort starters.
@@ -90,6 +93,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   const [popular, setPopular] = useState<PopularCategory[]>([]);
+  const [trending, setTrending] = useState<Listing[]>([]);
   const [cursor, setCursor] = useState(-1);
 
   const trimmed = query.trim();
@@ -138,6 +142,28 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     });
     return () => { cancelled = true; };
   }, []);
+
+  /*
+   * What people are actually looking at, as cards, on the full-screen variant.
+   *
+   * Opening search with nothing typed is the one moment there is no query to
+   * answer - and a screen of nothing but a "Recent searches" heading is a dead
+   * start for anyone using it for the first time. Real listings with their
+   * photos give the page something to tap on arrival, and an empty response is
+   * a legitimate answer the render below simply skips.
+   *
+   * Page variant only: the desktop dropdown has no room for a card grid, and
+   * fetching for it would be a request whose result is never drawn.
+   */
+  useEffect(() => {
+    if (!isPage) return;
+    const controller = new AbortController();
+    api.listings.trending(TRENDING_LIMIT, controller.signal).then((res) => {
+      if (res.aborted) return;
+      setTrending(res.listings ?? []);
+    });
+    return () => controller.abort();
+  }, [isPage]);
 
   /* ── Fetch once typing settles; in-flight calls are cancelled ────────── */
   useEffect(() => {
@@ -188,13 +214,17 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
          makes Enter open the wrong row. */
       if (onShowDeals) out.push({ key: 'deals', run: onShowDeals });
       recent.forEach((t) => out.push({ key: `r:${t}`, run: () => onSearch(t) }));
+      // Only the full-screen variant draws these, so only it counts them.
+      if (isPage) {
+        trending.forEach((l) => out.push({ key: `t:${l.id}`, run: () => onSelectListing(l.id) }));
+      }
       popular.forEach((c) =>
         out.push({ key: `p:${c.id}`, run: () => onSelectCategory(c.id, c.name) }));
       starterTerms.forEach((t) => out.push({ key: `s:${t}`, run: () => onSearch(t) }));
     }
     return out;
-  }, [typing, trimmed, listings, categories, recent, popular, starterTerms, onShowDeals,
-    onSearch, onSelectListing, onSelectCategory]);
+  }, [typing, trimmed, listings, categories, recent, popular, starterTerms, trending, isPage,
+    onShowDeals, onSearch, onSelectListing, onSelectCategory]);
 
   /* ── Keyboard: arrows move, Enter picks, Escape closes ───────────────── */
   useEffect(() => {
@@ -235,6 +265,60 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     `w-full flex items-center gap-3 px-4 text-left transition-colors ${
       isPage ? 'py-3.5 active:bg-[#eff4ff]' : 'py-2.5'
     } ${cursor === index ? 'bg-[#eff4ff]' : 'hover:bg-[#f8f9ff]'}`;
+
+  /**
+   * A listing, as a product card.
+   *
+   * The full-screen variant shows listings this way rather than as text rows:
+   * a 36px thumbnail beside a truncated title is all a dropdown has room for,
+   * but on a whole screen it is the photo that tells you whether this is the
+   * thing you meant - and a card is what the rest of the app has already
+   * taught people to press. Tapping one opens that listing, which is the
+   * shortest route search has: query to product, no results page in between.
+   */
+  const listingCard = (
+    { id, label, image, price }: { id: string; label: string; image?: string; price?: number },
+    i: number,
+  ) => (
+    <button
+      key={id}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => onSelectListing(id)}
+      onMouseEnter={() => setCursor(i)}
+      className={`group text-left bg-white rounded-2xl border overflow-hidden transition-all duration-150 active:scale-[0.98] ${
+        cursor === i
+          ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20'
+          : 'border-[#e5eeff] hover:border-[#b4c5ff]'
+      }`}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+    >
+      <div className="relative aspect-[4/3] w-full bg-[#eff4ff] overflow-hidden">
+        {image ? (
+          <ListingImage src={image} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ShoppingBag className="w-7 h-7 text-[#b4c5ff]" />
+          </div>
+        )}
+      </div>
+      <div className="p-2.5">
+        {/* Two lines, not one: a truncated title on a card with nothing else
+            to go on is how you tap the wrong textbook. */}
+        <span className="block text-[13px] font-medium text-[#0b1c30] leading-snug line-clamp-2">
+          {label}
+        </span>
+        {price != null && (
+          <span className="block mt-1 text-sm font-extrabold text-[#2563eb]">
+            {formatPrice(Number(price))}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+
+  const cardGrid = (children: React.ReactNode) => (
+    <div className="grid grid-cols-2 gap-3 px-4 pt-1 pb-2">{children}</div>
+  );
 
   let index = -1;
 
@@ -321,11 +405,31 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             );
           })}
 
-          {/* ── What the campus is actually selling ─────────────────────── */}
-          {popular.length > 0 && (
-            <div className={`px-4 pt-2 pb-1 ${recent.length > 0 ? 'border-t border-[#f1f2f7] mt-1' : ''}`}>
+          {/* ── Something to tap before a single key is pressed ─────────── */}
+          {isPage && trending.length > 0 && (
+            <div className={`px-4 pt-3 pb-1 ${recent.length > 0 ? 'border-t border-[#f1f2f7] mt-1' : ''}`}>
               <span className="text-[10px] font-bold text-[#a0a3b1] uppercase tracking-wider">
                 Popular right now
+              </span>
+            </div>
+          )}
+          {isPage && trending.length > 0 && cardGrid(
+            trending.map((l) => {
+              index += 1;
+              return listingCard(
+                { id: l.id, label: l.title, image: l.image, price: l.price }, index,
+              );
+            }),
+          )}
+
+          {/* ── What the campus is actually selling ─────────────────────── */}
+          {popular.length > 0 && (
+            <div className={`px-4 pt-2 pb-1 ${
+              recent.length > 0 || (isPage && trending.length > 0)
+                ? 'border-t border-[#f1f2f7] mt-1' : ''
+            }`}>
+              <span className="text-[10px] font-bold text-[#a0a3b1] uppercase tracking-wider">
+                {isPage && trending.length > 0 ? 'Browse categories' : 'Popular right now'}
               </span>
             </div>
           )}
@@ -409,7 +513,19 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
               </span>
             </div>
           )}
-          {listings.map((s) => {
+
+          {/* Cards on the full screen, rows in the dropdown. Same listings,
+              same handler - only the amount of room differs. */}
+          {isPage && listings.length > 0 && cardGrid(
+            listings.map((l) => {
+              index += 1;
+              return listingCard(
+                { id: l.id, label: l.label, image: l.image, price: l.price }, index,
+              );
+            }),
+          )}
+
+          {!isPage && listings.map((s) => {
             index += 1;
             const i = index;
             return (

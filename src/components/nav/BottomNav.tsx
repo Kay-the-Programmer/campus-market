@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag, Search } from 'lucide-react';
+import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag } from 'lucide-react';
 import { ViewType, AuthSession } from '../../types';
-import { badgeText, GUEST_ALLOWED, HIDES_BOTTOM_NAV, isSellerState } from './navShared';
+import { badgeText, canSell, GUEST_ALLOWED, HIDES_BOTTOM_NAV, isSellerState } from './navShared';
 
 interface BottomNavProps {
   currentView: ViewType;
@@ -11,14 +11,6 @@ interface BottomNavProps {
   cartCount?: number;
   unreadMessagesCount: number;
   currentUser: AuthSession;
-  /**
-   * Open the full-screen search.
-   *
-   * Optional so the bar still works on its own: without it the Search tab
-   * falls back to navigating to the results view, which is what it did before
-   * the overlay existed.
-   */
-  onOpenSearch?: () => void;
 }
 
 // Tuning constants for gesture + feedback behavior
@@ -36,10 +28,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   cartCount = 0,
   unreadMessagesCount,
   currentUser,
-  onOpenSearch,
 }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
+  /*
+   * Sell is drawn only for accounts that can actually post a listing.
+   *
+   * It used to be the bar's centrepiece for everyone, so the most prominent
+   * control on a buyer's screen was the one control they were not allowed to
+   * use - every press answered with the upgrade modal. A button that only
+   * ever refuses is worse than no button: it spends the best slot in the nav
+   * on a dead end. Buyers who do want to sell still have the routes that
+   * explain themselves - "Start selling" in the account menu, the promo on
+   * the feed, and the listing button on their own profile.
+   */
+  const showSell = canSell(currentUser);
   const [cartBump, setCartBump] = useState(false);
   const [activeTab, setActiveTab] = useState<ViewType>(currentView);
   const prevCart = useRef(cartCount);
@@ -127,10 +130,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     if (!isHorizontal || !isFastEnough || !isFarEnough) return;
 
     // Must stay in the order the tabs are drawn, or a swipe jumps somewhere
-    // other than the tab next to the one you are on.
-    const views: ViewType[] = isSeller
-      ? ['browse', 'search', 'my-listings', 'sell', 'messages', 'cart']
-      : ['browse', 'search', 'saved', 'sell', 'messages', 'cart'];
+    // other than the tab next to the one you are on. Search is no longer in
+    // the bar, and Sell is only in it for accounts that may use it - a swipe
+    // onto either would land on a tab that is not there.
+    const views: ViewType[] = [
+      'browse',
+      isSeller ? 'my-listings' : 'saved',
+      ...(showSell ? ['sell' as ViewType] : []),
+      'messages',
+      'cart',
+    ];
 
     const currentIdx = views.indexOf(activeTab);
     const newIdx = deltaX < 0 ? Math.min(currentIdx + 1, views.length - 1) : Math.max(currentIdx - 1, 0);
@@ -151,46 +160,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         {badgeText(count)}
       </span>
     ) : null;
-
-  /**
-   * Search, which opens the overlay rather than routing.
-   *
-   * Tapping Search used to land on /search with whatever filters were already
-   * set - "Browse all listings" and no box to type in, which is the one thing
-   * someone pressing Search wants. It stays highlighted while the results view
-   * is open, so the bar still says where you are.
-   */
-  const searchTab = () => {
-    const active = activeTab === 'search';
-    return (
-      <button
-        onClick={() => {
-          if (!onOpenSearch) { go('search'); return; }
-          if (navigator.vibrate) navigator.vibrate(8);
-          onOpenSearch();
-        }}
-        data-onboarding="nav-search"
-        aria-label="Search"
-        className={`
-          ${tabBase}
-          ${active ? 'text-[#2563eb] scale-100' : 'text-[#737686] hover:text-[#434655] scale-95'}
-          ${active ? 'opacity-100' : 'opacity-70'}
-        `}
-        style={{
-          transform: active ? 'translateY(-2px)' : 'translateY(0)',
-          transitionTimingFunction: SPRING_EASE,
-          WebkitTapHighlightColor: 'transparent',
-          WebkitTouchCallout: 'none',
-          touchAction: 'manipulation',
-        }}
-      >
-        <span className="relative">
-          <Search className="w-6 h-6 transition-all duration-200" strokeWidth={active ? 2.5 : 1.8} />
-        </span>
-        <span className={`${labelCls} ${active ? 'opacity-100' : 'opacity-60'}`}>Search</span>
-      </button>
-    );
-  };
 
   const tab = (
     view: ViewType,
@@ -263,29 +232,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <div className="max-w-md mx-auto flex items-end justify-between">
           {tab('browse', 'Home', Home)}
 
-          {/*
-            Search, in the primary nav.
-
-            It lived only in the top bar, which on a phone is the one thing
-            that scrolls away - so the single most common way of finding
-            anything was missing from the only navigation always on screen,
-            while Cart and Messages (which you cannot use until you have found
-            something) both had a permanent slot.
-
-            Added rather than swapped in. Cart and Messages live ONLY here on
-            mobile - the top bar's small-screen cluster carries Orders,
-            Notifications and the avatar, and nothing else - so neither can give
-            up its slot. Five tabs around the button is tight, which is why the
-            labels below are the smallest thing in the bar; it is still a better
-            trade than hiding the primary action.
-          */}
-          {searchTab()}
-
           {isSeller
             ? tab('my-listings', 'Listings', Tag, { activeColor: 'text-[#007d55]' })
             : tab('saved', 'Saved', Heart, { count: savedCount })}
 
-          {/* Floating action button with native feel */}
+          {/* Floating action button with native feel. Sellers only - see
+              showSell above for why a buyer does not get one. */}
+          {showSell && (
           <div className="relative -top-5 flex flex-col items-center group">
             <button
               onClick={() => go('sell')}
@@ -310,6 +263,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             </button>
             <span className="text-[10px] font-semibold text-[#737686] mt-1 leading-none select-none">Sell</span>
           </div>
+          )}
 
           {tab('messages', 'Messages', MessageSquare, { count: unreadMessagesCount })}
           {tab('cart', 'Cart', ShoppingBag, { count: cartCount, bump: cartBump })}

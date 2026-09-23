@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { BottomNav } from './BottomNav';
 import { AuthSession, ViewType } from '../../types';
@@ -63,5 +63,49 @@ describe('BottomNav hook stability', () => {
     // And the hook count has to come back up cleanly too (#310 is the mirror bug).
     expect(() => rerender(<BottomNav {...props(user, 'browse')} />)).not.toThrow();
     expect(container.firstChild).not.toBeNull();
+  });
+});
+
+/**
+ * Who the bar offers Sell to, and the fact that Search is not in it.
+ *
+ * Sell was the centrepiece of the bar for everyone, so the largest control on
+ * a buyer's screen was the one they were not allowed to press - every tap
+ * answered with the upgrade modal. Search was added to the bar and then moved
+ * to the header's full-screen search, which is the only place it should be
+ * reachable from now.
+ */
+describe('BottomNav, who gets which tabs', () => {
+  const sellButton = () => screen.queryByLabelText('Sell an item');
+
+  it('gives a buyer no Sell button', () => {
+    render(<BottomNav {...props(session({ role: 'customer', canSell: false }))} />);
+    expect(sellButton()).toBeNull();
+  });
+
+  it('gives a guest no Sell button', () => {
+    render(<BottomNav {...props(session({ role: 'guest' }))} />);
+    expect(sellButton()).toBeNull();
+  });
+
+  it('gives an approved seller the Sell button', () => {
+    render(<BottomNav {...props(session({
+      role: 'customer', accountType: 'SELLER', canSell: true,
+    }))} />);
+    expect(sellButton()).not.toBeNull();
+  });
+
+  it('keeps Sell for a seller who has not listed anything yet', () => {
+    // canSell, not isSellerState: being allowed to post is the whole point of
+    // the button, and someone with nothing live yet is exactly who needs it.
+    render(<BottomNav {...props(session({
+      role: 'customer', accountType: 'SELLER', canSell: true, hasActiveListings: false,
+    }))} />);
+    expect(sellButton()).not.toBeNull();
+  });
+
+  it('has no Search tab - the header owns search now', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+    expect(screen.queryByLabelText('Search')).toBeNull();
   });
 });

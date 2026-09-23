@@ -1818,7 +1818,6 @@ export default function App() {
           cartCount={cartCount}
           unreadMessagesCount={unreadMessages}
           currentUser={currentUser}
-          onOpenSearch={() => setIsSearchOverlayOpen(true)}
         />
 
         {/*
