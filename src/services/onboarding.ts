@@ -120,7 +120,7 @@ const marketplaceBasics: OnboardingFlow = {
     {
       id: 'search',
       title: 'Start with what you need',
-      body: 'Search across products, services and food. Sellers are other students, so stock moves fast.',
+      body: 'Search across products, services and food. Sellers are local businesses and students, so no scams',
       target: 'nav-search',
       placement: 'bottom',
     },

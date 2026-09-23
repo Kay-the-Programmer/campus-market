@@ -320,14 +320,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {([
           {
             value: 'BUYER' as const,
-            label: 'Buy',
-            hint: 'Buy items for personal use or consumption',
+            label: 'Buyer',
+            hint: 'Buying items for personal use or consumption',
             icon: <ShoppingBag className="w-4 h-4" />,
             active: 'border-[#2563eb] bg-[#eff4ff] text-[#2563eb]',
           },
           {
             value: 'SELLER' as const,
-            label: 'Sell',
+            label: 'Seller',
             hint: 'Selling items or offering services.',
             icon: <Store className="w-4 h-4" />,
             active: 'border-[#007d55] bg-emerald-50 text-[#006242]',
