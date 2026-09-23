@@ -411,9 +411,43 @@ body {
 }
 .animate-cart-bump { animation: cartBump 400ms ease-out; }
 
+/* Full-screen search entrance.
+
+   Not .animate-fade-in: that one scales from 0.96, which is right for a small
+   panel appearing in place and wrong for something the size of the screen -
+   a full-bleed surface shrunk to 96% pulls its edges off the viewport and
+   shows the page behind it through its own gap for the length of the
+   animation. Opacity and a short rise instead, so it arrives from the
+   direction the thumb came from and never uncovers what it is covering. */
+@keyframes searchIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-search-in { animation: searchIn 160ms ease-out both; }
+
 /* Motion is decoration here; anyone who has asked the OS to reduce it gets
    the finished state immediately. */
 @media (prefers-reduced-motion: reduce) {
   .animate-card-in { animation: none; }
+  .animate-search-in { animation: none; }
   .animate-cart-bump { animation: none; }
+}
+
+/* ============================================================
+   NO-ZOOM FIELDS
+   ============================================================
+   iOS Safari zooms the whole page in whenever a focused input's font is
+   under 16px, and it does not zoom back out - you are left pinching your way
+   back to a layout that was fine a moment ago. The usual "fix" is
+   maximum-scale=1 on the viewport meta, which disables pinch-zoom for
+   everyone, sighted or not; raising the font on touch devices costs nothing
+   and takes nobody's zoom away.
+
+   Scoped to coarse pointers so mouse-driven layouts keep their 14px fields,
+   and opt-in per field rather than applied to every input on the page, so a
+   dense form is not silently re-laid-out to fix a problem it did not have. */
+@media (pointer: coarse) {
+  .no-zoom-field {
+    font-size: 16px;
+  }
 }

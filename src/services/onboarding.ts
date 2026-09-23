@@ -114,20 +114,20 @@ const marketplaceBasics: OnboardingFlow = {
     {
       id: 'welcome',
       title: 'Welcome to CampusMarket',
-      body: 'Students buying and selling to each other, on campus. Thirty seconds and you will know how it works.',
+      body: 'Take five seconds and you will know how it works.',
       cta: 'Show me',
     },
     {
       id: 'search',
       title: 'Start with what you need',
-      body: 'Search across products, services and food. Sellers are local businesses and students, so no scams',
+      body: 'Search across products, services and food. Sellers are local businesses verified businesses, so no scams',
       target: 'nav-search',
       placement: 'bottom',
     },
     {
       id: 'zones',
       title: 'Filter by zone',
-      body: 'Downschool, Upschool or Across. Pick yours so you are not walking across town for a charger.',
+      body: 'Downschool, Upschool or Across. Pick yours so you are not walking miles to get your items.',
       target: 'feed-zones',
       placement: 'bottom',
       // Only while the feed is on screen; the filter row is not mounted anywhere else.

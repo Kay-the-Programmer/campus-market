@@ -44,6 +44,13 @@ interface TopNavProps {
   onSearchCategory: (categoryId: string) => void;
   /** Show the reduced listings, from the suggestions panel's deals row. */
   onShowDeals: () => void;
+  /**
+   * Hand searching to the full-screen overlay.
+   *
+   * Used below lg, where the compact bar has no room for a dropdown worth
+   * reading. Desktop keeps the inline box and its panel.
+   */
+  onOpenSearchOverlay: () => void;
 }
 
 const PLACEHOLDERS = ['Search textbooks…', 'Find a tutor…', 'Search meals near you…'];
@@ -81,6 +88,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenListingById,
   onSearchCategory,
   onShowDeals,
+  onOpenSearchOverlay,
 }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
@@ -215,7 +223,47 @@ export const TopNav: React.FC<TopNavProps> = ({
 
           {/* Search - the dominant element of the row */}
           <div ref={searchWrapRef} data-onboarding="nav-search" className="flex-1 min-w-0 relative">
-            <form onSubmit={submitSearch}>
+            {/*
+              Mobile: a button wearing the search box's clothes.
+
+              Tapping it opens the full-screen search rather than focusing a
+              field here. A real input in this bar meant the suggestions had to
+              be a dropdown, and a dropdown on a phone is a short list squeezed
+              between a sticky header and the soft keyboard. It looks identical
+              until it is pressed, so nothing about the bar has to be relearnt.
+            */}
+            <button
+              type="button"
+              onClick={onOpenSearchOverlay}
+              aria-label="Search listings"
+              className={`lg:hidden w-full flex items-center gap-2.5 pl-4 pr-3 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-left transition-all duration-200 active:bg-white active:border-[#2563eb] ${compact ? 'py-2' : 'py-2.5'
+                }`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+              <Search className="w-4 h-4 text-[#737686] shrink-0" />
+              <span className={`flex-1 min-w-0 truncate text-sm font-medium ${searchQuery ? 'text-[#0b1c30]' : 'text-[#a0a3b1]'
+                }`}>
+                {searchQuery || PLACEHOLDERS[placeholderIndex]}
+              </span>
+              {searchQuery && (
+                /* A span, not a button: a button inside a button is invalid
+                   markup and the outer tap target swallows it anyway. The
+                   press is caught here and stopped before it opens the
+                   overlay. */
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Clear search"
+                  onClick={(e) => { e.stopPropagation(); onSearchChange(''); }}
+                  className="p-0.5 text-[#a0a3b1] shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </span>
+              )}
+            </button>
+
+            {/* Desktop: the real box, with its dropdown. */}
+            <form onSubmit={submitSearch} className="hidden lg:block">
               <div className="relative">
                 <Search className="w-4 h-4 text-[#737686] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
@@ -229,7 +277,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   aria-expanded={suggestOpen}
                   aria-autocomplete="list"
                   autoComplete="off"
-                  className={`w-full pl-11 pr-9 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-sm font-medium text-[#0b1c30] placeholder:text-[#a0a3b1] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] focus:bg-white transition-all duration-200 ${compact ? 'py-2' : 'py-2.5'
+                  className={`no-zoom-field w-full pl-11 pr-9 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-sm font-medium text-[#0b1c30] placeholder:text-[#a0a3b1] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] focus:bg-white transition-all duration-200 ${compact ? 'py-2' : 'py-2.5'
                     }`}
                 />
                 {searchQuery && (
@@ -245,16 +293,18 @@ export const TopNav: React.FC<TopNavProps> = ({
               </div>
             </form>
 
-            <SearchSuggestions
-              query={searchQuery}
-              userId={currentUser.id}
-              open={suggestOpen}
-              onClose={() => setSuggestOpen(false)}
-              onSearch={runSearch}
-              onSelectListing={(id) => { setSuggestOpen(false); onOpenListingById(id); }}
-              onSelectCategory={(id) => { setSuggestOpen(false); onSearchCategory(id); }}
-              onShowDeals={() => { setSuggestOpen(false); onShowDeals(); }}
-            />
+            <div className="hidden lg:block">
+              <SearchSuggestions
+                query={searchQuery}
+                userId={currentUser.id}
+                open={suggestOpen}
+                onClose={() => setSuggestOpen(false)}
+                onSearch={runSearch}
+                onSelectListing={(id) => { setSuggestOpen(false); onOpenListingById(id); }}
+                onSelectCategory={(id) => { setSuggestOpen(false); onSearchCategory(id); }}
+                onShowDeals={() => { setSuggestOpen(false); onShowDeals(); }}
+              />
+            </div>
           </div>
 
           {/* Sell - a labelled call to action on desktop, never buried */}

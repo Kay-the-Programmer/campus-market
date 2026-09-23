@@ -15,6 +15,7 @@ import { AdminSidebar, AdminHeader, AdminTab } from './components/nav/AdminNav';
 import { AuthModal } from './components/AuthModal';
 import { BrowseScreen } from './components/BrowseScreen';
 import { SearchScreen } from './components/SearchScreen';
+import { SearchOverlay } from './components/search/SearchOverlay';
 import { DetailScreen } from './components/DetailScreen';
 import { SellScreen } from './components/SellScreen';
 import { ProfileScreen } from './components/ProfileScreen';
@@ -72,6 +73,7 @@ import { api } from './services/api';
 import { completeGoogleRedirect } from './firebase';
 import { onForegroundPush, onNotificationClick, refreshToken } from './services/push';
 import { recordRecentlyViewed, mergeGuestHistory } from './services/recentlyViewed';
+import { recordSearch } from './services/recentSearches';
 import { mergeGuestIntent } from './services/intent';
 import { getGuestSaves, toggleGuestSave, takeGuestSaves } from './services/guestSaves';
 
@@ -427,6 +429,16 @@ export default function App() {
     };
   });
 
+  /**
+   * The full-screen search, below lg.
+   *
+   * UI state rather than a route: it has nothing of its own to link to, and a
+   * history entry for it would make Back out of an abandoned search land on
+   * results nobody asked for. Every path out of it closes it - see
+   * closeSearchOverlay, which the handlers below funnel through.
+   */
+  const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
+
   /** Mirrors the current filters into the address bar without adding history. */
   const syncSearchUrl = (f: SearchFilters) => {
     const params = new URLSearchParams();
@@ -444,6 +456,7 @@ export default function App() {
 
   /** Opens the results page for a term typed or picked in the nav. */
   const handleSubmitSearch = (term: string) => {
+    setIsSearchOverlayOpen(false);
     // Someone who typed a term wants what best answers it, not what happens to
     // be newest - ordering by date is what made a query for "iphone" lead with
     // whatever was posted an hour ago and merely mentions one.
@@ -457,8 +470,25 @@ export default function App() {
     syncSearchUrl(next);
   };
 
+  /**
+   * A search run from the full-screen overlay.
+   *
+   * Same three steps as the desktop box's own handler (TopNav.runSearch):
+   * remember the term, put it in the nav box so the header agrees with the
+   * results, then go. Kept here rather than in the overlay because the term
+   * has to reach state the overlay does not own.
+   */
+  const handleOverlaySearch = (term: string) => {
+    const clean = term.trim();
+    if (!clean) return;
+    recordSearch(currentUser.id, clean);
+    setFeedQuery(clean);
+    handleSubmitSearch(clean);
+  };
+
   /** A category suggestion browses that category rather than text-searching it. */
   const handleSearchCategory = (categoryId: string) => {
+    setIsSearchOverlayOpen(false);
     const next = { ...EMPTY_SEARCH_FILTERS, categoryId };
     setSearchFilters(next);
     setFeedQuery('');
@@ -477,6 +507,7 @@ export default function App() {
    * looking at twenty minutes ago".
    */
   const handleShowDeals = () => {
+    setIsSearchOverlayOpen(false);
     setFeedQuery('');
     setFeedType('All');
     setFeedCategoryId('');
@@ -561,6 +592,7 @@ export default function App() {
 
   /** Suggestion rows jump straight to the listing, skipping the results page. */
   const handleOpenListingById = async (listingId: string) => {
+    setIsSearchOverlayOpen(false);
     const existing = listings.find((l) => l.id === listingId);
     if (existing) {
       handleSelectListing(existing);
@@ -1444,6 +1476,7 @@ export default function App() {
                 onOpenListingById={handleOpenListingById}
                 onSearchCategory={handleSearchCategory}
                 onShowDeals={handleShowDeals}
+                onOpenSearchOverlay={() => setIsSearchOverlayOpen(true)}
               />
             )}
 
@@ -1785,7 +1818,30 @@ export default function App() {
           cartCount={cartCount}
           unreadMessagesCount={unreadMessages}
           currentUser={currentUser}
+          onOpenSearch={() => setIsSearchOverlayOpen(true)}
         />
+
+        {/*
+          Full-screen search, for phones and small tablets.
+
+          Rendered here rather than inside either nav because both of them open
+          it and it has to cover both - a dropdown owned by the header could
+          never reach over the bottom bar. Admins are excluded for the same
+          reason they get no shopping chrome at all.
+        */}
+        {currentUser.role !== 'admin' && (
+          <SearchOverlay
+            open={isSearchOverlayOpen}
+            onClose={() => setIsSearchOverlayOpen(false)}
+            userId={currentUser.id}
+            query={feedQuery}
+            onQueryChange={setFeedQuery}
+            onSearch={handleOverlaySearch}
+            onSelectListing={handleOpenListingById}
+            onSelectCategory={handleSearchCategory}
+            onShowDeals={handleShowDeals}
+          />
+        )}
 
         {/* Login & Sign Up Modal */}
         <AuthModal

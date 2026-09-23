@@ -54,6 +54,16 @@ interface SearchSuggestionsProps {
    * actually want. Optional: without it the row is simply not drawn.
    */
   onShowDeals?: () => void;
+  /**
+   * Where the panel is being drawn.
+   *
+   * <p>`dropdown` is the desktop box under the nav; `page` is the mobile
+   * full-screen search, where the same rows are the whole screen rather than a
+   * 70vh sliver. Only spacing and chrome differ - the rows, the fetching and
+   * the keyboard list are deliberately shared, because two search panels that
+   * drift apart is how "it worked on my laptop" bugs start.
+   */
+  variant?: 'dropdown' | 'page';
 }
 
 /**
@@ -73,6 +83,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   onSelectListing,
   onSelectCategory,
   onShowDeals,
+  variant = 'dropdown',
 }) => {
   const [listings, setListings] = useState<Suggestion[]>([]);
   const [categories, setCategories] = useState<Suggestion[]>([]);
@@ -83,6 +94,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
   const trimmed = query.trim();
   const typing = trimmed.length >= MIN_QUERY;
+  const isPage = variant === 'page';
 
   /*
    * Suggestions are fetched for the SETTLED query, not the live one, so a
@@ -217,17 +229,21 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
   if (!open) return null;
 
+  /* Rows are taller on the full-screen variant: it is a thumb target rather
+     than a mouse target, and there is no 70vh ceiling to economise against. */
   const rowCls = (index: number) =>
-    `w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-      cursor === index ? 'bg-[#eff4ff]' : 'hover:bg-[#f8f9ff]'
-    }`;
+    `w-full flex items-center gap-3 px-4 text-left transition-colors ${
+      isPage ? 'py-3.5 active:bg-[#eff4ff]' : 'py-2.5'
+    } ${cursor === index ? 'bg-[#eff4ff]' : 'hover:bg-[#f8f9ff]'}`;
 
   let index = -1;
 
   return (
     <div
       role="listbox"
-      className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1 max-h-[70vh] overflow-y-auto animate-fade-in"
+      className={isPage
+        ? 'w-full bg-white pb-6'
+        : 'absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1 max-h-[70vh] overflow-y-auto animate-fade-in'}
     >
       {/* ---------------------------------------------- empty box: recents */}
       {!typing && (
@@ -295,7 +311,9 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                     setRecent(getRecentSearches(userId));
                   }}
                   aria-label={`Remove ${term} from recent searches`}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-[#a0a3b1] hover:text-[#0b1c30] hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-[#a0a3b1] hover:text-[#0b1c30] hover:bg-white transition-opacity ${
+                    isPage ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -460,7 +478,9 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
               back - saying it while still waiting is simply wrong. */}
           {!loading && !pending && listings.length === 0 && categories.length === 0 && (
             <p className="px-4 py-3 text-xs text-[#737686]">
-              No matches yet — press Enter to search anyway.
+              {isPage
+                ? 'No matches yet — tap Search to look anyway.'
+                : 'No matches yet — press Enter to search anyway.'}
             </p>
           )}
         </>

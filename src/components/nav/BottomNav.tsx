@@ -11,6 +11,14 @@ interface BottomNavProps {
   cartCount?: number;
   unreadMessagesCount: number;
   currentUser: AuthSession;
+  /**
+   * Open the full-screen search.
+   *
+   * Optional so the bar still works on its own: without it the Search tab
+   * falls back to navigating to the results view, which is what it did before
+   * the overlay existed.
+   */
+  onOpenSearch?: () => void;
 }
 
 // Tuning constants for gesture + feedback behavior
@@ -28,6 +36,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   cartCount = 0,
   unreadMessagesCount,
   currentUser,
+  onOpenSearch,
 }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
@@ -143,6 +152,46 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       </span>
     ) : null;
 
+  /**
+   * Search, which opens the overlay rather than routing.
+   *
+   * Tapping Search used to land on /search with whatever filters were already
+   * set - "Browse all listings" and no box to type in, which is the one thing
+   * someone pressing Search wants. It stays highlighted while the results view
+   * is open, so the bar still says where you are.
+   */
+  const searchTab = () => {
+    const active = activeTab === 'search';
+    return (
+      <button
+        onClick={() => {
+          if (!onOpenSearch) { go('search'); return; }
+          if (navigator.vibrate) navigator.vibrate(8);
+          onOpenSearch();
+        }}
+        data-onboarding="nav-search"
+        aria-label="Search"
+        className={`
+          ${tabBase}
+          ${active ? 'text-[#2563eb] scale-100' : 'text-[#737686] hover:text-[#434655] scale-95'}
+          ${active ? 'opacity-100' : 'opacity-70'}
+        `}
+        style={{
+          transform: active ? 'translateY(-2px)' : 'translateY(0)',
+          transitionTimingFunction: SPRING_EASE,
+          WebkitTapHighlightColor: 'transparent',
+          WebkitTouchCallout: 'none',
+          touchAction: 'manipulation',
+        }}
+      >
+        <span className="relative">
+          <Search className="w-6 h-6 transition-all duration-200" strokeWidth={active ? 2.5 : 1.8} />
+        </span>
+        <span className={`${labelCls} ${active ? 'opacity-100' : 'opacity-60'}`}>Search</span>
+      </button>
+    );
+  };
+
   const tab = (
     view: ViewType,
     label: string,
@@ -230,7 +279,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             labels below are the smallest thing in the bar; it is still a better
             trade than hiding the primary action.
           */}
-          {tab('search', 'Search', Search)}
+          {searchTab()}
 
           {isSeller
             ? tab('my-listings', 'Listings', Tag, { activeColor: 'text-[#007d55]' })
