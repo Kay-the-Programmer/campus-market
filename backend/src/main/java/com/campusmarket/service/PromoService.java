@@ -14,12 +14,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
 /**
- * The editable home page: hero carousel slides and "Special offers" tiles.
+ * The editable promo panels: hero carousel slides, "Special offers" tiles and
+ * the call-to-action banners on the browse pages.
  *
  * <p>Reading is public because the feed renders before anyone signs in. Every
  * write is admin-only and audited, exactly like the category taxonomy.
@@ -34,6 +36,9 @@ public class PromoService {
      * image link by hand, where nothing stops them pasting something absurd.
      */
     private static final int MAX_IMAGE_CHARS = 900_000;
+
+    /** What the banner layout draws. Anything past this is weight nobody sees. */
+    private static final int MAX_COLLAGE_IMAGES = 6;
 
     private final PromoSlotRepository promoSlotRepository;
     private final AccessGuard accessGuard;
@@ -161,6 +166,7 @@ public class PromoService {
         slot.setCtaLink(normalizeLink(request.ctaLink()));
         slot.setBadge(blankToNull(request.badge()));
         slot.setImageUrl(ImageStorageService.toStoredForm(validateImage(request.imageUrl())));
+        applyCollage(slot, request.collageImages());
         slot.setTheme(parseTheme(request.theme()));
         slot.setBgColor(normalizeColor(request.bgColor(), "Background colour"));
         slot.setTextColor(normalizeColor(request.textColor(), "Text colour"));
@@ -224,6 +230,39 @@ public class PromoService {
         return image;
     }
 
+    /**
+     * Replaces the banner's collage.
+     *
+     * <p>Mutated in place rather than reassigned: the field is a Hibernate
+     * element collection, and handing it a new List detaches the one the
+     * session is tracking - the classic orphan-removal failure where the old
+     * rows are never deleted.
+     *
+     * <p>Every URL goes through the same check a background image does, for
+     * the same reason: these are admin-entered values rendered into an img on
+     * a public page.
+     */
+    private void applyCollage(PromoSlot slot, List<String> raw) {
+        List<String> cleaned = new ArrayList<>();
+        if (raw != null) {
+            for (String candidate : raw) {
+                String image = ImageStorageService.toStoredForm(validateImage(candidate));
+                // Blanks are dropped rather than rejected: the editor's rows
+                // are a fixed-length array client-side, so an empty one means
+                // "no picture here", not a mistake worth refusing a save over.
+                if (image != null) {
+                    cleaned.add(image);
+                }
+            }
+        }
+        if (cleaned.size() > MAX_COLLAGE_IMAGES) {
+            throw ApiException.badRequest("TOO_MANY_IMAGES",
+                    "A banner can hold " + MAX_COLLAGE_IMAGES + " pictures at most.");
+        }
+        slot.getCollageImages().clear();
+        slot.getCollageImages().addAll(cleaned);
+    }
+
     private PromoPlacement parsePlacement(String raw) {
         if (raw == null || raw.isBlank()) {
             throw ApiException.badRequest("Choose where this panel appears.");
@@ -231,7 +270,8 @@ public class PromoService {
         try {
             return PromoPlacement.valueOf(raw.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("Panels can go in the carousel or the special offers grid.");
+            throw ApiException.badRequest(
+                    "Panels can go in the carousel, the special offers grid, or the browse banners.");
         }
     }
 
@@ -286,6 +326,7 @@ public class PromoService {
                 slot.getCtaLink(),
                 slot.getBadge(),
                 slot.getImageUrl(),
+                List.copyOf(slot.getCollageImages()),
                 slot.getImageOverlay(),
                 slot.getTheme().name(),
                 slot.getBgColor(),

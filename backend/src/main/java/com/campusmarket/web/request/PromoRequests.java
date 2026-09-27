@@ -47,6 +47,17 @@ public final class PromoRequests {
             /** URL from the upload endpoint, or a pasted external link. */
             String imageUrl,
 
+            /**
+             * CTA_BANNER only: the collage beside the copy, in draw order.
+             *
+             * <p>Capped here as well as in the layout because the banner draws
+             * six at most and anything past that is weight nobody sees. Null
+             * and empty both mean "no collage" - the form omits the key
+             * entirely for the placements that have no collage to send.
+             */
+            @Size(max = 6, message = "A banner can hold six pictures at most.")
+            List<String> collageImages,
+
             Integer imageOverlay,
             String theme,
 

@@ -33,7 +33,9 @@ const TABS: { key: AdminTab; label: string; icon: React.ElementType; badge?: 're
   { key: 'chats', label: 'Chats', icon: MessageSquare, badge: 'chats' },
   { key: 'users', label: 'Users', icon: Users },
   { key: 'listings', label: 'Listings', icon: Package },
-  { key: 'homepage', label: 'Home Page', icon: Megaphone },
+  // One editor for the home page's panels and the browse pages' banners -
+  // they are the same record with a different placement, so they are one tab.
+  { key: 'homepage', label: 'Promos & Banners', icon: Megaphone },
   { key: 'specialOffers', label: 'Special Offers', icon: Tag },
   { key: 'categories', label: 'Categories', icon: Grid3x3 },
   { key: 'campaigns', label: 'Email Campaigns', icon: Mail },

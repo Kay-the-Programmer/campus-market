@@ -17,6 +17,9 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
+import {
+  CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER, FALLBACK_CTA_BANNERS,
+} from './shared/CtaBanner';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
@@ -153,6 +156,10 @@ const FALLBACK_PROMOS: PromoSlot[] = [
     title: 'Meal Deals', subtitle: 'Home-cooked & campus food near you.',
     badge: 'Hot', ctaLink: '/browse?type=Food',
   },
+  // The browse banners' fallback lives with the component that draws them, so
+  // the search page - which has no carousel and no tiles - gets the same copy
+  // from one place rather than a second copy of it.
+  ...FALLBACK_CTA_BANNERS,
 ];
 
 /** Tile icon, chosen from the link so admins never have to pick one. */
@@ -435,6 +442,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     () => promos.filter((p) => p.placement === 'BENTO').sort((a, b) => a.sortOrder - b.sortOrder),
     [promos],
   );
+  /* Marketing banners between the rows of results. Derived from the same
+     response as the carousel and the tiles - one request, three surfaces. */
+  const ctaBanners = useMemo(() => ctaBannersFrom(promos), [promos]);
+  /* Which of them this page draws, and where. Never two in a row - see
+     placeCtaBanners, which drops the inline one when the grid is too short to
+     put real listings between them. */
+  const cta = useMemo(() => placeCtaBanners(ctaBanners, results.length), [ctaBanners, results.length]);
 
   /* ── Carousel State ───────────────────────────────────────────────────── */
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -952,6 +966,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
       setCategoryId(params.get('categoryId') || '');
       const z = params.get('campusZone') || '';
       setZone((CAMPUS_ZONES.some((c) => c.value === z) ? z : '') as CampusZone | '');
+      // "deals=1" is the one filter with no field of its own in a link, and
+      // the one a discount campaign actually wants to point at.
+      setDealsOnly(params.get('deals') === '1');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -2058,131 +2075,141 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-              {results.map((item) => {
+              {results.map((item, index) => {
                 const detail = contextualDetail(item);
                 const unavailable = item.badgeText === 'Sold' || item.badgeText === 'Reserved';
                 return (
-                  <article
-                    key={item.id}
-                    onClick={() => onSelectListing(item)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      // Only when the card itself is focused - a Save or Add-to-cart
-                      // button inside it handles its own Enter/Space, and this
-                      // would otherwise also fire from the keydown bubbling up.
-                      if (e.target !== e.currentTarget) return;
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onSelectListing(item);
-                      }
-                    }}
-                    className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
-                  >
-                    <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
-                      <ListingImage
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  <React.Fragment key={item.id}>
+                    {/* Full width, so it starts its own row and the cards
+                        above it keep their alignment. */}
+                    {cta.inline && index === CTA_INLINE_AFTER && (
+                      <CtaBanner
+                        slot={cta.inline}
+                        onNavigate={followPromoLink}
+                        className="col-span-full my-2"
                       />
+                    )}
+                    <article
+                      onClick={() => onSelectListing(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        // Only when the card itself is focused - a Save or Add-to-cart
+                        // button inside it handles its own Enter/Space, and this
+                        // would otherwise also fire from the keydown bubbling up.
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectListing(item);
+                        }
+                      }}
+                      className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
+                    >
+                      <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
+                        <ListingImage
+                          src={item.image}
+                          alt={item.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
 
-                      {/* Type tag, and the saving beneath it when there is one.
-                          Stacked rather than placed opposite: the top-right
-                          corner belongs to Save, and a flag there would be the
-                          one thing people tap by accident. */}
-                      <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5">
-                        <span className={TYPE_STYLE[item.category].chip}>
-                          {TYPE_STYLE[item.category].icon}
-                          {item.category}
-                        </span>
-                        {!unavailable && <DiscountFlag percent={item.discountPercent} />}
-                      </div>
-
-                      {/* Save - the one part of the card that doesn't navigate */}
-                      <button
-                        onClick={(e) => toggleSave(item.id, e)}
-                        aria-label={item.isSaved ? 'Remove from saved' : 'Save listing'}
-                        className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card active:scale-90 transition-all duration-150"
-                      >
-                        <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
-                      </button>
-
-                      {/* More-photos hint, so extra images aren't hidden behind a tap */}
-                      {item.gallery && item.gallery.length > 1 && (
-                        <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#0b1c30]/60 backdrop-blur-sm">
-                          <Images className="w-3 h-3 text-white" />
-                          <span className="text-[10px] font-bold text-white">{item.gallery.length}</span>
-                        </div>
-                      )}
-
-                      {/* Unavailable items are skippable at a glance while scanning */}
-                      {unavailable && (
-                        <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1.5">
-                          <span className="block text-center text-[11px] font-bold text-white uppercase tracking-widest">
-                            {item.badgeText}
+                        {/* Type tag, and the saving beneath it when there is one.
+                            Stacked rather than placed opposite: the top-right
+                            corner belongs to Save, and a flag there would be the
+                            one thing people tap by accident. */}
+                        <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1.5">
+                          <span className={TYPE_STYLE[item.category].chip}>
+                            {TYPE_STYLE[item.category].icon}
+                            {item.category}
                           </span>
+                          {!unavailable && <DiscountFlag percent={item.discountPercent} />}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="p-3.5 flex-1 flex flex-col">
-                      <h3 className="font-medium text-[#0b1c30] text-sm truncate group-hover:text-[#2563eb] transition-colors duration-150">
-                        {item.title}
-                      </h3>
+                        {/* Save - the one part of the card that doesn't navigate */}
+                        <button
+                          onClick={(e) => toggleSave(item.id, e)}
+                          aria-label={item.isSaved ? 'Remove from saved' : 'Save listing'}
+                          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 hover:bg-white text-[#434655] hover:text-red-500 flex items-center justify-center shadow-card active:scale-90 transition-all duration-150"
+                        >
+                          <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
+                        </button>
 
-                      {/* Price - the loudest text on the card, carrying the
-                          saving beside it when the seller has marked it down */}
-                      <PriceTag listing={item} size="md" className="mt-0.5" />
+                        {/* More-photos hint, so extra images aren't hidden behind a tap */}
+                        {item.gallery && item.gallery.length > 1 && (
+                          <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#0b1c30]/60 backdrop-blur-sm">
+                            <Images className="w-3 h-3 text-white" />
+                            <span className="text-[10px] font-bold text-white">{item.gallery.length}</span>
+                          </div>
+                        )}
 
-                      {/* Renders nothing unless enough people have actually
-                          looked - see ViewsNote. Above the location rather
-                          than below it so the interest reads as part of the
-                          item, not part of the pickup arrangements. */}
-                      <ViewsNote count={item.recentViews} className="mt-1.5" />
-
-                      <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
-                        <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />
-                        <span className="truncate">{item.location}</span>
-                        {detail && (
-                          <>
-                            <span className="text-[#c3c6d7] shrink-0">·</span>
-                            <span className="truncate shrink-0 max-w-[45%] text-[#434655]">{detail}</span>
-                          </>
+                        {/* Unavailable items are skippable at a glance while scanning */}
+                        {unavailable && (
+                          <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1.5">
+                            <span className="block text-center text-[11px] font-bold text-white uppercase tracking-widest">
+                              {item.badgeText}
+                            </span>
+                          </div>
                         )}
                       </div>
 
-                      {/* One tap from the grid, as on any shop. It stops the
-                          card's own navigation, so the row is a real choice
-                          between "add it" and "look at it" rather than a
-                          button that opens the page anyway. A short "Added"
-                          confirmation replaces the spinner before the button
-                          reverts, so the tap gets a clear result rather than
-                          silently snapping back. */}
-                      {canQuickAdd(item) && (
-                        <button
-                          onClick={(e) => quickAdd(item, e)}
-                          disabled={addingId === item.id}
-                          aria-label={`Add ${item.title} to cart`}
-                          className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-60 ${addedId === item.id
-                            ? 'bg-[#007d55] text-white'
-                            : 'bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]'
-                            }`}
-                        >
-                          {addingId === item.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : addedId === item.id ? (
-                            <span className="cm-added-pop flex items-center gap-1.5">
-                              <Check className="w-3.5 h-3.5" />
-                              Added
-                            </span>
-                          ) : (
-                            <ShoppingBag className="w-3.5 h-3.5" />
+                      <div className="p-3.5 flex-1 flex flex-col">
+                        <h3 className="font-medium text-[#0b1c30] text-sm truncate group-hover:text-[#2563eb] transition-colors duration-150">
+                          {item.title}
+                        </h3>
+
+                        {/* Price - the loudest text on the card, carrying the
+                            saving beside it when the seller has marked it down */}
+                        <PriceTag listing={item} size="md" className="mt-0.5" />
+
+                        {/* Renders nothing unless enough people have actually
+                            looked - see ViewsNote. Above the location rather
+                            than below it so the interest reads as part of the
+                            item, not part of the pickup arrangements. */}
+                        <ViewsNote count={item.recentViews} className="mt-1.5" />
+
+                        <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
+                          <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />
+                          <span className="truncate">{item.location}</span>
+                          {detail && (
+                            <>
+                              <span className="text-[#c3c6d7] shrink-0">·</span>
+                              <span className="truncate shrink-0 max-w-[45%] text-[#434655]">{detail}</span>
+                            </>
                           )}
-                          {addingId !== item.id && addedId !== item.id && 'Add to cart'}
-                        </button>
-                      )}
-                    </div>
-                  </article>
+                        </div>
+
+                        {/* One tap from the grid, as on any shop. It stops the
+                            card's own navigation, so the row is a real choice
+                            between "add it" and "look at it" rather than a
+                            button that opens the page anyway. A short "Added"
+                            confirmation replaces the spinner before the button
+                            reverts, so the tap gets a clear result rather than
+                            silently snapping back. */}
+                        {canQuickAdd(item) && (
+                          <button
+                            onClick={(e) => quickAdd(item, e)}
+                            disabled={addingId === item.id}
+                            aria-label={`Add ${item.title} to cart`}
+                            className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-60 ${addedId === item.id
+                              ? 'bg-[#007d55] text-white'
+                              : 'bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]'
+                              }`}
+                          >
+                            {addingId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : addedId === item.id ? (
+                              <span className="cm-added-pop flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5" />
+                                Added
+                              </span>
+                            ) : (
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                            )}
+                            {addingId !== item.id && addedId !== item.id && 'Add to cart'}
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -2211,6 +2238,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               <p className="text-center text-xs text-[#737686] py-8">That's everything for now.</p>
             )}
           </>
+        )}
+
+        {/* ═══════════════ BROWSE CTA BANNER, end of page ═══════════════ */}
+        {/* The last thing on the page, below the results and anything the
+            empty state offered. Held back until the feed has finished loading
+            so it is never the only thing on screen. */}
+        {!loading && cta.tail && (
+          <CtaBanner slot={cta.tail} onNavigate={followPromoLink} className="mt-8" />
         )}
 
 

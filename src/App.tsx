@@ -687,6 +687,40 @@ export default function App() {
     handleNavigate(parsed.view);
   };
 
+  /**
+   * Follows a promo panel's link from a page that does not own the feed.
+   *
+   * <p>The browse feed applies these in place - it IS the feed, so navigating
+   * would be a reload of the page you are already on - but the search results
+   * have to hand off. The filter state lives here either way, so this sets it
+   * and then routes, and a banner promoting "deals" lands on the deals feed
+   * rather than on an unfiltered one.
+   */
+  const handlePromoLink = (link?: string) => {
+    if (!link) return;
+    const [path, query] = link.split('?');
+    const params = new URLSearchParams(query || '');
+
+    if (path === '/browse' || path === '/offers' || path === '/' || path === '') {
+      setFeedQuery(params.get('q') || '');
+      const type = params.get('type');
+      setFeedType((['Product', 'Service', 'Food'].includes(type || '') ? type : 'All') as FeedType);
+      setFeedCategoryId(params.get('categoryId') || '');
+      const zone = params.get('campusZone') || '';
+      setFeedZone((CAMPUS_ZONES.some((z) => z.value === zone) ? zone : '') as CampusZone | '');
+      setFeedDealsOnly(params.get('deals') === '1' || path === '/offers');
+      handleNavigate('browse');
+      return;
+    }
+
+    const parsed = parsePathname(path);
+    if (parsed.view === 'detail' && parsed.listingId) {
+      handleOpenListingById(parsed.listingId);
+      return;
+    }
+    handleNavigate(parsed.view);
+  };
+
   /** Opens one order's detail view, from a notification or from the list. */
   const handleOpenOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -1471,6 +1505,7 @@ export default function App() {
                   onAddToCart={handleAddToCart}
                   listings={listings}
                   onGoHome={() => handleNavigate('browse')}
+                  onPromoLink={handlePromoLink}
                 />
               )}
 
