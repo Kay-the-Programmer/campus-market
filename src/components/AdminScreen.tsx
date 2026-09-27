@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Users, Flag, LayoutDashboard, Tag, LogOut, ShieldCheck, Loader2, Trash2,
+        Loader2, Trash2,
   Plus, Pencil, AlertTriangle, CheckCircle2, Ban, RotateCcw, BadgeCheck,
-  Store, PackageCheck, Eye, Mail, Phone, MapPin, User as UserIcon, MessageSquare,
-} from 'lucide-react';
+  Store, PackageCheck, Eye, Mail, Phone, MapPin, User as UserIcon, MessageSquare } from 'lucide-react';
 import { AuthSession, AuditLogEntry, Listing, Order, zoneLabel } from '../types';
 import { api } from '../services/api';
 import { useLiveCounts } from '../hooks/useLiveCounts';
@@ -340,8 +339,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   onNavigateToSell,
   onViewListing,
   onEditListing,
-  onExitAdmin,
-}) => {
+  onExitAdmin }) => {
   const [tab, setTab] = useState<Tab>(activeTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -407,14 +405,24 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
-  useEffect(() => { setTab(activeTab); }, [activeTab]);
-
-  const switchTab = (next: Tab) => {
-    setTab(next);
+  /*
+   * Follow the tab the console's own nav picked.
+   *
+   * <p>A standing error is cleared on the way, because it belonged to the
+   * screen being left: a failure from the reports queue sitting above the
+   * listings queue is a message about something the reader can no longer
+   * see. That clearing used to live in a `switchTab` helper, which stopped
+   * being called when the tab buttons moved out to AdminNav - so nothing has
+   * cleared it since.
+   *
+   * <p>The notice is deliberately spared. Fulfilling an order confirms it and
+   * then moves to the chats tab on purpose (see the fulfil branch below), and
+   * clearing here would wipe the confirmation in the same frame it appeared.
+   */
+  useEffect(() => {
+    setTab(activeTab);
     setError(null);
-    setNotice(null);
-    onTabChange?.(next);
-  };
+  }, [activeTab]);
 
   /**
    * Report an action that worked.
@@ -566,8 +574,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
    */
   useLiveCounts({
     enabled: true,
-    refresh: () => loadAll(true),
-  });
+    refresh: () => loadAll(true) });
 
   /* The applicant's full record, fetched only when one is opened - the queue
      itself has no use for reports or trading history. */
@@ -601,8 +608,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     refresh: async () => {
       if (chatId) await openChatSilently(chatId);
       await loadChats(true);
-    },
-  });
+    } });
 
   /* Newest message in view whenever the thread changes or grows - a chat that
      opens showing its middle reads as broken. */
@@ -1230,8 +1236,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
                               <p className="text-[10px] opacity-60 mt-0.5 text-right">
                                 {new Date(m.createdAt).toLocaleTimeString([], {
-                                  hour: '2-digit', minute: '2-digit',
-                                })}
+                                  hour: '2-digit', minute: '2-digit' })}
                               </p>
                             </div>
                           </div>

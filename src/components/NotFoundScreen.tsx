@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, ArrowLeft, Home, Search } from 'lucide-react';
+import { AlertCircle,  Home } from 'lucide-react';
 
 interface NotFoundScreenProps {
   onBackHome: () => void;

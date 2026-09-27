@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Heart, MapPin, Star, ChevronRight, Bookmark,
-  MessageSquare, ShieldCheck, ShoppingBag, Trash2, Lock,
+  MessageSquare, ShieldCheck, ShoppingBag, Trash2, 
   Briefcase, Utensils, Flag, CalendarClock, Clock, ChevronDown, ChevronUp,
-  Share2, Eye, MoreHorizontal, DoorOpen, Layers, ChevronLeft, Minus, Plus,
-} from 'lucide-react';
+  Share2, Eye,  DoorOpen, Layers, ChevronLeft, Minus, Plus } from 'lucide-react';
 import { AddToCart, Listing, AuthSession } from '../types';
 import { api } from '../services/api';
 import { ReportModal } from './shared/ReportModal';
@@ -43,40 +42,32 @@ const TYPE_STYLE: Record<string, { chip: string; icon: React.ReactNode; gradient
   Product: {
     chip: 'chip-product',
     icon: <ShoppingBag className="w-3 h-3" />,
-    gradient: 'from-blue-500/10 to-indigo-500/5',
-  },
+    gradient: 'from-blue-500/10 to-indigo-500/5' },
   Service: {
     chip: 'chip-service',
     icon: <Briefcase className="w-3 h-3" />,
-    gradient: 'from-violet-500/10 to-purple-500/5',
-  },
+    gradient: 'from-violet-500/10 to-purple-500/5' },
   Food: {
     chip: 'chip-food',
     icon: <Utensils className="w-3 h-3" />,
-    gradient: 'from-emerald-500/10 to-teal-500/5',
-  },
-};
+    gradient: 'from-emerald-500/10 to-teal-500/5' } };
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; label: string }> = {
   Available: {
     bg: 'bg-emerald-50',
     text: 'text-emerald-700',
     border: 'border-emerald-200',
-    label: 'Available',
-  },
+    label: 'Available' },
   Reserved: {
     bg: 'bg-amber-50',
     text: 'text-amber-700',
     border: 'border-amber-200',
-    label: 'Reserved',
-  },
+    label: 'Reserved' },
   Sold: {
     bg: 'bg-slate-100',
     text: 'text-slate-500',
     border: 'border-slate-200',
-    label: 'Sold',
-  },
-};
+    label: 'Sold' } };
 
 export const DetailScreen: React.FC<DetailScreenProps> = ({
   listing,
@@ -93,12 +84,10 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
   onEditListing,
   onViewAllSimilar,
   onGoHome,
-  embedded,
-}) => {
+  embedded }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [descExpanded, setDescExpanded] = useState(false);
-  const [showMobileActions, setShowMobileActions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [addedJustNow, setAddedJustNow] = useState(false);
@@ -154,8 +143,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     const shareData = {
       title: listing.title,
       text: `${listing.title} — ${formatPrice(listing.price)} on CampusMarket`,
-      url,
-    };
+      url };
 
     if (navigator.share) {
       try {
@@ -210,8 +198,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     if (currentUser.role === 'guest') { onOpenAuthModal(); return; }
     if (currentUser.role === 'admin') {
       toast.info('Admins do not have a cart. Use a customer account to shop.', {
-        title: 'Not available for admins',
-      });
+        title: 'Not available for admins' });
       return;
     }
     if (onAddToCart) {
@@ -390,8 +377,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
           icon: <MessageSquare className="w-4 h-4" />,
           onClick: handleChatSeller,
           color: 'bg-violet-600 hover:bg-violet-700 shadow-violet-200',
-          disabled: startingChat || unavailable,
-        };
+          disabled: startingChat || unavailable };
       }
       return {
         label: 'Request Booking',
@@ -401,8 +387,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
         // The server rejects a booking on anything but an ACTIVE listing, so a
         // Sold/Reserved service would otherwise open the form only to fail on
         // submit. Same treatment as the product "Add to Cart" button below.
-        disabled: unavailable,
-      };
+        disabled: unavailable };
     }
     return {
       label: addedJustNow ? 'Added!' : isAddingToCart ? 'Adding…' : 'Add to Cart',
@@ -411,8 +396,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
       color: addedJustNow
         ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
         : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200',
-      disabled: isAddingToCart || unavailable,
-    };
+      disabled: isAddingToCart || unavailable };
     // quantity and listing.id belong here: the click handlers close over both,
     // and a memo that skipped them would add yesterday's quantity, or add the
     // previous listing after a tap through the similar row.
@@ -429,8 +413,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
         label: 'Ask for availability',
         icon: <CalendarClock className="w-4 h-4" />,
         onClick: handleChatSeller,
-        disabled: startingChat,
-      };
+        disabled: startingChat };
     }
     // Bookable services used to have no chat at all, which left "is this still
     // running?" with nowhere to go except a booking request for a made-up slot.
@@ -438,8 +421,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
       label: startingChat ? 'Opening…' : isService ? 'Chat seller' : 'Chat Seller',
       icon: <MessageSquare className="w-4 h-4" />,
       onClick: handleChatSeller,
-      disabled: startingChat,
-    };
+      disabled: startingChat };
   }, [isGuest, isAdmin, isOwner, isService, isWalkIn, startingChat, listing.id]);
 
   return (
@@ -1077,7 +1059,13 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
 
       {/* ── Mobile Floating Action Bar ── */}
       {!embedded && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 safe-area-pb">
+        /* Same stacking problem as the cart's checkout bar: equal z-index
+           with the bottom nav, which is later in the DOM and therefore wins.
+           Sits above it instead. */
+        <div
+          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 safe-area-pb"
+          style={{ bottom: 'var(--bottom-nav-h, 72px)' }}
+        >
           <div className="max-w-3xl mx-auto px-4 py-3">
             {isGuest && (
               <button

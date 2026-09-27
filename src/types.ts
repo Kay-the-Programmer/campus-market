@@ -567,3 +567,30 @@ export function contrastRatio(foreground: string, background: string): number {
   const [light, dark] = a > b ? [a, b] : [b, a];
   return (light + 0.05) / (dark + 0.05);
 }
+
+/**
+ * A text colour that is legible on the given background.
+ *
+ * <p>Prefers the brand pair - white, or the ink used everywhere else - because
+ * a remedy that looks like the product is one people will accept. Falls back
+ * to pure white or black only when neither brand colour clears 4.5:1, which
+ * happens on mid-tone backgrounds: brand ink on #808080 manages 4.35, so
+ * offering it would leave the warning on screen after the user took the
+ * advice, which is worse than not offering anything.
+ *
+ * <p>The fallback cannot fail. Where white and black are equally legible the
+ * ratio is at its minimum, and that minimum is about 4.58:1 - above the
+ * threshold - so one of the two always clears it for any background.
+ */
+export function readableTextOn(background: string): string {
+  const BRAND = ['#ffffff', '#0b1c30'];
+  const best = BRAND
+    .map((colour) => ({ colour, ratio: contrastRatio(colour, background) }))
+    .sort((a, b) => b.ratio - a.ratio)[0];
+  if (best.ratio >= 4.5) {
+    return best.colour;
+  }
+  return contrastRatio('#ffffff', background) >= contrastRatio('#000000', background)
+    ? '#ffffff'
+    : '#000000';
+}

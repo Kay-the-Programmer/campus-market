@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { BottomNav } from './BottomNav';
 import { AuthSession, ViewType } from '../../types';
 
@@ -107,5 +107,48 @@ describe('BottomNav, who gets which tabs', () => {
   it('has no Search tab - the header owns search now', () => {
     render(<BottomNav {...props(session({ role: 'customer' }))} />);
     expect(screen.queryByLabelText('Search')).toBeNull();
+  });
+});
+
+/**
+ * The bar publishes its own height so nothing has to guess it.
+ *
+ * <p>The cart's checkout bar was `fixed bottom-0` with no z-index while this
+ * nav is `fixed bottom-0 z-40` - same position, higher stack - so the total
+ * and the Checkout button sat behind it. Every fix that writes the height
+ * down by hand is wrong on some device: the bar is 53px with no home
+ * indicator and about 79px with one, because its bottom padding is
+ * env(safe-area-inset-bottom).
+ */
+describe('BottomNav publishes its height', () => {
+  const varOf = () => document.documentElement.style.getPropertyValue('--bottom-nav-h');
+
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--bottom-nav-h');
+  });
+
+  it('sets --bottom-nav-h while the bar is on screen', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+    // jsdom reports 0 for every box, so the value, not the number, is what
+    // this can assert - that something measured was published at all.
+    expect(varOf()).toMatch(/^\d+px$/);
+  });
+
+  it('publishes 0 where the bar is not drawn, so bars there sit flush', () => {
+    render(<BottomNav {...props(session({ role: 'customer', canSell: true }), 'sell')} />);
+    expect(varOf()).toBe('0px');
+  });
+
+  it('publishes 0 for admins, who get no bottom bar at all', () => {
+    render(<BottomNav {...props(session({ role: 'admin' }))} />);
+    expect(varOf()).toBe('0px');
+  });
+
+  it('updates when the same instance moves to a screen that hides it', () => {
+    const user = session({ role: 'customer', accountType: 'SELLER', canSell: true });
+    const { rerender } = render(<BottomNav {...props(user, 'browse')} />);
+    expect(varOf()).toMatch(/^\d+px$/);
+    rerender(<BottomNav {...props(user, 'sell')} />);
+    expect(varOf()).toBe('0px');
   });
 });

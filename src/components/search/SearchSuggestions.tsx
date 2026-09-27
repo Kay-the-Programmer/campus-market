@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo,  useState } from 'react';
 import {
-  Search, Clock, X, Layers, ShoppingBag, Briefcase, Utensils, Loader2, TrendingUp, Tag,
-} from 'lucide-react';
+  Search, Clock, X, Layers, ShoppingBag, Briefcase, Utensils, Loader2, TrendingUp, Tag } from 'lucide-react';
 import { Listing, Suggestion } from '../../types';
 import { api } from '../../services/api';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
@@ -36,8 +35,7 @@ interface PopularCategory {
 const TYPE_ICON: Record<string, React.ReactNode> = {
   PRODUCT: <ShoppingBag className="w-3 h-3" />,
   SERVICE: <Briefcase className="w-3 h-3" />,
-  FOOD: <Utensils className="w-3 h-3" />,
-};
+  FOOD: <Utensils className="w-3 h-3" /> };
 
 interface SearchSuggestionsProps {
   query: string;
@@ -86,8 +84,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   onSelectListing,
   onSelectCategory,
   onShowDeals,
-  variant = 'dropdown',
-}) => {
+  variant = 'dropdown' }) => {
   const [listings, setListings] = useState<Suggestion[]>([]);
   const [categories, setCategories] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, ArrowLeft, Lock, FileText, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, ArrowLeft,  FileText } from 'lucide-react';
 
 interface LegalScreenProps {
   onBack: () => void;

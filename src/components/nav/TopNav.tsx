@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Search, Plus, MessageSquare, ShoppingBag, Heart, Bell, X, Package,
-} from 'lucide-react';
+  Search, Plus, MessageSquare, ShoppingBag, Heart, Bell, X, Package } from 'lucide-react';
 import { AuthSession, ViewType } from '../../types';
 import { AccountMenu } from './AccountMenu';
 import { SearchSuggestions } from '../search/SearchSuggestions';
@@ -16,7 +15,6 @@ export interface CategoryLink {
 }
 
 interface TopNavProps {
-  currentView: ViewType;
   onNavigate: (view: ViewType) => void;
   onOpenAuthModal: () => void;
   onLogout?: () => void;
@@ -30,11 +28,11 @@ interface TopNavProps {
   /** Global search + category state, owned by App so nav and feed agree. */
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  feedType: FeedType;
+  /* The setters remain because the logo still clears the feed on the way
+     home. Their current VALUES were only ever read by the category strip,
+     which no longer exists - see the note on the component below. */
   onFeedTypeChange: (type: FeedType) => void;
-  categoryId: string;
   onCategoryChange: (id: string) => void;
-  categories: CategoryLink[];
 
   /** Run a full search - lands on the results page. */
   onSubmitSearch: (term: string) => void;
@@ -59,16 +57,16 @@ const PLACEHOLDERS = ['Search textbooks…', 'Find a tutor…', 'Search meals ne
 /**
  * Primary navigation for guests, customers and sellers.
  *
- * Desktop (lg+) is a two-row shopping-site bar: row 1 is search plus the
- * account/cart cluster and never moves; row 2 is the category strip, which is
- * secondary and collapses while scrolling down. Below lg it degrades to a
+ * One row: search, the sell call to action, and the account/cart cluster.
+ * There was a second row carrying a category strip; it was removed, and this
+ * note said otherwise for long enough that App was still fetching the
+ * categories to fill it on every page load. Below lg the bar degrades to a
  * compact sticky header, with the bottom bar carrying primary navigation.
  *
  * Admins never see this - they get {@link AdminNav} instead, so the two modes
  * can never be mistaken for each other.
  */
 export const TopNav: React.FC<TopNavProps> = ({
-  currentView,
   onNavigate,
   onOpenAuthModal,
   onLogout,
@@ -79,17 +77,13 @@ export const TopNav: React.FC<TopNavProps> = ({
   unreadNotificationsCount,
   searchQuery,
   onSearchChange,
-  feedType,
   onFeedTypeChange,
-  categoryId,
   onCategoryChange,
-  categories,
   onSubmitSearch,
   onOpenListingById,
   onSearchCategory,
   onShowDeals,
-  onOpenSearchOverlay,
-}) => {
+  onOpenSearchOverlay }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
   /* Same rule as the bottom bar's Sell button: offered only to accounts that

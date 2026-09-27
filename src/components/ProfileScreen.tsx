@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Share2, Star, Calendar, ShieldCheck, MessageSquare, Heart, Lock,
-  Loader2, Flag, LogOut, Mail, Phone, Package, CheckCircle2, Pencil, AlertTriangle,
-} from 'lucide-react';
+   Flag, LogOut, Mail, Phone, Package, CheckCircle2, Pencil, AlertTriangle } from 'lucide-react';
 import { Listing, SellerProfile, AuthSession } from '../types';
 import { api } from '../services/api';
 import { NotificationSettings } from './shared/PushOptIn';
@@ -56,8 +55,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateToSaved,
   onNavigateToOrders,
   onLogout,
-  onProfileUpdated,
-}) => {
+  onProfileUpdated }) => {
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [profileListings, setProfileListings] = useState<Listing[]>([]);

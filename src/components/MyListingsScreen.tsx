@@ -3,8 +3,7 @@ import {
   Plus, Eye, Heart, MessageCircle, MoreVertical,
   Pencil, Trash2, Loader2, AlertTriangle, CheckCircle2,
   Clock, Package, ArrowLeft, ChevronDown,
-  ShoppingBag, Briefcase, Utensils, FileEdit, Tag,
-} from 'lucide-react';
+  ShoppingBag, Briefcase, Utensils, FileEdit, Tag } from 'lucide-react';
 import { Listing } from '../types';
 import { api } from '../services/api';
 import { MarkSoldModal } from './shared/MarkSoldModal';
@@ -52,8 +51,7 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
   onNavigateToSell,
   onSelectListing,
   onEditListing,
-  onListingsChanged,
-}) => {
+  onListingsChanged }) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [tab, setTab] = useState<TabKey>('Available');
   const [sort, setSort] = useState<SortKey>('newest');
@@ -152,7 +150,6 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
   }, {});
 
   const totalViews = listings.reduce((s, l) => s + (l.viewsCount || 0), 0);
-  const totalSaves = listings.reduce((s, l) => s + (l.likesCount || 0), 0);
   const totalMessages = listings.reduce((s, l) => s + (l.messagesCount || 0), 0);
 
   const filtered = listings.filter((l) => l.badgeText === tab);
@@ -162,7 +159,6 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
     return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
 
-  const isDraft = tab === 'Draft';
 
   /* ------------------------------------------------------------------ */
   /*  Skeleton                                                           */

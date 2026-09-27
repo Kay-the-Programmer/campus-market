@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Search, SlidersHorizontal, X, Heart, MapPin, Images, ChevronDown,
-  ShoppingBag, Briefcase, Utensils, Loader2, ArrowLeft, Layers,
-} from 'lucide-react';
+  ShoppingBag, Briefcase, Utensils, Loader2, ArrowLeft } from 'lucide-react';
 import {
   AddToCart, AuthSession, Listing, ListingCategory, ListingCondition,
-  SearchFilters, CampusZone, CAMPUS_ZONES,
-} from '../types';
+  SearchFilters,  CAMPUS_ZONES } from '../types';
 import { api } from '../services/api';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
@@ -19,14 +17,12 @@ import { PriceTag, DiscountFlag } from './shared/PriceTag';
 const PAGE_SIZE = 24;
 
 const TYPE_PARAM: Record<string, string | undefined> = {
-  All: undefined, Product: 'PRODUCT', Service: 'SERVICE', Food: 'FOOD',
-};
+  All: undefined, Product: 'PRODUCT', Service: 'SERVICE', Food: 'FOOD' };
 
 const TYPE_STYLE: Record<ListingCategory, { chip: string; icon: React.ReactNode }> = {
   Product: { chip: 'chip-product', icon: <ShoppingBag className="w-3 h-3" /> },
   Service: { chip: 'chip-service', icon: <Briefcase className="w-3 h-3" /> },
-  Food: { chip: 'chip-food', icon: <Utensils className="w-3 h-3" /> },
-};
+  Food: { chip: 'chip-food', icon: <Utensils className="w-3 h-3" /> } };
 
 /*
  * "Best match" only exists when there is something to match against, so it is
@@ -45,8 +41,7 @@ const SORTS = [
 const CONDITIONS: ListingCondition[] = ['New', 'Like New', 'Good', 'Fair'];
 
 const CONDITION_PARAM: Record<string, string> = {
-  New: 'NEW', 'Like New': 'LIKE_NEW', Good: 'GOOD', Fair: 'FAIR',
-};
+  New: 'NEW', 'Like New': 'LIKE_NEW', Good: 'GOOD', Fair: 'FAIR' };
 
 interface CategoryOption {
   id: string;
@@ -86,8 +81,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   currentUser,
   onAddToCart,
   listings,
-  onGoHome,
-}) => {
+  onGoHome }) => {
   const [results, setResults] = useState<Listing[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -159,8 +153,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   const clearFilters = () =>
     onFiltersChange({
       ...filters, type: 'All', categoryId: '', campusZone: '',
-      condition: '', minPrice: '', maxPrice: '',
-    });
+      condition: '', minPrice: '', maxPrice: '' });
 
   /* ── Query ──────────────────────────────────────────────────────────── */
   /*
@@ -201,8 +194,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
         maxPrice: filters.maxPrice || undefined,
         sort: effectiveSort !== 'newest' ? effectiveSort : undefined,
         page: nextPage,
-        size: PAGE_SIZE,
-      }, controller.signal);
+        size: PAGE_SIZE }, controller.signal);
 
       // A cancelled request has no results to show and no error to report.
       if (res.aborted) return;
@@ -685,8 +677,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                         onClick={() =>
                           onFiltersChange({
                             ...filters, q: '', categoryId: c.id, type: 'All',
-                            condition: '', minPrice: '', maxPrice: '',
-                          })
+                            condition: '', minPrice: '', maxPrice: '' })
                         }
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#c3c6d7] text-xs font-semibold text-[#434655] hover:border-[#2563eb] hover:text-[#2563eb] transition-colors"
                       >
@@ -699,8 +690,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                     onClick={() =>
                       onFiltersChange({
                         ...filters, q: '', categoryId: '', type: 'All',
-                        campusZone: '', condition: '', minPrice: '', maxPrice: '',
-                      })
+                        campusZone: '', condition: '', minPrice: '', maxPrice: '' })
                     }
                     className="mt-4 text-xs font-bold text-[#2563eb] hover:text-[#004ac6]"
                   >

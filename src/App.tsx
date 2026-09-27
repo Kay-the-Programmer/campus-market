@@ -5,10 +5,9 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
-  Listing, ViewType, SellerProfile, AuthSession, AddToCartOptions,
-  SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES, CampusZone, SavedSearchRow,
-} from './types';
-import { TopNav, FeedType, CategoryLink } from './components/nav/TopNav';
+  Listing, ViewType,  AuthSession, AddToCartOptions,
+  SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES, CampusZone, SavedSearchRow } from './types';
+import { TopNav, FeedType } from './components/nav/TopNav';
 import { BottomNav } from './components/nav/BottomNav';
 import { SiteFooter } from './components/nav/SiteFooter';
 import { AdminSidebar, AdminHeader, AdminTab } from './components/nav/AdminNav';
@@ -64,7 +63,7 @@ const ScreenLoading: React.FC = () => (
 );
 import { NotFoundScreen } from './components/NotFoundScreen';
 import { DetailSkeleton, DetailUnavailable } from './components/DetailSkeleton';
-import { RoleSwitcherBar } from './components/RoleSwitcherBar';
+import {  } from './components/RoleSwitcherBar';
 import { AuthMode } from './components/AuthModal';
 import { useToast } from './components/shared/ToastProvider';
 import { useOrderToasts } from './hooks/useOrderToasts';
@@ -271,8 +270,7 @@ export default function App() {
       zone: (CAMPUS_ZONES.some((z) => z.value === p.get('campusZone'))
         ? p.get('campusZone') : '') as CampusZone | '',
       minPrice: p.get('minPrice') || '',
-      maxPrice: p.get('maxPrice') || '',
-    };
+      maxPrice: p.get('maxPrice') || '' };
   })();
   const [feedQuery, setFeedQuery] = useState(initialFeed.q);
   const [feedType, setFeedType] = useState<FeedType>(initialFeed.type);
@@ -297,7 +295,6 @@ export default function App() {
   const [feedZone, setFeedZone] = useState<CampusZone | ''>(initialFeed.zone);
   const [feedMinPrice, setFeedMinPrice] = useState(initialFeed.minPrice);
   const [feedMaxPrice, setFeedMaxPrice] = useState(initialFeed.maxPrice);
-  const [navCategories, setNavCategories] = useState<CategoryLink[]>([]);
   const [pendingReports, setPendingReports] = useState(0);
   const [pendingSellers, setPendingSellers] = useState(0);
   const [heldOrders, setHeldOrders] = useState(0);
@@ -425,8 +422,7 @@ export default function App() {
         ? condition : '') as SearchFilters['condition'],
       minPrice: p.get('minPrice') || '',
       maxPrice: p.get('maxPrice') || '',
-      sort,
-    };
+      sort };
   });
 
   /**
@@ -902,12 +898,6 @@ export default function App() {
     });
     loadServerListings();
     consumeEmailLinkToken();
-    // Category links for the desktop nav strip. Only ones with listings behind
-    // them - an empty chip is a dead end.
-    api.categories.getAll().then((res) => {
-      const list = (res.categories as (CategoryLink & { listingCount: number })[]) || [];
-      setNavCategories(list.filter((c) => c.listingCount > 0).slice(0, 6));
-    });
 
     const handlePopState = () => {
       // One of ours was consumed. Never below zero: a forward navigation
@@ -997,8 +987,7 @@ export default function App() {
 
   useLiveCounts({
     enabled: currentUser.role !== 'guest',
-    refresh: refreshCounts,
-  });
+    refresh: refreshCounts });
 
   const handleSessionChange = (newSession: AuthSession) => {
     setCurrentUser(newSession);
@@ -1054,8 +1043,7 @@ export default function App() {
 
     if (currentUser.role === 'admin') {
       toast.info('Admins do not have a cart. Use a customer account to shop.', {
-        title: 'Not available for admins',
-      });
+        title: 'Not available for admins' });
       return;
     }
 
@@ -1067,8 +1055,7 @@ export default function App() {
       if (res.success) {
         await loadServerCart();
         toast.success(`${quantity > 1 ? `${quantity} × ` : ''}"${listing.title}" added to your cart.`, {
-          action: { label: 'View cart', onClick: () => handleNavigate('cart') },
-        });
+          action: { label: 'View cart', onClick: () => handleNavigate('cart') } });
         return true;
       }
       toast.error(res.error || 'Could not add that item to your cart.');
@@ -1113,8 +1100,7 @@ export default function App() {
     // Enforce Rule: Admin cannot silently act as customer
     if (currentUser.role === 'admin') {
       toast.info('Admins cannot save listings. Use a customer account instead.', {
-        title: 'Not available for admins',
-      });
+        title: 'Not available for admins' });
       return;
     }
 
@@ -1234,15 +1220,17 @@ export default function App() {
    * thread happens to sort first, which is the wrong seller as soon as you have
    * more than one - "Chat Seller" has to open THAT seller.
    */
-  const handleOpenChat = (listing: Listing, conversationId?: string) => {
+  /* _listing: callers all pass the listing and the prop type requires it,
+     but this resolves the thread by id alone. Kept in the signature rather
+     than removed from six call sites for a parameter that costs nothing. */
+  const handleOpenChat = (_listing: Listing, conversationId?: string) => {
     if (currentUser.role === 'guest') {
       setIsAuthModalOpen(true);
       return;
     }
     if (currentUser.role === 'admin') {
       toast.info('Admins cannot message as a customer. Use a customer account instead.', {
-        title: 'Not available for admins',
-      });
+        title: 'Not available for admins' });
       return;
     }
     setOpenConversationId(conversationId);
@@ -1271,8 +1259,7 @@ export default function App() {
     // 2. Admin Restrictions -> Rule 5: Admins cannot silently act as customers
     if (currentUser.role === 'admin' && ADMIN_BLOCKED_VIEWS.includes(targetView)) {
       toast.info('That section is for customer accounts. The Admin Console is over here.', {
-        title: 'Not available for admins',
-      });
+        title: 'Not available for admins' });
       // Restore the URL to the admin view since the blocked navigation didn't happen
       updateUrl('admin', undefined, undefined, true);
       return;
@@ -1349,8 +1336,7 @@ export default function App() {
       markNotificationSeenRef.current(push.notificationId);
       toast.info(push.body, {
         title: push.title,
-        action: { label: 'View', onClick: () => handleNotificationLinkRef.current(push.link) },
-      });
+        action: { label: 'View', onClick: () => handleNotificationLinkRef.current(push.link) } });
     });
     const stopClick = onNotificationClick((link) => handleNotificationLinkRef.current(link));
     return () => {
@@ -1375,11 +1361,8 @@ export default function App() {
         duration: 8000,
         action: {
           label: 'View order',
-          onClick: () => handleNotificationLinkRef.current(n.link || '/orders'),
-        },
-      });
-    },
-  });
+          onClick: () => handleNotificationLinkRef.current(n.link || '/orders') } });
+    } });
 
   const markNotificationSeenRef = React.useRef(markNotificationSeen);
   React.useEffect(() => {
@@ -1397,8 +1380,7 @@ export default function App() {
       accountType: 'BUYER',
       sellerApprovalStatus: 'NOT_REQUESTED',
       canSell: false,
-      hasActiveListings: false,
-    });
+      hasActiveListings: false });
     setSavedListings([]);
     setCartCount(0);
     setCurrentView('browse');
@@ -1456,7 +1438,6 @@ export default function App() {
               />
             ) : (
               <TopNav
-                currentView={currentView}
                 onNavigate={handleNavigate}
                 onOpenAuthModal={() => setIsAuthModalOpen(true)}
                 onLogout={handleLogout}
@@ -1467,11 +1448,8 @@ export default function App() {
                 unreadNotificationsCount={unreadNotifications}
                 searchQuery={feedQuery}
                 onSearchChange={setFeedQuery}
-                feedType={feedType}
                 onFeedTypeChange={setFeedType}
-                categoryId={feedCategoryId}
                 onCategoryChange={setFeedCategoryId}
-                categories={navCategories}
                 onSubmitSearch={handleSubmitSearch}
                 onOpenListingById={handleOpenListingById}
                 onSearchCategory={handleSearchCategory}
@@ -1570,8 +1548,7 @@ export default function App() {
                     const next: SearchFilters = {
                       ...EMPTY_SEARCH_FILTERS,
                       categoryId: item.categoryId || '',
-                      type: item.categoryId ? 'All' : (item.category as SearchFilters['type']),
-                    };
+                      type: item.categoryId ? 'All' : (item.category as SearchFilters['type']) };
                     setSearchFilters(next);
                     setCurrentView('search');
                     updateUrl('search');
@@ -1881,8 +1858,7 @@ export default function App() {
               updateUrl('sell');
             } else {
               toast.success('An admin will review it shortly.', {
-                title: 'Application submitted',
-              });
+                title: 'Application submitted' });
             }
           }}
         />

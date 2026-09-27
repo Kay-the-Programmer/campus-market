@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag } from 'lucide-react';
 import { ViewType, AuthSession } from '../../types';
 import { badgeText, canSell, GUEST_ALLOWED, HIDES_BOTTOM_NAV, isSellerState } from './navShared';
@@ -67,6 +67,74 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   useEffect(() => {
     setActiveTab(currentView);
   }, [currentView]);
+
+  /*
+   * Publish this bar's real height as --bottom-nav-h.
+   *
+   * Anything else anchored to the bottom of the screen - the cart's checkout
+   * bar, the detail page's buy bar - has to sit above it, and every way of
+   * writing that number down by hand is wrong somewhere. The bar is 53px on a
+   * phone with no home indicator and about 79px on one with it, because its
+   * bottom padding is env(safe-area-inset-bottom); the spacer below used to
+   * hardcode 72px, which over-reserves on the first and, more importantly,
+   * under-reserves on the second.
+   *
+   * Measured rather than calculated so it cannot drift from the markup: a
+   * later change to the padding or the icon size updates every consumer for
+   * free. Layout effect, so the value is set before the first paint and no
+   * bar is ever briefly drawn underneath this one.
+   */
+  const navRef = useRef<HTMLElement>(null);
+  const hiddenHere = currentUser.role === 'admin' || HIDES_BOTTOM_NAV.includes(currentView);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    // Nothing is drawn, so nothing needs to be cleared - and the bars that
+    // read this must sit flush with the bottom instead.
+    if (hiddenHere) {
+      root.style.setProperty('--bottom-nav-h', '0px');
+      return undefined;
+    }
+    const el = navRef.current;
+    if (!el) return undefined;
+
+    const apply = () => {
+      // Zero at lg and above, where the bar is display:none and the page
+      // carries no bottom chrome at all.
+      root.style.setProperty('--bottom-nav-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+    };
+    apply();
+
+    /*
+     * Optional, and guarded for a reason beyond tidiness: an old WebView
+     * without ResizeObserver would throw here, and this component is the
+     * primary navigation on every mobile screen. A slightly stale offset is a
+     * cosmetic problem; a nav that throws on mount is the whole app.
+     *
+     * border-box, not the default. ResizeObserver watches the CONTENT box
+     * unless told otherwise, and the only thing that changes this bar's
+     * height between devices is its padding-bottom -
+     * env(safe-area-inset-bottom). Observing the content box misses the one
+     * case the measurement exists for: the bar grows by the home-indicator
+     * inset on a notched phone, nothing fires, and every bar above it keeps
+     * the old number and overlaps by exactly that inset.
+     */
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply);
+    observer?.observe(el, { box: 'border-box' });
+
+    /*
+     * The resize listener is not a fallback for the observer, it covers a
+     * case the observer cannot: ResizeObserver skips display:none elements
+     * entirely, and crossing the lg breakpoint is exactly that.
+     */
+    window.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', apply);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('orientationchange', apply);
+    };
+  }, [hiddenHere]);
 
   const go = useCallback(
     (view: ViewType) => {
@@ -212,10 +280,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <>
-      {/* Safe area spacer for notched phones */}
-      <div className="h-[72px] lg:hidden" aria-hidden="true" />
+      {/* Keeps the end of the page clear of the fixed bar. Reads the measured
+          height rather than repeating it, so the two can never disagree. */}
+      <div className="lg:hidden" aria-hidden="true" style={{ height: 'var(--bottom-nav-h, 72px)' }} />
 
       <nav
+        ref={navRef}
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#c3c6d7]/30 shadow-[0_-4px_20px_0_rgba(0,0,0,0.08)] py-2 px-3 lg:hidden"
         aria-label="Primary"
         onTouchStart={handleTouchStart}

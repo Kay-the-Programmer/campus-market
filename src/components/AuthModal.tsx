@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   X, CheckCircle2, AlertCircle, MailCheck, Loader2, ArrowLeft,
-  ShoppingBag, Store, MapPin,
-} from 'lucide-react';
+  ShoppingBag, Store, MapPin } from 'lucide-react';
 import { api } from '../services/api';
 import { isGoogleSignInConfigured, signInWithGoogle } from '../firebase';
 import { AccountType, CampusZone, CAMPUS_ZONES } from '../types';
@@ -38,15 +37,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   resetToken,
   pendingGoogleToken,
-  onPendingGoogleTokenConsumed,
-}) => {
+  onPendingGoogleTokenConsumed }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [department, setDepartment] = useState('');
 
   // Both required at signup. Buyer is the default because it is the
   // lower-privilege option - nobody gets selling rights by rushing the form.
@@ -227,8 +223,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       campusZone,
       // Was being dropped here: the request has always carried a phone, and
       // the form now asks for one.
-      phone: phone.trim() || undefined,
-    });
+      phone: phone.trim() || undefined });
     setBusy(false);
 
     if (res.ok) {
@@ -306,8 +301,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     verify: 'Check your email',
     forgot: 'Reset your password',
     reset: 'Choose a new password',
-    profile: 'Finish setting up',
-  };
+    profile: 'Finish setting up' };
 
   /* The two pickers are shared between the signup form and the Google profile
      step, so the choice reads identically however someone arrived here. */
@@ -323,15 +317,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             label: 'Buyer',
             hint: 'Buying items for personal use or consumption',
             icon: <ShoppingBag className="w-4 h-4" />,
-            active: 'border-[#2563eb] bg-[#eff4ff] text-[#2563eb]',
-          },
+            active: 'border-[#2563eb] bg-[#eff4ff] text-[#2563eb]' },
           {
             value: 'SELLER' as const,
             label: 'Seller',
             hint: 'Selling items or offering services.',
             icon: <Store className="w-4 h-4" />,
-            active: 'border-[#007d55] bg-emerald-50 text-[#006242]',
-          },
+            active: 'border-[#007d55] bg-emerald-50 text-[#006242]' },
         ]).map((option) => {
           const selected = accountType === option.value;
           return (

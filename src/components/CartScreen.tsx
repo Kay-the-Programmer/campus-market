@@ -640,7 +640,19 @@ export const CartScreen: React.FC<CartScreenProps> = ({
 
       {/* Mobile checkout bar — keeps total + action reachable without scrolling past every item */}
       {showMobileBar && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e5eeff] px-4 py-3 shadow-[0_-4px_16px_rgba(11,28,48,0.08)]">
+        /*
+          Sits ON TOP of the bottom nav, not underneath it.
+
+          This was `fixed bottom-0` with no z-index while the nav is
+          `fixed bottom-0 z-40`, so the nav won on both counts - same
+          position, higher stack - and the total and Checkout button were
+          hidden behind it. Raising the z-index alone would only swap which
+          bar is buried; they have to stack.
+        */
+        <div
+          className="lg:hidden fixed inset-x-0 z-30 bg-white border-t border-[#e5eeff] px-4 py-3 shadow-[0_-4px_16px_rgba(11,28,48,0.08)]"
+          style={{ bottom: 'var(--bottom-nav-h, 72px)' }}
+        >
           <div className="max-w-6xl mx-auto flex items-center gap-3">
             <div className="min-w-0">
               <p className="text-[11px] text-[#737686] leading-tight">

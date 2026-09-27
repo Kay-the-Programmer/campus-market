@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import {
   ShieldCheck,
   Search,
-  MessageSquare,
-  HelpCircle,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
+  
+  
+  
+  
+  
   ChevronDown,
   ChevronUp,
   Send,
@@ -33,26 +33,22 @@ const FAQS: FAQItem[] = [
     id: 'faq-1',
     question: 'How do I report a scam or suspicious listing?',
     answer: 'Use the "Report this listing" button on the listing detail screen, or contact our Campus Marketplace Manager directly through the Support tab. Our moderation team reviews flagged listings within 2 hours.',
-    category: 'Safety',
-  },
+    category: 'Safety' },
   {
     id: 'faq-2',
     question: 'What are the recommended campus pickup locations?',
     answer: 'We recommend meeting in well-lit, high-traffic campus spots during daylight hours: Student Union lobby, Main Campus Library entrance, or designated Student Centers.',
-    category: 'Safety',
-  },
+    category: 'Safety' },
   {
     id: 'faq-3',
     question: 'How do I edit or delete my listing?',
     answer: 'Go to your Profile > My Listings, select any Active listing you posted, and tap "Edit" or "Mark as Sold". You can also remove draft listings anytime.',
-    category: 'Selling',
-  },
+    category: 'Selling' },
   {
     id: 'faq-4',
     question: 'Is there a fee for selling on CampusMarket?',
     answer: 'No! CampusMarket is 100% free for verified students. 100% of the item price stays between student buyers and sellers.',
-    category: 'General',
-  },
+    category: 'General' },
 ];
 
 interface SupportScreenProps {
@@ -63,8 +59,7 @@ interface SupportScreenProps {
 
 export const SupportScreen: React.FC<SupportScreenProps> = ({
   onBackToBrowse,
-  currentUser,
-}) => {
+  currentUser }) => {
   const toast = useToast();
   const onboarding = useOnboarding();
   const [activeFaqId, setActiveFaqId] = useState<string | null>(FAQS[0].id);
@@ -79,9 +74,10 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({
   const [fullName, setFullName] = useState(
     currentUser && currentUser.role !== 'guest' ? currentUser.name : '',
   );
-  const [email, setEmail] = useState(
-    currentUser && currentUser.role !== 'guest' ? currentUser.email : '',
-  );
+  // Not state: the field below is deliberately disabled - the address comes
+  // from the verified account and there is no way to edit it, which is why
+  // its setter had never been called.
+  const email = currentUser && currentUser.role !== 'guest' ? currentUser.email : '';
   const [subject, setSubject] = useState('Account Issue');
   const [message, setMessage] = useState('');
   const [isSent, setIsSent] = useState(false);
@@ -205,8 +201,7 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({
               onClick={() => {
                 onboarding.restart();
                 toast.info('It will pick up from the top of the app.', {
-                  title: 'Tour restarted',
-                });
+                  title: 'Tour restarted' });
               }}
               className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-700 underline underline-offset-2"
             >

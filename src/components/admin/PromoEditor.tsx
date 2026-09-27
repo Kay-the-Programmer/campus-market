@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Loader2,
   ImagePlus, ImageOff, Sparkles, LayoutGrid, GalleryHorizontalEnd, Palette, AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import {
   PromoSlot, PromoPlacement, PromoTheme,
   PROMO_THEMES, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, contrastRatio,
+  readableTextOn,
 } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
@@ -98,6 +100,22 @@ const THEME_BASE: Record<PromoTheme, string> = {
   AMBER: '#c2410c',
 };
 
+/**
+ * Quick-pick swatches on every colour field.
+ *
+ * <p>Built from the theme palette plus black and white, because in practice a
+ * panel wants one of three things: a brand colour, something readable on a
+ * dark background, or something readable on a light one. Typing a hex for any
+ * of those is work the form can do instead. Derived from THEME_BASE so a
+ * change to the palette reaches here without a second edit.
+ */
+const COLOR_PRESETS: { value: string; label: string }[] = [
+  { value: '#ffffff', label: 'White' },
+  { value: '#0b1c30', label: 'Ink' },
+  ...(Object.entries(THEME_BASE) as [PromoTheme, string][])
+    .map(([theme, value]) => ({ value, label: PROMO_THEMES.find((t) => t.value === theme)?.label ?? theme })),
+];
+
 /** Suggestions, so an admin never has to guess the filter syntax. */
 const LINK_PRESETS: { label: string; value: string }[] = [
   { label: 'Home feed', value: '/browse' },
@@ -175,15 +193,29 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
    */
   const contrastWarnings = React.useMemo(() => {
     if (!draft) return [];
-    const out: string[] = [];
-    if (draft.textColor && draft.bgColor && contrastRatio(draft.textColor, draft.bgColor) < 4.5) {
-      out.push('Text is hard to read against the background.');
-    }
-    if (draft.buttonTextColor && draft.buttonColor
-      && contrastRatio(draft.buttonTextColor, draft.buttonColor) < 4.5) {
-      out.push('Button text is hard to read against the button.');
-    }
-    return out;
+    const pairs = [
+      { key: 'textColor' as const, on: draft.bgColor, of: draft.textColor, what: 'Text', against: 'the background' },
+      { key: 'buttonTextColor' as const, on: draft.buttonColor, of: draft.buttonTextColor, what: 'Button text', against: 'the button' },
+    ];
+    return pairs.flatMap(({ key, on, of, what, against }) => {
+      if (!on || !of) return [];
+      const ratio = contrastRatio(of, on);
+      if (ratio >= 4.5) return [];
+      /*
+       * The fix, not just the complaint. A warning with no remedy attached is
+       * a warning people learn to scroll past - and one whose remedy does not
+       * clear the threshold is worse, because taking the advice leaves the
+       * warning on screen. readableTextOn guarantees it clears.
+       */
+      const fix = readableTextOn(on);
+      return [{
+        key,
+        ratio,
+        message: `${what} is hard to read against ${against} — ${ratio.toFixed(1)}:1, needs 4.5:1.`,
+        fix,
+        fixLabel: fix === '#ffffff' ? 'Use white text' : 'Use dark text',
+      }];
+    });
   }, [draft]);
 
   const save = async () => {
@@ -366,7 +398,12 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
             {d.title || 'Tile title'}
           </p>
           {d.subtitle && (
-            <p className={`text-[10px] mt-0.5 line-clamp-2 ${d.imageUrl ? 'text-white/80' : 'text-[#737686]'}`}>
+            <p
+              className={`text-[10px] mt-0.5 line-clamp-2 ${
+                d.textColor ? 'opacity-80' : d.imageUrl ? 'text-white/80' : 'text-[#737686]'
+              }`}
+              style={d.textColor ? { color: d.textColor } : undefined}
+            >
               {d.subtitle}
             </p>
           )}
@@ -658,9 +695,23 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                   Custom colours
                 </h4>
                 {customColorCount > 0 && (
-                  <span className="ml-auto text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                    {customColorCount} set
-                  </span>
+                  <>
+                    <span className="ml-auto text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {customColorCount} set
+                    </span>
+                    {/* Four fields is enough that clearing them one at a time
+                        is a chore, and "put it back how it was" is the
+                        commonest thing anyone wants after experimenting. */}
+                    <button
+                      type="button"
+                      onClick={() => setDraft({
+                        ...draft, bgColor: '', textColor: '', buttonColor: '', buttonTextColor: '',
+                      })}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" /> Reset all
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -668,6 +719,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                 <ColorField
                   label="Background"
                   value={draft.bgColor}
+                  presets={COLOR_PRESETS}
                   onChange={(v) => setDraft({ ...draft, bgColor: v })}
                   fallback={themeDefaults.background}
                   hint="Replaces the theme gradient with a flat colour."
@@ -675,19 +727,22 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                 <ColorField
                   label="Text"
                   value={draft.textColor}
+                  presets={COLOR_PRESETS}
                   onChange={(v) => setDraft({ ...draft, textColor: v })}
                   fallback={themeDefaults.text}
-                  hint="Headline, subtitle and badge."
+                  hint="Headline and subtitle. The badge keeps its own colours."
                 />
                 <ColorField
                   label="Button"
                   value={draft.buttonColor}
+                  presets={COLOR_PRESETS}
                   onChange={(v) => setDraft({ ...draft, buttonColor: v })}
                   fallback={themeDefaults.button}
                 />
                 <ColorField
                   label="Button text"
                   value={draft.buttonTextColor}
+                  presets={COLOR_PRESETS}
                   onChange={(v) => setDraft({ ...draft, buttonTextColor: v })}
                   fallback={themeDefaults.buttonText}
                 />
@@ -703,10 +758,21 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
               {contrastWarnings.length > 0 && (
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
                   <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                  <div className="text-[11px] text-amber-900 leading-relaxed">
-                    {contrastWarnings.map((w) => <p key={w}>{w}</p>)}
+                  <div className="text-[11px] text-amber-900 leading-relaxed min-w-0 flex-1">
+                    {contrastWarnings.map((w) => (
+                      <div key={w.key} className="flex items-start justify-between gap-3 py-0.5">
+                        <p className="min-w-0">{w.message}</p>
+                        <button
+                          type="button"
+                          onClick={() => setDraft({ ...draft, [w.key]: w.fix })}
+                          className="shrink-0 px-2 py-0.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold transition-colors"
+                        >
+                          {w.fixLabel}
+                        </button>
+                      </div>
+                    ))}
                     <p className="text-amber-700 mt-0.5">
-                      You can still save this — check the preview above first.
+                      You can still save this — text over a photo is often fine.
                     </p>
                   </div>
                 </div>

@@ -2,9 +2,8 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   X, ShoppingBag, Briefcase, Utensils, Plus, Minus, CheckCircle2, Check,
   MapPin, AlertCircle, ImagePlus, Loader2, Eye, Trash2, ChevronLeft,
-  Camera, Tag, DollarSign, FileText, Layers, Clock, Wheat, ImageOff,
-  CalendarClock, DoorOpen,
-} from 'lucide-react';
+  Camera, Tag, DollarSign,  Layers, Clock, Wheat, 
+  CalendarClock, DoorOpen } from 'lucide-react';
 import { AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, ListingCondition } from '../types';
 
 /**
@@ -18,7 +17,7 @@ type SellableCondition = Exclude<ListingCondition, 'N/A'>;
 import { api } from '../services/api';
 import { DetailScreen } from './DetailScreen';
 import { Modal } from './shared/Modal';
-import { formatPrice } from '../utils/currency';
+import {  } from '../utils/currency';
 import { uploadImageFile } from '../utils/images';
 
 interface SellScreenProps {
@@ -42,11 +41,7 @@ const CONDITION_VALUES: Record<string, string> = {
   'New': 'NEW',
   'Like New': 'LIKE_NEW',
   'Good': 'GOOD',
-  'Fair': 'FAIR',
-};
-const CONDITION_LABEL_BY_API: Record<string, string> = {
-  NEW: 'New', LIKE_NEW: 'Like New', GOOD: 'Good', FAIR: 'Fair',
-};
+  'Fair': 'FAIR' };
 
 const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Halal', 'Gluten-free', 'Nut-free', 'Contains dairy'];
 
@@ -58,8 +53,7 @@ const AVAILABILITY_CHIPS = [
 const FIELD_LABEL: Record<string, string> = {
   title: 'Title', price: 'Price', photos: 'Photos', location: 'Location',
   campusZone: 'Campus zone', compareAtPrice: 'Original price',
-  rateType: 'Rate type', quantity: 'Servings', pickupWindow: 'Pickup window',
-};
+  rateType: 'Rate type', quantity: 'Servings', pickupWindow: 'Pickup window' };
 
 // Every photo is downscaled and re-encoded client-side before it goes
 // anywhere - a raw phone photo can be 8-12MB, which would bloat the upload and
@@ -87,8 +81,7 @@ function splitAvailability(raw?: string): { chips: string[]; notes: string } {
 const ACCENT: Record<ListingCategory, { text: string; bg: string; border: string; ring: string; solidBg: string }> = {
   Product: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', ring: 'ring-blue-500', solidBg: 'bg-blue-600' },
   Service: { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200', ring: 'ring-violet-500', solidBg: 'bg-violet-600' },
-  Food: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-500', solidBg: 'bg-emerald-600' },
-};
+  Food: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', ring: 'ring-emerald-500', solidBg: 'bg-emerald-600' } };
 
 export const SellScreen: React.FC<SellScreenProps> = ({
   onBack,
@@ -96,8 +89,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   onSaveEdit,
   editingListing,
   onListingDeleted,
-  currentUser,
-}) => {
+  currentUser }) => {
   const isEditMode = !!editingListing;
   const initialAvailability = useMemo(() => splitAvailability(editingListing?.availability), [editingListing]);
 
@@ -268,8 +260,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     serviceMode: offeringType === 'Service' ? serviceMode : undefined,
     quantity: offeringType === 'Food' ? parseInt(quantity, 10) || undefined : undefined,
     pickupWindow: offeringType === 'Food' ? pickupWindow.trim() || undefined : undefined,
-    dietaryTags: offeringType === 'Food' && dietaryTags.length ? dietaryTags : undefined,
-  });
+    dietaryTags: offeringType === 'Food' && dietaryTags.length ? dietaryTags : undefined });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,8 +391,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
         year: currentUser?.year || '',
         rating: 0,
         reviewsCount: 0,
-        joinedDate: 'Joined recently',
-      },
+        joinedDate: 'Joined recently' },
       postedAt: 'Just now',
       isAvailable: true,
       isSaved: false,
@@ -410,8 +400,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
       availability: offeringType === 'Service' ? availability : undefined,
       quantity: offeringType === 'Food' ? parseInt(quantity, 10) || undefined : undefined,
       dietaryTags: offeringType === 'Food' ? dietaryTags : undefined,
-      categoryName: categories.find((c) => c.id === categoryId)?.name,
-    };
+      categoryName: categories.find((c) => c.id === categoryId)?.name };
   }, [previewOpen, offeringType, title, numericPrice, numericCompareAt, discountPreview, rateType,
     condition, brand, location, photos, description, currentUser, pickupWindow, availability,
     quantity, dietaryTags, categoryId, categories, editingListing]);
@@ -825,14 +814,12 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                             value: 'BOOKING',
                             icon: <CalendarClock className="w-4 h-4" />,
                             label: 'Book a time',
-                            desc: 'They request a slot and you confirm it. Tutoring, repairs, haircuts.',
-                          },
+                            desc: 'They request a slot and you confirm it. Tutoring, repairs, haircuts.' },
                           {
                             value: 'WALK_IN',
                             icon: <DoorOpen className="w-4 h-4" />,
                             label: 'Just come by',
-                            desc: 'No booking needed - they message you and drop in. Printing, binding.',
-                          },
+                            desc: 'No booking needed - they message you and drop in. Printing, binding.' },
                         ] as const).map((opt) => (
                           <button
                             key={opt.value}
@@ -1031,7 +1018,13 @@ export const SellScreen: React.FC<SellScreenProps> = ({
 
       {/* ── Sticky Bottom Action Bar ── */}
       {offeringType && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 safe-area-pb">
+        /* The nav is hidden on this screen, so the variable is 0 and this
+           sits flush - but reading it means that stays true if Sell is ever
+           taken off HIDES_BOTTOM_NAV. */
+        <div
+          className="fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 safe-area-pb"
+          style={{ bottom: 'var(--bottom-nav-h, 0px)' }}
+        >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 lg:flex lg:items-center lg:gap-6">
             <div className="lg:flex-1 lg:max-w-2xl">
               {!canPublish && firstMissingLabel && (
@@ -1186,8 +1179,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                 accountType: 'SELLER',
                 sellerApprovalStatus: 'APPROVED',
                 canSell: true,
-                hasActiveListings: false,
-              }}
+                hasActiveListings: false }}
               onOpenAuthModal={() => { }}
               embedded
             />

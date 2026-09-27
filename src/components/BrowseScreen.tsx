@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   AddToCart, AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, SavedSearchRow,
-  PromoSlot, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, zoneLabel,
+  PromoSlot, PROMO_THEME_TILE, promoAppearance, zoneLabel,
 } from '../types';
 import { api } from '../services/api';
 import { getRecentlyViewed } from '../services/recentlyViewed';
@@ -917,8 +917,6 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     return coreType === type && !categoryId;
   };
 
-  const categoriesActive = coreType !== 'All' || !!categoryId;
-
   const pickCore = (type?: CoreType) => {
     setCoreType(type ?? 'All');
     setCategoryId('');
@@ -1253,56 +1251,53 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                   // Custom colours where an admin set them, theme otherwise.
                   const look = promoAppearance(slide, 'carousel');
                   return (
-                  <div
-                    key={slide.id}
-                    className={`min-w-full ${look.backgroundClass} relative`}
-                    style={look.panelStyle}
-                  >
-                    {/* Decorative circles */}
-                    <div className="absolute top-[-40px] right-[-40px] w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-                    <div className="absolute bottom-[-20px] left-[20%] w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
+                    <div
+                      key={slide.id}
+                      className={`min-w-full ${look.backgroundClass} relative`}
+                      style={look.panelStyle}
+                    >
+                      {/* Decorative circles */}
+                      <div className="absolute top-[-40px] right-[-40px] w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+                      <div className="absolute bottom-[-20px] left-[20%] w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
-                    {/* ── Slide inner: flex-col on mobile, flex-row on desktop ── */}
-                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6 pt-4 sm:pt-5 lg:p-6">
-                      {/* Left / Top: Text content */}
-                      <div className="max-w-lg flex-1 min-w-0 px-4 sm:px-5 lg:px-0">
-                        <h2
-                          className={`text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight ${
-                            slide.textColor ? '' : 'text-white'
-                          }`}
-                          style={{ textWrap: 'balance', ...(slide.textColor ? { color: slide.textColor } : {}) }}
-                        >
-                          {slide.title}
-                        </h2>
-                        {slide.subtitle && (
-                          <p
-                            className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed max-w-md ${
-                              slide.textColor ? 'opacity-85' : 'text-white/85'
-                            }`}
-                            style={slide.textColor ? { color: slide.textColor } : undefined}
+                      {/* ── Slide inner: flex-col on mobile, flex-row on desktop ── */}
+                      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6 pt-4 sm:pt-5 lg:p-6">
+                        {/* Left / Top: Text content */}
+                        <div className="max-w-lg flex-1 min-w-0 px-4 sm:px-5 lg:px-0">
+                          <h2
+                            className={`text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight ${slide.textColor ? '' : 'text-white'
+                              }`}
+                            style={{ textWrap: 'balance', ...(slide.textColor ? { color: slide.textColor } : {}) }}
                           >
-                            {slide.subtitle}
-                          </p>
-                        )}
-                        {slide.ctaLabel && (
-                          <button
-                            onClick={() => followPromoLink(slide.ctaLink)}
-                            className={`mt-3 sm:mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all ${
-                              slide.buttonColor ? '' : 'bg-white'
-                            } ${slide.buttonTextColor ? '' : 'text-[#0b1c30]'}`}
-                            style={look.buttonStyle}
-                          >
-                            {slide.ctaLabel}
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                            {slide.title}
+                          </h2>
+                          {slide.subtitle && (
+                            <p
+                              className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed max-w-md ${slide.textColor ? 'opacity-85' : 'text-white/85'
+                                }`}
+                              style={slide.textColor ? { color: slide.textColor } : undefined}
+                            >
+                              {slide.subtitle}
+                            </p>
+                          )}
+                          {slide.ctaLabel && (
+                            <button
+                              onClick={() => followPromoLink(slide.ctaLink)}
+                              className={`mt-3 sm:mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all ${slide.buttonColor ? '' : 'bg-white'
+                                } ${slide.buttonTextColor ? '' : 'text-[#0b1c30]'}`}
+                              style={look.buttonStyle}
+                            >
+                              {slide.ctaLabel}
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
 
-                      {/* Right / Bottom: Image area */}
-                      {slide.imageUrl ? (
-                        <div className="w-full lg:w-1/2 shrink-0">
-                          <div className="relative w-full lg:aspect-[16/9] lg:rounded-2xl overflow-hidden">
-                            {/*
+                        {/* Right / Bottom: Image area */}
+                        {slide.imageUrl ? (
+                          <div className="w-full lg:w-1/2 shrink-0">
+                            <div className="relative w-full lg:aspect-[16/9] lg:rounded-2xl overflow-hidden">
+                              {/*
                               Banners are full-bleed at 1280px, so the
                               640px thumbnail would visibly blur here - this
                               is the one list where "full" is right. Only the
@@ -1310,24 +1305,24 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                               the busiest page and paints first; the rest sit
                               off-screen in the carousel and can wait.
                             */}
-                            <ListingImage
-                              src={slide.imageUrl}
-                              alt=""
-                              full
-                              eager={slideIndex === 0}
-                              className="block w-full h-auto lg:absolute lg:inset-0 lg:h-full object-contain"
-                            />
+                              <ListingImage
+                                src={slide.imageUrl}
+                                alt=""
+                                full
+                                eager={slideIndex === 0}
+                                className="block w-full h-auto lg:absolute lg:inset-0 lg:h-full object-contain"
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="hidden lg:flex w-1/2 shrink-0 items-center justify-center">
-                          <div className="w-24 h-24 xl:w-28 xl:h-28 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-300">
-                            <Sparkles className="w-10 h-10 xl:w-12 xl:h-12 text-white/90" />
+                        ) : (
+                          <div className="hidden lg:flex w-1/2 shrink-0 items-center justify-center">
+                            <div className="w-24 h-24 xl:w-28 xl:h-28 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-300">
+                              <Sparkles className="w-10 h-10 xl:w-12 xl:h-12 text-white/90" />
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
                   );
                 })}
               </div>
@@ -1535,7 +1530,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         {/* ────────────────────── Continue browsing row ───────────────────── */}
         {showRecentRow && (
           <section className="mb-6">
-            <h2 className="text-sm font-bold text-[#0b1c30] mb-2.5">Continue browsing</h2>
+            <h2 className="text-sm font-bold text-[#0b1c30] mb-2.5">Your recently viewed items</h2>
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
               {recent.map((item) => (
                 <button
@@ -1654,6 +1649,93 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           })}
         </div>
 
+        {/* ═══════════════════════ BENTO GRID ═══════════════════════ */}
+        {/*
+          Below the results, not above them.
+
+          These are marketing routes into the catalogue, and they used to sit
+          between the offers shelf and the first real listing - so a phone
+          arriving at the home page scrolled past a carousel, a shelf and three
+          promo tiles before seeing a single thing that was for sale. They earn
+          their place as somewhere to go NEXT, once the grid has been scanned
+          and nothing caught the eye; they do not earn the space above it.
+        */}
+        {!searchQuery.trim() && coreType === 'All' && !categoryId && bentoItems.length > 0 && (
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3">
+              {/* These panels are marketing routes into the catalogue, not
+                  priced goods; the offers shelf above now owns that job. */}
+              <h2 className="text-sm font-bold text-[#0b1c30]">Explore the marketplace</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[110px] sm:auto-rows-[120px]">
+              {bentoItems.map((item) => {
+                const tile = PROMO_THEME_TILE[item.theme];
+                const look = promoAppearance(item, 'tile');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => followPromoLink(item.ctaLink)}
+                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${item.imageUrl && !item.bgColor ? 'bg-[#0b1c30]' : look.backgroundClass
+                      } border border-white/60 p-4 text-left overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]`}
+                    style={look.panelStyle}
+                  >
+                    {item.imageUrl ? (
+                      <>
+                        <ListingImage
+                          src={item.imageUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div
+                          className="absolute inset-0 bg-[#0b1c30]"
+                          style={{ opacity: item.imageOverlay / 100 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-white/40 group-hover:scale-110 transition-transform duration-300" />
+                    )}
+
+                    <div className="relative z-10 flex flex-col h-full justify-between">
+                      <div className="flex items-start justify-between">
+                        <div
+                          className={`p-2 rounded-xl backdrop-blur-sm ${item.imageUrl ? 'bg-white/20 text-white' : `bg-white/70 ${tile.text}`
+                            }`}
+                        >
+                          {iconForLink(item.ctaLink)}
+                        </div>
+                        {item.badge && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-[#0b1c30] shadow-sm">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h3
+                          className={`text-sm font-bold leading-tight ${item.textColor ? '' : item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
+                            }`}
+                          style={item.textColor ? { color: item.textColor } : undefined}
+                        >
+                          {item.title}
+                        </h3>
+                        {item.subtitle && (
+                          <p
+                            className={`text-[11px] mt-0.5 leading-snug line-clamp-2 ${item.textColor ? 'opacity-80' : item.imageUrl ? 'text-white/80' : 'text-[#737686]'
+                              }`}
+                            style={item.textColor ? { color: item.textColor } : undefined}
+                          >
+                            {item.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <div className="flex items-center gap-2 mb-4" data-onboarding="feed-zones">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
             <span className="shrink-0 text-[11px] font-bold text-[#a0a3b1] uppercase tracking-wider">
@@ -1696,8 +1778,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               onClick={() => setPriceOpen((o) => !o)}
               aria-expanded={priceOpen}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${minPrice || maxPrice
-                  ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                  : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
+                ? 'bg-[#2563eb] text-white border-[#2563eb]'
+                : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655]'
                 }`}
             >
               <SlidersHorizontal className="w-3 h-3" />
@@ -2082,8 +2164,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                           disabled={addingId === item.id}
                           aria-label={`Add ${item.title} to cart`}
                           className={`mt-2.5 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-60 ${addedId === item.id
-                              ? 'bg-[#007d55] text-white'
-                              : 'bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]'
+                            ? 'bg-[#007d55] text-white'
+                            : 'bg-[#eff4ff] hover:bg-[#2563eb] text-[#2563eb] hover:text-white disabled:hover:bg-[#eff4ff] disabled:hover:text-[#2563eb]'
                             }`}
                         >
                           {addingId === item.id ? (
@@ -2131,93 +2213,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           </>
         )}
 
-        {/* ═══════════════════════ BENTO GRID ═══════════════════════ */}
-        {/*
-          Below the results, not above them.
 
-          These are marketing routes into the catalogue, and they used to sit
-          between the offers shelf and the first real listing - so a phone
-          arriving at the home page scrolled past a carousel, a shelf and three
-          promo tiles before seeing a single thing that was for sale. They earn
-          their place as somewhere to go NEXT, once the grid has been scanned
-          and nothing caught the eye; they do not earn the space above it.
-        */}
-        {!searchQuery.trim() && coreType === 'All' && !categoryId && bentoItems.length > 0 && (
-          <section className="mb-7">
-            <div className="flex items-center justify-between mb-3">
-              {/* These panels are marketing routes into the catalogue, not
-                  priced goods; the offers shelf above now owns that job. */}
-              <h2 className="text-sm font-bold text-[#0b1c30]">Explore the marketplace</h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[110px] sm:auto-rows-[120px]">
-              {bentoItems.map((item) => {
-                const tile = PROMO_THEME_TILE[item.theme];
-                const look = promoAppearance(item, 'tile');
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => followPromoLink(item.ctaLink)}
-                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${
-                      item.imageUrl && !item.bgColor ? 'bg-[#0b1c30]' : look.backgroundClass
-                      } border border-white/60 p-4 text-left overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]`}
-                    style={look.panelStyle}
-                  >
-                    {item.imageUrl ? (
-                      <>
-                        <ListingImage
-                          src={item.imageUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div
-                          className="absolute inset-0 bg-[#0b1c30]"
-                          style={{ opacity: item.imageOverlay / 100 }}
-                        />
-                      </>
-                    ) : (
-                      <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-white/40 group-hover:scale-110 transition-transform duration-300" />
-                    )}
-
-                    <div className="relative z-10 flex flex-col h-full justify-between">
-                      <div className="flex items-start justify-between">
-                        <div
-                          className={`p-2 rounded-xl backdrop-blur-sm ${item.imageUrl ? 'bg-white/20 text-white' : `bg-white/70 ${tile.text}`
-                            }`}
-                        >
-                          {iconForLink(item.ctaLink)}
-                        </div>
-                        {item.badge && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-[#0b1c30] shadow-sm">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <h3
-                          className={`text-sm font-bold leading-tight ${
-                            item.textColor ? '' : item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
-                            }`}
-                          style={item.textColor ? { color: item.textColor } : undefined}
-                        >
-                          {item.title}
-                        </h3>
-                        {item.subtitle && (
-                          <p
-                            className={`text-[11px] mt-0.5 leading-snug line-clamp-2 ${item.imageUrl ? 'text-white/80' : 'text-[#737686]'
-                              }`}
-                          >
-                            {item.subtitle}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
       </div>
 
 

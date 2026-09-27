@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tag, Loader2, Search, X, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Tag, Loader2, Search,  Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { Listing } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';

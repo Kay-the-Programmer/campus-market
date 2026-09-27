@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  thumbnailUrl, smallUrl, tinyUrl, SMALL_W, THUMB_W, TINY_W,
-  __drawToBlobForTests, __resetWebpSupportForTests,
-} from './images';
+  thumbnailUrl, smallUrl,  SMALL_W, THUMB_W, TINY_W,
+  __drawToBlobForTests, __resetWebpSupportForTests } from './images';
 
 /**
  * The thumbnail is derived from the full image's URL by convention, on both
@@ -69,8 +68,7 @@ describe('image encoding never falls back to PNG', () => {
       imageSmoothingQuality: '',
       fillStyle: '',
       fillRect: () => {},
-      drawImage: () => {},
-    };
+      drawImage: () => {} };
     const canvas = {
       width: 0,
       height: 0,
@@ -82,8 +80,7 @@ describe('image encoding never falls back to PNG', () => {
         const actual = opts.webp || type === 'image/jpeg' ? type : 'image/png';
         calls.push(actual);
         cb(new Blob(['x'], { type: actual }));
-      },
-    };
+      } };
     vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
       tag === 'canvas' ? canvas : realCreateElement.call(document, tag)) as typeof document.createElement);
     return { calls };
@@ -119,8 +116,7 @@ describe('image encoding never falls back to PNG', () => {
     const calls: string[] = [];
     const ctx = {
       imageSmoothingEnabled: false, imageSmoothingQuality: '', fillStyle: '',
-      fillRect: () => {}, drawImage: () => {},
-    };
+      fillRect: () => {}, drawImage: () => {} };
     const canvas = {
       width: 0, height: 0, getContext: () => ctx,
       toDataURL: () => 'data:image/webp;base64,AA',
@@ -128,8 +124,7 @@ describe('image encoding never falls back to PNG', () => {
         const actual = type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
         calls.push(actual);
         cb(new Blob(['x'], { type: actual }));
-      },
-    };
+      } };
     vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
       tag === 'canvas' ? canvas : realCreateElement.call(document, tag)) as typeof document.createElement);
 
