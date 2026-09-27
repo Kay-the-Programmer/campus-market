@@ -663,7 +663,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                         <Tag className="w-5 h-5 text-[#b4c5ff]" />
                       </div>
                     ) : (
-                      <ListingImage src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
+                      <ListingImage sizes="64px" src={deal.listing.image} alt="" className="w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0" />
                     )}
                     <div className="min-w-0">
                       <h3 className={`font-bold text-sm sm:text-base truncate ${deal.listing.removed ? 'text-[#737686] italic' : 'text-[#0b1c30]'}`}>
@@ -811,7 +811,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                           <Tag className="w-3.5 h-3.5 text-[#b4c5ff]" />
                         </div>
                       ) : (
-                        <ListingImage
+                        <ListingImage sizes="36px"
                           src={t.listing.image}
                           alt=""
                           className={`w-9 h-9 rounded-lg object-cover border border-[#e5eeff] shrink-0 ${t.unreadCount === 0 ? 'opacity-70' : ''}`}
@@ -883,7 +883,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                         className="shrink-0 active:opacity-70"
                         style={{ WebkitTapHighlightColor: 'transparent' }}
                       >
-                        <ListingImage
+                        <ListingImage sizes="36px"
                           src={thread.listing.image}
                           alt=""
                           className="w-9 h-9 rounded-lg object-cover border border-[#e5eeff]"
@@ -899,7 +899,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                           <Tag className="w-4 h-4 text-[#b4c5ff]" />
                         </div>
                       ) : (
-                        <ListingImage src={thread.listing.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
+                        <ListingImage sizes="44px" src={thread.listing.image} alt="" className="w-11 h-11 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">

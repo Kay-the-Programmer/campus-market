@@ -485,7 +485,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({
                             <Tag className="w-6 h-6 text-[#b4c5ff]" />
                           </div>
                         ) : (
-                          <ListingImage
+                          <ListingImage sizes="64px"
                             src={row.listing.image}
                             alt={row.listing.title}
                             className={`w-16 h-16 rounded-xl object-cover border border-[#e5eeff] shrink-0 ${row.available ? '' : 'grayscale opacity-60'

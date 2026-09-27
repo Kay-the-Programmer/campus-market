@@ -1,4 +1,5 @@
 import { initializeApp, getApps, type FirebaseOptions } from 'firebase/app';
+import { isStandalone } from './utils/platform';
 import {
   getAuth, getRedirectResult, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
 } from 'firebase/auth';
@@ -88,6 +89,22 @@ export async function signInWithGoogle(): Promise<string | null> {
   }
   const auth = getAuth(app);
   const provider = googleProvider();
+
+  /*
+   * An installed app never tries the popup.
+   *
+   * In a Home Screen web app on iOS, window.open does not open a popup - it
+   * hands the URL to Safari, a separate app. The user signs in over there and
+   * the result has nowhere to come back to, so signInWithPopup does not
+   * reject with one of the codes below, it simply never settles. The fallback
+   * cannot fire on a promise that never rejects, and Google is the only way
+   * into this app, so the failure is a permanent spinner. Redirect keeps the
+   * whole flow inside the installed app.
+   */
+  if (isStandalone()) {
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
 
   try {
     const credential = await signInWithPopup(auth, provider);

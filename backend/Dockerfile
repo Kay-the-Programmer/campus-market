@@ -23,6 +23,11 @@ RUN --mount=type=cache,target=/root/.m2 \
 FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
 
+# cwebp, so every uploaded image is stored as WebP whatever the browser
+# managed to encode. ~1MB installed; see ImageStorageService#toWebp for what
+# happens on a box without it (the upload succeeds, unconverted).
+RUN apk add --no-cache libwebp-tools
+
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /build/target/campusmarket-api-1.0.0.jar app.jar
 

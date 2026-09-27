@@ -134,13 +134,41 @@ public class ImageStorageService {
     public static final String THUMB_SUFFIX = ".thumb";
 
     /**
+     * Inserted the same way to name the phone-sized rendition.
+     *
+     * <p>Two card sizes rather than one because a single file cannot serve
+     * both well: a browse tile is about 170 CSS pixels on a phone and about
+     * 290 on a wide screen, so the thumbnail sized for the second is roughly
+     * four times the pixels the first needs. That is the difference between
+     * about 50KB and about 15KB per tile, on a grid that draws two dozen of
+     * them, for someone who is most likely on the worse connection of the
+     * two. The browser picks between them from the srcset the frontend
+     * emits; see SMALL_MAX_EDGE in utils/images.ts.
+     */
+    public static final String SMALL_SUFFIX = ".small";
+
+    /**
+     * Inserted the same way to name the list-row rendition.
+     *
+     * <p>Search suggestions, cart lines, order items and message threads draw
+     * a photo at 36 to 48 CSS pixels. The card sizes above are the wrong tool
+     * for that by more than an order of magnitude, and with only those two in
+     * the srcset the browser has nothing smaller to choose. See TINY_MAX_EDGE
+     * in utils/images.ts.
+     */
+    public static final String TINY_SUFFIX = ".tiny";
+
+    /**
      * A stored image, addressed by the URL of its full-size version.
      *
      * @param url      what to persist and serve - the full image
-     * @param thumbUrl the small version for cards and lists, or null when
-     *                 the client sent none
+     * @param thumbUrl the card-size version, or null when the client sent none
+     * @param smallUrl the phone-size version, or null when the client sent none
+     * @param tinyUrl  the list-row version, or null when the client sent none.
+     *                 Older clients send none of these, which is why they are
+     *                 nullable rather than merely optional in practice.
      */
-    public record Stored(String url, String thumbUrl) {}
+    public record Stored(String url, String thumbUrl, String smallUrl, String tinyUrl) {}
 
     /**
      * The live upload endpoint - a photo a seller or admin just picked, with
@@ -153,34 +181,212 @@ public class ImageStorageService {
      * ImageIO cannot - and a native codec on a small VM, for work the client
      * has already done.
      *
-     * <p>Both parts share one id, so the thumbnail is always findable from
-     * the full image's URL and nothing else has to remember it exists.
+     * <p>All parts share one id, so every rendition is findable from the full
+     * image's URL by convention and nothing else has to remember they exist.
+     * A client that sends only some of them - an older bundle still in
+     * someone's cache mid-deploy - stores what it sent and nothing breaks.
      */
-    public Stored store(MultipartFile file, MultipartFile thumb) {
+    public Stored store(MultipartFile file, MultipartFile thumb, MultipartFile small,
+                        MultipartFile tiny) {
         byte[] bytes = readPart(file, "Choose an image to upload.");
         String mimeType = requireSupportedMimeType(file.getContentType());
         String id = UUID.randomUUID().toString();
 
-        String url = write(id + "." + EXTENSION_BY_MIME_TYPE.get(mimeType), bytes);
+        // The extension follows what was actually encoded, never what arrived.
+        Encoded encoded = toWebp(bytes, mimeType);
+        String url = write(id + "." + EXTENSION_BY_MIME_TYPE.get(encoded.mimeType()), encoded.bytes());
 
-        String thumbUrl = null;
-        if (thumb != null && !thumb.isEmpty()) {
-            /*
-             * A thumbnail that fails must not fail the upload. The full image
-             * is what the listing needs; the thumbnail is a speed-up, and
-             * cards fall back to the full image when it is missing. Logged so
-             * a systematic problem is visible, not surfaced to the seller who
-             * just successfully uploaded a photo.
-             */
-            try {
-                byte[] thumbBytes = readPart(thumb, "");
-                String thumbType = requireSupportedMimeType(thumb.getContentType());
-                thumbUrl = write(id + THUMB_SUFFIX + "." + EXTENSION_BY_MIME_TYPE.get(thumbType), thumbBytes);
-            } catch (ApiException e) {
-                log.warn("Thumbnail for {} rejected ({}); the full image was stored", id, e.getMessage());
-            }
+        /*
+         * A derived rendition that fails must not fail the upload. The full
+         * image is what the listing needs; these are speed-ups, and the
+         * frontend degrades to the next size up when one is missing. Logged so
+         * a systematic problem is visible, not surfaced to the seller who just
+         * successfully uploaded a photo.
+         */
+        String thumbUrl = writeVariant(id, THUMB_SUFFIX, thumb, "Thumbnail");
+        String smallUrl = writeVariant(id, SMALL_SUFFIX, small, "Small rendition");
+        String tinyUrl = writeVariant(id, TINY_SUFFIX, tiny, "Tiny rendition");
+
+        return new Stored(url, thumbUrl, smallUrl, tinyUrl);
+    }
+
+    /**
+     * Stores one optional derived rendition beside its full image.
+     *
+     * @return the URL it was written to, or null if it was absent or rejected
+     */
+    private String writeVariant(String id, String suffix, MultipartFile part, String label) {
+        if (part == null || part.isEmpty()) {
+            return null;
         }
-        return new Stored(url, thumbUrl);
+        try {
+            byte[] bytes = readPart(part, "");
+            String type = requireSupportedMimeType(part.getContentType());
+            Encoded encoded = toWebp(bytes, type);
+            return write(id + suffix + "." + EXTENSION_BY_MIME_TYPE.get(encoded.mimeType()),
+                    encoded.bytes());
+        } catch (ApiException e) {
+            log.warn("{} for {} rejected ({}); the full image was stored", label, id, e.getMessage());
+            return null;
+        }
+    }
+
+
+    /* ─────────────────────── WebP normalisation ─────────────────────────
+     *
+     * Everything that lands on disk is WebP, whatever the client managed to
+     * encode.
+     *
+     * The browser already tries: utils/images.ts renders each rendition to
+     * WebP and only falls back to JPEG where the canvas cannot encode it.
+     * That covers most uploads and costs this server nothing, because an
+     * incoming WebP is passed straight through untouched.
+     *
+     * It is not a guarantee, though, and the live site is the proof - its
+     * photos were multi-megabyte PNGs. A client-side encode depends on the
+     * browser that happens to be uploading, on that browser having the
+     * current bundle rather than a cached older one, and on the upload having
+     * come through the app at all rather than through storeDataUri or an API
+     * client. This is the backstop that makes the format a property of the
+     * store rather than a hope about the caller.
+     *
+     * Deliberately best-effort. Every failure path here - no cwebp on the
+     * box, a non-zero exit, a hang, output that came back larger than the
+     * input - keeps the original bytes and stores those. An image that is
+     * merely bigger than it could have been is a slow page; an upload that
+     * 500s because a codec misbehaved is a seller who cannot list.
+     */
+
+    private static final String WEBP_MIME = "image/webp";
+
+    /**
+     * Quality for the server-side encode.
+     *
+     * <p>82 rather than something lower because this input has usually been
+     * through a lossy encode already: the client downscales and compresses
+     * before uploading, so re-encoding is a second generation and the
+     * artefacts compound. High enough that the second pass is invisible,
+     * while still well under what a PNG of the same picture costs.
+     */
+    private static final int WEBP_QUALITY = 82;
+
+    /** A hung codec must not hold a request thread open indefinitely. */
+    private static final long CWEBP_TIMEOUT_SECONDS = 20;
+
+    /** Probed once on first use; null until then. See {@link #cwebpAvailable()}. */
+    private volatile Boolean cwebpAvailable;
+
+    /** Bytes to store and the type they actually are, after any conversion. */
+    private record Encoded(byte[] bytes, String mimeType) {}
+
+    /**
+     * Is cwebp on this box?
+     *
+     * <p>Probed lazily and cached, rather than checked per upload: the answer
+     * cannot change while the process runs, and spawning a process to ask
+     * would double the cost of every conversion. A machine without it - a
+     * developer running the jar outside the container - logs once and stores
+     * what it was given.
+     */
+    private boolean cwebpAvailable() {
+        Boolean known = cwebpAvailable;
+        if (known != null) {
+            return known;
+        }
+        synchronized (this) {
+            if (cwebpAvailable == null) {
+                boolean found = false;
+                try {
+                    Process probe = new ProcessBuilder("cwebp", "-version")
+                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                            .redirectError(ProcessBuilder.Redirect.DISCARD)
+                            .start();
+                    found = probe.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+                            && probe.exitValue() == 0;
+                } catch (IOException | InterruptedException e) {
+                    if (e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                if (!found) {
+                    log.warn("cwebp is not available; images will be stored in the format they "
+                            + "arrive in. Install libwebp-tools to convert uploads to WebP.");
+                }
+                cwebpAvailable = found;
+            }
+            return cwebpAvailable;
+        }
+    }
+
+    /**
+     * Converts one image to WebP, or returns it unchanged.
+     *
+     * <p>Via temp files rather than the process's own streams. cwebp reads
+     * stdin and writes stdout happily enough, but doing both from one thread
+     * deadlocks the moment either pipe's buffer fills - and an image is
+     * comfortably larger than a pipe buffer.
+     */
+    private Encoded toWebp(byte[] bytes, String mimeType) {
+        if (WEBP_MIME.equals(mimeType) || !cwebpAvailable()) {
+            return new Encoded(bytes, mimeType);
+        }
+
+        Path in = null;
+        Path out = null;
+        try {
+            in = Files.createTempFile("cm-src-", ".img");
+            out = Files.createTempFile("cm-out-", ".webp");
+            Files.write(in, bytes);
+
+            Process process = new ProcessBuilder(
+                    "cwebp", "-quiet", "-q", String.valueOf(WEBP_QUALITY), "-m", "4",
+                    in.toString(), "-o", out.toString())
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+
+            if (!process.waitFor(CWEBP_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                log.warn("cwebp timed out after {}s; storing the original", CWEBP_TIMEOUT_SECONDS);
+                return new Encoded(bytes, mimeType);
+            }
+            if (process.exitValue() != 0) {
+                log.warn("cwebp exited {}; storing the original", process.exitValue());
+                return new Encoded(bytes, mimeType);
+            }
+
+            byte[] converted = Files.readAllBytes(out);
+            /*
+             * Never make a file bigger. An image the client already encoded
+             * well - a small JPEG, or a flat graphic PNG compresses better
+             * than WebP's lossy mode - can come back larger, and storing that
+             * would be paying a second generation of loss for negative gain.
+             */
+            if (converted.length == 0 || converted.length >= bytes.length) {
+                return new Encoded(bytes, mimeType);
+            }
+            return new Encoded(converted, WEBP_MIME);
+        } catch (IOException e) {
+            log.warn("Could not convert an image to WebP ({}); storing the original", e.toString());
+            return new Encoded(bytes, mimeType);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new Encoded(bytes, mimeType);
+        } finally {
+            deleteQuietly(in);
+            deleteQuietly(out);
+        }
+    }
+
+    private void deleteQuietly(Path path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            log.debug("Could not remove temp file {}: {}", path, e.toString());
+        }
     }
 
     /** Validates and reads one multipart part, with the caller's message for the empty case. */
@@ -217,8 +423,12 @@ public class ImageStorageService {
         String mimeType = requireSupportedMimeType(header.split(";")[0]);
         byte[] bytes = Base64.getDecoder().decode(dataUri.substring(comma + 1));
         // No thumbnail for a backfilled legacy image: nothing here can decode
-        // it to make one, and cards fall back to the full image.
-        return write(UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(mimeType), bytes);
+        // it to make one, and cards fall back to the full image. It is still
+        // converted - these inline images are the oldest in the system and the
+        // likeliest to be a PNG of a photograph.
+        Encoded encoded = toWebp(bytes, mimeType);
+        return write(UUID.randomUUID() + "." + EXTENSION_BY_MIME_TYPE.get(encoded.mimeType()),
+                encoded.bytes());
     }
 
     private String write(String filename, byte[] bytes) {

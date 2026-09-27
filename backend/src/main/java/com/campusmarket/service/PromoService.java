@@ -162,6 +162,10 @@ public class PromoService {
         slot.setBadge(blankToNull(request.badge()));
         slot.setImageUrl(ImageStorageService.toStoredForm(validateImage(request.imageUrl())));
         slot.setTheme(parseTheme(request.theme()));
+        slot.setBgColor(normalizeColor(request.bgColor(), "Background colour"));
+        slot.setTextColor(normalizeColor(request.textColor(), "Text colour"));
+        slot.setButtonColor(normalizeColor(request.buttonColor(), "Button colour"));
+        slot.setButtonTextColor(normalizeColor(request.buttonTextColor(), "Button text colour"));
 
         if (request.imageOverlay() != null) {
             // Clamped rather than rejected - a slider is the input, and there is
@@ -242,6 +246,32 @@ public class PromoService {
         }
     }
 
+    /**
+     * A custom colour, or null to fall back to the theme.
+     *
+     * <p>Bean validation has already checked the shape, so this is not the
+     * only guard - but it is the one that runs for every caller of the
+     * service, including anything that bypasses the controller. The value is
+     * interpolated into a style attribute on the home page; "validated at the
+     * edge" is not a property worth betting that page on.
+     *
+     * <p>Lower-cased on the way in so the database CHECK (which is
+     * case-sensitive) and any later equality comparison agree, and so two
+     * admins typing the same colour in different cases produce one value.
+     */
+    private String normalizeColor(String raw, String label) {
+        String value = blankToNull(raw);
+        if (value == null) {
+            return null;
+        }
+        String hex = value.toLowerCase(java.util.Locale.ROOT);
+        if (!hex.matches("^#[0-9a-f]{6}$")) {
+            throw ApiException.badRequest("INVALID_COLOR",
+                    label + " must be a hex value like #2563eb.");
+        }
+        return hex;
+    }
+
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
@@ -258,6 +288,10 @@ public class PromoService {
                 slot.getImageUrl(),
                 slot.getImageOverlay(),
                 slot.getTheme().name(),
+                slot.getBgColor(),
+                slot.getTextColor(),
+                slot.getButtonColor(),
+                slot.getButtonTextColor(),
                 slot.isWide(),
                 slot.isActive(),
                 slot.getSortOrder(),

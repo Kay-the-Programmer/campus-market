@@ -235,7 +235,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
                 onClick={() => { setTarget(l); setWasPrice(''); setError(null); }}
                 className="w-full flex items-center gap-3 p-2 rounded-xl border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-left transition-colors"
               >
-                <ListingImage src={l.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                <ListingImage sizes="48px" src={l.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-900 truncate">{l.title}</p>
                   <p className="text-xs text-slate-500 truncate">

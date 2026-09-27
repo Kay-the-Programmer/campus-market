@@ -386,7 +386,7 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
       >
         {/* Thumbnail */}
         {item.image ? (
-          <ListingImage
+          <ListingImage sizes="(max-width: 639px) 48px, 56px"
             src={item.image}
             alt={item.title}
             className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0 border border-[#e5eeff]"

@@ -33,19 +33,28 @@ public class UploadController {
      * @param thumb optional card-size rendition of the same image, made by the
      *              client. Stored under the same id so it is derivable from
      *              {@code url} by convention - see ImageStorageService.THUMB_SUFFIX.
+     * @param tiny  optional list-row rendition, same convention.
+     * @param small optional phone-size rendition, same convention. All are
+     *              {@code required = false} so a client that predates them -
+     *              or a cached bundle mid-deploy - still uploads successfully
+     *              with whatever renditions it knows how to make.
      */
     @PostMapping("/api/uploads/image")
     public Map<String, String> uploadImage(@AuthPrincipal Principal principal,
                                            @RequestParam("file") MultipartFile file,
-                                           @RequestParam(value = "thumb", required = false) MultipartFile thumb) {
+                                           @RequestParam(value = "thumb", required = false) MultipartFile thumb,
+                                           @RequestParam(value = "small", required = false) MultipartFile small,
+                                           @RequestParam(value = "tiny", required = false) MultipartFile tiny) {
         accessGuard.requireAuthenticated(principal);
-        ImageStorageService.Stored stored = imageStorageService.store(file, thumb);
+        ImageStorageService.Stored stored = imageStorageService.store(file, thumb, small, tiny);
 
-        // LinkedHashMap rather than Map.of: thumbUrl is legitimately null when
-        // no thumbnail was sent, and Map.of rejects null values.
+        // LinkedHashMap rather than Map.of: these are legitimately null when
+        // the client sent no rendition, and Map.of rejects null values.
         Map<String, String> body = new LinkedHashMap<>();
         body.put("url", stored.url());
         body.put("thumbUrl", stored.thumbUrl());
+        body.put("smallUrl", stored.smallUrl());
+        body.put("tinyUrl", stored.tinyUrl());
         return body;
     }
 }

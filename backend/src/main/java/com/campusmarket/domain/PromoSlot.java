@@ -75,6 +75,38 @@ public class PromoSlot {
     @Column(nullable = false)
     private PromoTheme theme = PromoTheme.BLUE;
 
+    /*
+     * Custom colours, as "#rrggbb".
+     *
+     * Null means "use the theme", which is what every panel did before these
+     * existed and what most still do. They are overrides rather than a
+     * replacement precisely so an admin who only wants to change the headline
+     * never has to make four colour decisions to do it - and so the five
+     * preset gradients, which are the ones that were actually designed, stay
+     * the path of least resistance.
+     */
+
+    /** Replaces the theme gradient with a flat colour. */
+    @Column(name = "bg_color", length = 7)
+    private String bgColor;
+
+    /** Headline, subtitle and badge. */
+    @Column(name = "text_color", length = 7)
+    private String textColor;
+
+    @Column(name = "button_color", length = 7)
+    private String buttonColor;
+
+    /**
+     * The button's label.
+     *
+     * <p>Separate from {@link #textColor} because the button sits on its own
+     * background: a panel with white copy over a dark photo and a white button
+     * needs a dark label, and one colour cannot be both.
+     */
+    @Column(name = "button_text_color", length = 7)
+    private String buttonTextColor;
+
     /** BENTO only: whether the tile spans two columns. */
     @Column(nullable = false)
     private boolean wide = false;

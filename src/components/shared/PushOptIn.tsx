@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BellRing, BellOff, Loader2, Check, X } from 'lucide-react';
+import { BellRing, BellOff, Loader2, Check, X, Share } from 'lucide-react';
 import { NotificationPreferences } from '../../types';
 import { api } from '../../services/api';
 import {
@@ -8,6 +8,7 @@ import {
   getPushPermission,
   isPushAvailable,
   isPushEnabledHere,
+  needsHomeScreenInstall,
   type PushPermission,
 } from '../../services/push';
 import { useToast } from './ToastProvider';
@@ -62,6 +63,68 @@ export const PushOptIn: React.FC<PushOptInProps> = ({ visible = true }) => {
   }, []);
 
   const blocked = permission === 'denied';
+
+  /**
+   * iPhone and iPad, outside the installed app.
+   *
+   * <p>Checked before the silence rule below, because this is the one case
+   * where "push is unavailable" is not the end of the story. Apple exposes the
+   * Notification and Push APIs only to Home Screen web apps, so on iOS every
+   * check this component makes comes back negative and the banner hides -
+   * which is indistinguishable, to the person holding the phone, from the
+   * feature not existing. They are one Share-sheet tap away from it working.
+   *
+   * <p>Not dismissible-forever like the others: dismissing hides it for this
+   * session only. Someone who taps past it on the way to something else has
+   * not decided they never want notifications, and there is no other surface
+   * in the app that would ever tell them.
+   */
+  if (visible && needsHomeScreenInstall() && !dismissed) {
+    return (
+      <div className="bg-white border border-[#e5eeff] rounded-2xl p-4 mb-4 flex items-start gap-3.5 shadow-card">
+        <div className="w-9 h-9 rounded-xl bg-[#eff4ff] flex items-center justify-center shrink-0">
+          <Share className="w-[18px] h-[18px] text-[#2563eb]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-[#0b1c30] text-sm">
+            Add CampusMarket to your Home Screen
+          </h3>
+          <p className="text-xs text-[#434655] mt-0.5 leading-relaxed">
+            On iPhone and iPad, Apple only allows notifications for apps added to the Home
+            Screen. It takes a few seconds and the app works exactly the same.
+          </p>
+          <ol className="mt-2 space-y-1 text-xs text-[#434655]">
+            <li>
+              <span className="font-semibold text-[#0b1c30]">1.</span> Tap the
+              {' '}<span className="font-semibold text-[#0b1c30]">Share</span> button
+              {' '}at the bottom of Safari.
+            </li>
+            <li>
+              <span className="font-semibold text-[#0b1c30]">2.</span> Choose
+              {' '}<span className="font-semibold text-[#0b1c30]">Add to Home Screen</span>.
+            </li>
+            <li>
+              <span className="font-semibold text-[#0b1c30]">3.</span> Open CampusMarket from
+              your Home Screen and turn notifications on there.
+            </li>
+          </ol>
+          {/* The installed app has its own storage, separate from Safari's -
+              so it opens signed out, which reads as a bug unless we say so. */}
+          <p className="text-[11px] text-[#737686] mt-2 leading-relaxed">
+            You'll need to sign in again the first time you open it — iOS keeps the Home Screen
+            app's data separate from Safari's.
+          </p>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+          className="p-1 rounded-lg text-[#a0a3b1] hover:text-[#434655] hover:bg-[#f1f2f7] shrink-0 transition-colors duration-150"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
 
   if (!visible || !isPushAvailable() || enabledHere || dismissed || (!blocked && !canPrompt(permission))) {
     return null;
@@ -284,6 +347,31 @@ export const NotificationSettings: React.FC = () => {
           <p className="text-xs text-[#434655] leading-relaxed">
             Push notifications aren't set up on this server yet, so nothing can be sent to your devices.
           </p>
+        </div>
+      ) : needsHomeScreenInstall() ? (
+        /*
+         * iOS, in a Safari tab.
+         *
+         * The generic branch below told this person their browser could not do
+         * this and suggested they "try a recent Safari" - which is the browser
+         * they are holding, so the advice was both wrong and unfollowable. The
+         * capability is real on iOS 16.4+; it is gated on the app being on the
+         * Home Screen, which is a thing they can actually do.
+         */
+        <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#eff4ff] border border-[#dbe1ff] mb-5">
+          <Share className="w-4 h-4 text-[#2563eb] mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-[#0b1c30]">
+              Add CampusMarket to your Home Screen to get notifications
+            </p>
+            <p className="text-xs text-[#434655] leading-relaxed mt-0.5">
+              On iPhone and iPad, Apple only delivers notifications to apps added to the Home
+              Screen. Tap <span className="font-semibold text-[#0b1c30]">Share</span> in Safari,
+              then <span className="font-semibold text-[#0b1c30]">Add to Home Screen</span>, and
+              turn notifications on from there. You'll sign in once more — iOS keeps that app's
+              data separate from Safari's.
+            </p>
+          </div>
         </div>
       ) : !supported ? (
         <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#f8f9ff] border border-[#e5eeff] mb-5">

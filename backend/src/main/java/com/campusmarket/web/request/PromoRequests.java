@@ -1,6 +1,7 @@
 package com.campusmarket.web.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -8,6 +9,16 @@ import java.util.UUID;
 
 public final class PromoRequests {
     private PromoRequests() {}
+
+    /**
+     * A six-digit hex colour, or nothing at all.
+     *
+     * <p>The empty alternative is load-bearing: the admin form submits every
+     * field on every save, so "no custom colour" arrives as an empty string
+     * rather than as an absent key, and a pattern without it would reject a
+     * panel for declining to set a colour.
+     */
+    private static final String HEX_COLOR = "^(#[0-9a-fA-F]{6})?$";
 
     /**
      * Create or replace a promo slot. Used for both, so an edit that omits a
@@ -38,6 +49,27 @@ public final class PromoRequests {
 
             Integer imageOverlay,
             String theme,
+
+            /*
+             * Colours as "#rrggbb", or null/blank to fall back to the theme.
+             *
+             * Validated here as well as in PromoService and the database: this
+             * value ends up inside a style attribute on the home page, so the
+             * shape is checked at every boundary it crosses rather than
+             * trusted because the admin form uses a colour picker.
+             */
+            @Pattern(regexp = HEX_COLOR, message = "Background colour must be a hex value like #2563eb.")
+            String bgColor,
+
+            @Pattern(regexp = HEX_COLOR, message = "Text colour must be a hex value like #ffffff.")
+            String textColor,
+
+            @Pattern(regexp = HEX_COLOR, message = "Button colour must be a hex value like #2563eb.")
+            String buttonColor,
+
+            @Pattern(regexp = HEX_COLOR, message = "Button text colour must be a hex value like #ffffff.")
+            String buttonTextColor,
+
             Boolean wide,
             Boolean active,
             Integer sortOrder

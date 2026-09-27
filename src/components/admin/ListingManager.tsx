@@ -151,7 +151,7 @@ export const ListingManager: React.FC<ListingManagerProps> = ({
                 key={l.id}
                 className="flex items-center gap-3 p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors"
               >
-                <ListingImage
+                <ListingImage sizes="56px"
                   src={l.image}
                   alt=""
                   className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0"

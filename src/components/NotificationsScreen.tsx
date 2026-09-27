@@ -6,6 +6,7 @@ import {
 import { NotificationItem } from '../types';
 import { api } from '../services/api';
 import { PushOptIn } from './shared/PushOptIn';
+import { InstallApp } from './shared/InstallApp';
 import { useToast } from './shared/ToastProvider';
 
 interface NotificationsScreenProps {
@@ -213,6 +214,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onBack
         </div>
 
         {/* Asks once, and only where notifications are already the subject. */}
+        <InstallApp variant="banner" />
         <PushOptIn />
 
         {/* ── Filter chips + mark all read ── */}

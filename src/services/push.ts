@@ -1,8 +1,10 @@
 import { deleteToken, getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging';
-import { firebaseConfig, getFirebaseApp, isPushConfigured, pushVapidKey } from '../firebase';
+import { getFirebaseApp, isPushConfigured, pushVapidKey } from '../firebase';
 import type { NotificationPreferences } from '../types';
 import { api } from './api';
 import { readStored, removeStored, writeStored } from '../utils/storage';
+import { serviceWorkerUrl } from './pwa';
+import { isIos, isStandalone } from '../utils/platform';
 
 /**
  * Web Push client.
@@ -18,7 +20,6 @@ import { readStored, removeStored, writeStored } from '../utils/storage';
  */
 
 const TOKEN_KEY = 'cm_push_token';
-const SW_URL = '/firebase-messaging-sw.js';
 
 export type { NotificationPreferences };
 
@@ -41,6 +42,26 @@ export function isPushSupported(): boolean {
 /** True only when push could actually work end to end, so the UI can stay quiet otherwise. */
 export function isPushAvailable(): boolean {
   return isPushConfigured && isPushSupported();
+}
+
+/**
+ * Why an iPhone user is seeing no notifications, when that is the reason.
+ *
+ * <p>Apple only exposes the Notification and Push APIs to web apps that have
+ * been added to the Home Screen - in an ordinary Safari tab they are not
+ * defined at all, on any version of iOS. So {@link isPushSupported} correctly
+ * returns false, the opt-in banner correctly hides itself, and the effect is
+ * that every iPhone user is quietly excluded from notifications with nothing
+ * on screen to say why or what to do about it.
+ *
+ * <p>This is what lets the UI tell them instead: on iOS, outside a Home Screen
+ * app, with push unavailable, the answer is "install it", not "your browser
+ * cannot do this".
+ */
+export { isIos, isStandalone };
+
+export function needsHomeScreenInstall(): boolean {
+  return isPushConfigured && isIos() && !isStandalone() && !isPushSupported();
 }
 
 export function getPushPermission(): PushPermission {
@@ -66,19 +87,14 @@ function messaging(): Messaging | null {
  * Registers the worker with the Firebase config on the query string - a service
  * worker has no access to the bundle's env vars, so this is how it gets them.
  *
- * The URL doubles as the registration's identity: keeping it byte-identical
- * across calls means the browser reuses one worker instead of installing a new
- * one on every login.
+ * The URL doubles as the registration's identity, which is why it is built in
+ * one place (pwa.ts) and used from two: the app registers this worker at
+ * startup for offline and installability, and enabling push registers it
+ * again. If the two URLs differed by so much as a parameter order the browser
+ * would install a second worker and the two would fight over the same scope.
  */
 async function registerServiceWorker(): Promise<ServiceWorkerRegistration> {
-  const params = new URLSearchParams({
-    apiKey: firebaseConfig.apiKey ?? '',
-    authDomain: firebaseConfig.authDomain ?? '',
-    projectId: firebaseConfig.projectId ?? '',
-    messagingSenderId: firebaseConfig.messagingSenderId ?? '',
-    appId: firebaseConfig.appId ?? '',
-  });
-  return navigator.serviceWorker.register(`${SW_URL}?${params.toString()}`, { scope: '/' });
+  return navigator.serviceWorker.register(serviceWorkerUrl(), { scope: '/' });
 }
 
 export interface EnablePushResult {

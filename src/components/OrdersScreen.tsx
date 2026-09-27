@@ -328,7 +328,7 @@ const OrderDetail: React.FC<{
           {order.items.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               {item.image ? (
-                <ListingImage src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
+                <ListingImage sizes="48px" src={item.image} alt="" className="w-12 h-12 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
               ) : (
                 <div className="w-12 h-12 rounded-lg bg-[#eff4ff] border border-[#dbe1ff] flex items-center justify-center shrink-0">
                   <Package className="w-5 h-5 text-[#b4c5ff]" />
@@ -783,7 +783,7 @@ export const OrdersScreen: React.FC<OrdersScreenProps> = ({
           {order.items.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               {item.image ? (
-                <ListingImage src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
+                <ListingImage sizes="40px" src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover border border-[#e5eeff] shrink-0" />
               ) : (
                 <div className="w-10 h-10 rounded-lg bg-[#eff4ff] border border-[#dbe1ff] flex items-center justify-center shrink-0">
                   <Package className="w-4 h-4 text-[#b4c5ff]" />

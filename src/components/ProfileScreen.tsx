@@ -6,6 +6,7 @@ import {
 import { Listing, SellerProfile, AuthSession } from '../types';
 import { api } from '../services/api';
 import { NotificationSettings } from './shared/PushOptIn';
+import { InstallApp } from './shared/InstallApp';
 import { ReportModal } from './shared/ReportModal';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
 import { ProfileEditor } from './shared/ProfileEditor';
@@ -465,6 +466,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Only on your own profile: these are account settings, not public detail. */}
         {isSelf && (
           <div className="pb-8">
+            <InstallApp />
             <NotificationSettings />
           </div>
         )}

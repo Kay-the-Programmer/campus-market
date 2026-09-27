@@ -1,0 +1,17 @@
+{
+  "name": "CampusMarket — Student Exchange",
+  "short_name": "CampusMarket",
+  "description": "Buy, sell and trade with students you can actually meet.",
+  "start_url": "/browse",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f9ff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "categories": ["shopping", "education"],
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

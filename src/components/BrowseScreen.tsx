@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import {
   AddToCart, AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, SavedSearchRow,
-  PromoSlot, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, zoneLabel,
+  PromoSlot, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, zoneLabel,
 } from '../types';
 import { api } from '../services/api';
 import { getRecentlyViewed } from '../services/recentlyViewed';
@@ -1249,10 +1249,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 onTouchEnd={onTouchEnd}
                 onTouchCancel={() => (carouselTouch.current = null)}
               >
-                {carouselSlides.map((slide, slideIndex) => (
+                {carouselSlides.map((slide, slideIndex) => {
+                  // Custom colours where an admin set them, theme otherwise.
+                  const look = promoAppearance(slide, 'carousel');
+                  return (
                   <div
                     key={slide.id}
-                    className={`min-w-full bg-gradient-to-br ${PROMO_THEME_GRADIENT[slide.theme]} relative`}
+                    className={`min-w-full ${look.backgroundClass} relative`}
+                    style={look.panelStyle}
                   >
                     {/* Decorative circles */}
                     <div className="absolute top-[-40px] right-[-40px] w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
@@ -1263,20 +1267,30 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       {/* Left / Top: Text content */}
                       <div className="max-w-lg flex-1 min-w-0 px-4 sm:px-5 lg:px-0">
                         <h2
-                          className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white leading-tight tracking-tight"
-                          style={{ textWrap: 'balance' }}
+                          className={`text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight tracking-tight ${
+                            slide.textColor ? '' : 'text-white'
+                          }`}
+                          style={{ textWrap: 'balance', ...(slide.textColor ? { color: slide.textColor } : {}) }}
                         >
                           {slide.title}
                         </h2>
                         {slide.subtitle && (
-                          <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-white/85 leading-relaxed max-w-md">
+                          <p
+                            className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed max-w-md ${
+                              slide.textColor ? 'opacity-85' : 'text-white/85'
+                            }`}
+                            style={slide.textColor ? { color: slide.textColor } : undefined}
+                          >
                             {slide.subtitle}
                           </p>
                         )}
                         {slide.ctaLabel && (
                           <button
                             onClick={() => followPromoLink(slide.ctaLink)}
-                            className="mt-3 sm:mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-[#0b1c30] text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
+                            className={`mt-3 sm:mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all ${
+                              slide.buttonColor ? '' : 'bg-white'
+                            } ${slide.buttonTextColor ? '' : 'text-[#0b1c30]'}`}
+                            style={look.buttonStyle}
                           >
                             {slide.ctaLabel}
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -1314,7 +1328,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
             </div>
@@ -2137,12 +2152,15 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[110px] sm:auto-rows-[120px]">
               {bentoItems.map((item) => {
                 const tile = PROMO_THEME_TILE[item.theme];
+                const look = promoAppearance(item, 'tile');
                 return (
                   <button
                     key={item.id}
                     onClick={() => followPromoLink(item.ctaLink)}
-                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${item.imageUrl ? 'bg-[#0b1c30]' : tile.bg
+                    className={`${item.wide ? 'col-span-2' : 'col-span-1'} row-span-1 relative rounded-2xl ${
+                      item.imageUrl && !item.bgColor ? 'bg-[#0b1c30]' : look.backgroundClass
                       } border border-white/60 p-4 text-left overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98]`}
+                    style={look.panelStyle}
                   >
                     {item.imageUrl ? (
                       <>
@@ -2177,8 +2195,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       </div>
                       <div>
                         <h3
-                          className={`text-sm font-bold leading-tight ${item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
+                          className={`text-sm font-bold leading-tight ${
+                            item.textColor ? '' : item.imageUrl ? 'text-white' : 'text-[#0b1c30]'
                             }`}
+                          style={item.textColor ? { color: item.textColor } : undefined}
                         >
                           {item.title}
                         </h3>

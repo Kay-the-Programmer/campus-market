@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Loader2,
-  ImagePlus, ImageOff, Sparkles, LayoutGrid, GalleryHorizontalEnd,
+  ImagePlus, ImageOff, Sparkles, LayoutGrid, GalleryHorizontalEnd, Palette, AlertTriangle,
 } from 'lucide-react';
 import {
   PromoSlot, PromoPlacement, PromoTheme,
-  PROMO_THEMES, PROMO_THEME_GRADIENT, PROMO_THEME_TILE,
+  PROMO_THEMES, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, contrastRatio,
 } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
 import { uploadImageFile } from '../../utils/images';
+import { ColorField } from './ColorField';
 import { ListingImage } from '../shared/ListingImage';
 
 /*
@@ -33,6 +34,13 @@ type Draft = {
   imageUrl: string;
   imageOverlay: number;
   theme: PromoTheme;
+  /* Custom colours, '' meaning "follow the theme". Kept as strings rather
+     than string|null because they are bound to text inputs, and an input
+     whose value goes null is an uncontrolled-component warning. */
+  bgColor: string;
+  textColor: string;
+  buttonColor: string;
+  buttonTextColor: string;
   wide: boolean;
   active: boolean;
 };
@@ -47,6 +55,10 @@ const emptyDraft = (placement: PromoPlacement): Draft => ({
   imageUrl: '',
   imageOverlay: 40,
   theme: 'BLUE',
+  bgColor: '',
+  textColor: '',
+  buttonColor: '',
+  buttonTextColor: '',
   wide: false,
   active: true,
 });
@@ -62,9 +74,29 @@ const toDraft = (p: PromoSlot): Draft => ({
   imageUrl: p.imageUrl ?? '',
   imageOverlay: p.imageOverlay,
   theme: p.theme,
+  bgColor: p.bgColor ?? '',
+  textColor: p.textColor ?? '',
+  buttonColor: p.buttonColor ?? '',
+  buttonTextColor: p.buttonTextColor ?? '',
   wide: p.wide,
   active: p.active,
 });
+
+/**
+ * One representative colour per theme.
+ *
+ * <p>Each theme is a three-stop gradient, so no single hex is "the" colour -
+ * this is the first stop, which is the one the eye reads as the theme. Used
+ * only to fill the picker and the placeholder when a colour is unset, so
+ * being approximate is fine; it is never saved.
+ */
+const THEME_BASE: Record<PromoTheme, string> = {
+  BLUE: '#2563eb',
+  GREEN: '#007d55',
+  PURPLE: '#8455ef',
+  DARK: '#0b1c30',
+  AMBER: '#c2410c',
+};
 
 /** Suggestions, so an admin never has to guess the filter syntax. */
 const LINK_PRESETS: { label: string; value: string }[] = [
@@ -114,6 +146,46 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     .filter((p) => p.placement === section)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  /*
+   * What each colour would be if left alone.
+   *
+   * Shown in the swatch and the placeholder so "following the theme" is a
+   * visible state rather than an empty box. A carousel slide is white copy on
+   * a dark gradient; a tile is dark copy on a light tint - so the defaults
+   * differ by placement, and showing the carousel's to someone editing a tile
+   * would be a confident lie.
+   */
+  const themeDefaults = React.useMemo(() => {
+    if (!draft) return { background: '#2563eb', text: '#ffffff', button: '#ffffff', buttonText: '#0b1c30' };
+    return draft.placement === 'CAROUSEL'
+      ? { background: THEME_BASE[draft.theme], text: '#ffffff', button: '#ffffff', buttonText: THEME_BASE[draft.theme] }
+      : { background: '#eff4ff', text: THEME_BASE[draft.theme], button: THEME_BASE[draft.theme], buttonText: '#ffffff' };
+  }, [draft]);
+
+  const customColorCount = draft
+    ? [draft.bgColor, draft.textColor, draft.buttonColor, draft.buttonTextColor].filter(Boolean).length
+    : 0;
+
+  /*
+   * Only pairs where BOTH colours are custom are checked.
+   *
+   * A custom colour against a theme default is not a real pairing - the theme
+   * background is a gradient, so any single number for it would be wrong, and
+   * warning on a guess trains people to ignore the warning.
+   */
+  const contrastWarnings = React.useMemo(() => {
+    if (!draft) return [];
+    const out: string[] = [];
+    if (draft.textColor && draft.bgColor && contrastRatio(draft.textColor, draft.bgColor) < 4.5) {
+      out.push('Text is hard to read against the background.');
+    }
+    if (draft.buttonTextColor && draft.buttonColor
+      && contrastRatio(draft.buttonTextColor, draft.buttonColor) < 4.5) {
+      out.push('Button text is hard to read against the button.');
+    }
+    return out;
+  }, [draft]);
+
   const save = async () => {
     if (!draft) return;
     if (!draft.title.trim()) {
@@ -133,6 +205,12 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
       imageUrl: draft.imageUrl || undefined,
       imageOverlay: draft.imageOverlay,
       theme: draft.theme,
+      // Sent as '' rather than omitted: this endpoint replaces the whole
+      // panel, so an absent key and a cleared colour must not look the same.
+      bgColor: draft.bgColor,
+      textColor: draft.textColor,
+      buttonColor: draft.buttonColor,
+      buttonTextColor: draft.buttonTextColor,
       wide: draft.wide,
       active: draft.active,
     };
@@ -210,10 +288,15 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
 
   /* ------------------------------------------------------------------ */
   const renderPreview = (d: Draft) => {
+    // The same resolver the home page uses, so the preview cannot flatter the
+    // result - a preview that disagrees with the page is worse than none.
+    const look = promoAppearance(d, d.placement === 'CAROUSEL' ? 'carousel' : 'tile');
+
     if (d.placement === 'CAROUSEL') {
       return (
         <div
-          className={`relative rounded-2xl overflow-hidden h-32 bg-gradient-to-br ${PROMO_THEME_GRADIENT[d.theme]} p-4 flex flex-col justify-center`}
+          className={`relative rounded-2xl overflow-hidden h-32 ${look.backgroundClass} p-4 flex flex-col justify-center`}
+          style={look.panelStyle}
         >
           {d.imageUrl && (
             <>
@@ -222,14 +305,26 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
             </>
           )}
           <div className="relative z-10">
-            <p className="text-white font-extrabold text-base leading-tight line-clamp-1">
+            <p
+              className={`font-extrabold text-base leading-tight line-clamp-1 ${d.textColor ? '' : 'text-white'}`}
+              style={d.textColor ? { color: d.textColor } : undefined}
+            >
               {d.title || 'Headline'}
             </p>
             {d.subtitle && (
-              <p className="text-white/85 text-[11px] mt-1 line-clamp-2">{d.subtitle}</p>
+              <p
+                className={`text-[11px] mt-1 line-clamp-2 ${d.textColor ? 'opacity-85' : 'text-white/85'}`}
+                style={d.textColor ? { color: d.textColor } : undefined}
+              >
+                {d.subtitle}
+              </p>
             )}
             {d.ctaLabel && (
-              <span className="inline-block mt-2 px-3 py-1 rounded-full bg-white text-[#0b1c30] text-[11px] font-bold">
+              <span
+                className={`inline-block mt-2 px-3 py-1 rounded-full text-[11px] font-bold ${
+                  d.buttonColor ? '' : 'bg-white'} ${d.buttonTextColor ? '' : 'text-[#0b1c30]'}`}
+                style={look.buttonStyle}
+              >
                 {d.ctaLabel}
               </span>
             )}
@@ -240,7 +335,10 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     const tile = PROMO_THEME_TILE[d.theme];
     return (
       <div
-        className={`relative rounded-2xl overflow-hidden h-32 ${d.imageUrl ? 'bg-[#0b1c30]' : tile.bg} p-4 flex flex-col justify-between ${d.wide ? '' : 'max-w-[220px]'}`}
+        className={`relative rounded-2xl overflow-hidden h-32 ${
+          d.imageUrl && !d.bgColor ? 'bg-[#0b1c30]' : look.backgroundClass
+        } p-4 flex flex-col justify-between ${d.wide ? '' : 'max-w-[220px]'}`}
+        style={look.panelStyle}
       >
         {d.imageUrl && (
           <>
@@ -259,7 +357,12 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
           )}
         </div>
         <div className="relative z-10">
-          <p className={`text-sm font-bold leading-tight ${d.imageUrl ? 'text-white' : 'text-[#0b1c30]'}`}>
+          <p
+            className={`text-sm font-bold leading-tight ${
+              d.textColor ? '' : d.imageUrl ? 'text-white' : 'text-[#0b1c30]'
+            }`}
+            style={d.textColor ? { color: d.textColor } : undefined}
+          >
             {d.title || 'Tile title'}
           </p>
           {d.subtitle && (
@@ -538,6 +641,77 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                 ))}
               </div>
             </Field>
+
+            {/*
+              Custom colours, below the themes rather than instead of them.
+
+              The presets are the designed answers and stay one tap away; these
+              exist for a campaign that has to match something external - a
+              sponsor's brand, a university's colours - which no fixed palette
+              can anticipate. Anything left blank follows the theme, so this
+              whole section is skippable.
+            */}
+            <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-slate-500" />
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Custom colours
+                </h4>
+                {customColorCount > 0 && (
+                  <span className="ml-auto text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    {customColorCount} set
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ColorField
+                  label="Background"
+                  value={draft.bgColor}
+                  onChange={(v) => setDraft({ ...draft, bgColor: v })}
+                  fallback={themeDefaults.background}
+                  hint="Replaces the theme gradient with a flat colour."
+                />
+                <ColorField
+                  label="Text"
+                  value={draft.textColor}
+                  onChange={(v) => setDraft({ ...draft, textColor: v })}
+                  fallback={themeDefaults.text}
+                  hint="Headline, subtitle and badge."
+                />
+                <ColorField
+                  label="Button"
+                  value={draft.buttonColor}
+                  onChange={(v) => setDraft({ ...draft, buttonColor: v })}
+                  fallback={themeDefaults.button}
+                />
+                <ColorField
+                  label="Button text"
+                  value={draft.buttonTextColor}
+                  onChange={(v) => setDraft({ ...draft, buttonTextColor: v })}
+                  fallback={themeDefaults.buttonText}
+                />
+              </div>
+
+              {/*
+                A warning, never a block. Text over a background image is
+                legitimately low-contrast against the panel colour underneath
+                it, and refusing to save that would be wrong - but white on
+                white reaching the home page because nobody checked would be
+                worse.
+              */}
+              {contrastWarnings.length > 0 && (
+                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-[11px] text-amber-900 leading-relaxed">
+                    {contrastWarnings.map((w) => <p key={w}>{w}</p>)}
+                    <p className="text-amber-700 mt-0.5">
+                      You can still save this — check the preview above first.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Field
               label="Background image (optional)"

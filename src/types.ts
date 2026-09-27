@@ -305,6 +305,18 @@ export interface PromoSlot {
   /** 0-100 scrim over the image so the copy stays readable. */
   imageOverlay: number;
   theme: PromoTheme;
+  /**
+   * Custom colours as "#rrggbb", each optional.
+   *
+   * <p>Absent means "use the theme", which is what every panel did before
+   * these existed. They override the preset rather than replace it, so an
+   * admin who only wants to change the headline is never asked to make four
+   * colour decisions to do it.
+   */
+  bgColor?: string | null;
+  textColor?: string | null;
+  buttonColor?: string | null;
+  buttonTextColor?: string | null;
   wide: boolean;
   active: boolean;
   sortOrder: number;
@@ -477,4 +489,81 @@ export interface ApplicationMessage {
   createdAt: string;
   /** Whether the side it was written to has opened the thread since. */
   read: boolean;
+}
+
+/**
+ * How one promo panel should actually be painted.
+ *
+ * <p>Resolved in a single place because three surfaces draw these - the home
+ * carousel, the "Special offers" tiles, and the admin editor's live preview -
+ * and a preview that disagrees with the page is worse than no preview at all.
+ *
+ * <p>The awkward part is that a theme is Tailwind *classes* while a custom
+ * colour is an inline *style*, and the two do not compose: leaving the
+ * gradient class on an element that also has an inline background produces
+ * whichever the cascade happens to prefer. So a custom background drops the
+ * class entirely, which is what `gradientClass` being empty means.
+ */
+export interface PromoAppearance {
+  /** Tailwind background classes, or '' when a custom colour replaces them. */
+  backgroundClass: string;
+  /** Tailwind text-colour class, or '' when a custom colour replaces it. */
+  textClass: string;
+  panelStyle: { backgroundColor?: string; color?: string };
+  buttonStyle: { backgroundColor?: string; color?: string };
+  /** True when the panel has a flat custom background rather than a gradient. */
+  customBackground: boolean;
+}
+
+type PromoAppearanceInput = Pick<
+  PromoSlot, 'theme' | 'bgColor' | 'textColor' | 'buttonColor' | 'buttonTextColor'
+>;
+
+export function promoAppearance(
+  slot: PromoAppearanceInput,
+  variant: 'carousel' | 'tile',
+): PromoAppearance {
+  const bg = slot.bgColor || undefined;
+  const text = slot.textColor || undefined;
+
+  const themeBackground = variant === 'carousel'
+    ? `bg-gradient-to-br ${PROMO_THEME_GRADIENT[slot.theme]}`
+    : PROMO_THEME_TILE[slot.theme].bg;
+  // The carousel's copy is white on a dark gradient and carries no class of
+  // its own; a tile's colour comes from the theme.
+  const themeText = variant === 'carousel' ? '' : PROMO_THEME_TILE[slot.theme].text;
+
+  return {
+    backgroundClass: bg ? '' : themeBackground,
+    textClass: text ? '' : themeText,
+    panelStyle: { ...(bg ? { backgroundColor: bg } : {}), ...(text ? { color: text } : {}) },
+    buttonStyle: {
+      ...(slot.buttonColor ? { backgroundColor: slot.buttonColor } : {}),
+      ...(slot.buttonTextColor ? { color: slot.buttonTextColor } : {}),
+    },
+    customBackground: Boolean(bg),
+  };
+}
+
+/**
+ * Contrast ratio between two hex colours, per WCAG 2.
+ *
+ * <p>Used by the admin editor to warn before white-on-white reaches the home
+ * page. A warning rather than a block: an admin overlaying text on a
+ * background image legitimately has a low ratio against the panel colour
+ * underneath it, and refusing to save that would be wrong.
+ */
+export function contrastRatio(foreground: string, background: string): number {
+  const luminance = (hex: string): number => {
+    const value = hex.replace('#', '');
+    const channel = (start: number) => {
+      const c = parseInt(value.slice(start, start + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  };
+  const a = luminance(foreground);
+  const b = luminance(background);
+  const [light, dark] = a > b ? [a, b] : [b, a];
+  return (light + 0.05) / (dark + 0.05);
 }

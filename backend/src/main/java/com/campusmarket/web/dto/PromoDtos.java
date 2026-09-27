@@ -24,6 +24,11 @@ public final class PromoDtos {
             /** 0-100 scrim strength over the image, so text stays readable. */
             int imageOverlay,
             String theme,
+            /** Custom colours as "#rrggbb"; null means fall back to the theme. */
+            String bgColor,
+            String textColor,
+            String buttonColor,
+            String buttonTextColor,
             boolean wide,
             boolean active,
             int sortOrder,
