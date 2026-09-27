@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Tells people when the thing they were waiting for finally gets listed.
@@ -50,6 +51,17 @@ public class SavedSearchNotifier {
      * rather than the server.
      */
     private static final Duration QUIET_PERIOD = Duration.ofHours(1);
+
+    /**
+     * The description formatting markers, for keyword matching only.
+     *
+     * <p>Deliberately cruder than the frontend parser in richText.ts: it drops
+     * every asterisk rather than working out which ones actually formed a pair.
+     * That is the right trade here because the result is never shown to anyone,
+     * only searched, and it is only ever used to find EXTRA matches - see
+     * {@link #matches}.
+     */
+    private static final Pattern FORMATTING_MARKERS = Pattern.compile("(?m)^#{1,2} |\\*");
 
     /**
      * Runs after a listing is published, against every active alert.
@@ -146,7 +158,14 @@ public class SavedSearchNotifier {
             String title = listing.getTitle() == null ? "" : listing.getTitle().toLowerCase(Locale.ROOT);
             String body = listing.getDescription() == null
                     ? "" : listing.getDescription().toLowerCase(Locale.ROOT);
-            return title.contains(needle) || body.contains(needle);
+            // Also test the description with its formatting markers taken out,
+            // so someone waiting on a "gaming laptop" still hears about one
+            // described as "**gaming** laptop". Both forms are checked rather
+            // than only the stripped one, which means this can only ever match
+            // more than it did before, never less.
+            return title.contains(needle)
+                    || body.contains(needle)
+                    || FORMATTING_MARKERS.matcher(body).replaceAll("").contains(needle);
         }
         return true;
     }

@@ -14,6 +14,8 @@ import { useToast } from './shared/ToastProvider';
 import { formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
+import { RichText } from './shared/RichText';
+import { plainText } from '../utils/richText';
 
 interface DetailScreenProps {
   listing: Listing;
@@ -359,7 +361,13 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
   }, [listing, onGoHome, onViewAllSimilar]);
 
   const hasReviews = listing.seller.reviewsCount > 0;
-  const descriptionIsLong = listing.description.length > 260;
+  // Measured on the rendered text, not the source: a description full of
+  // markers is not longer to read, and counting them would collapse a short
+  // description behind a "Read more" that reveals two words.
+  const descriptionIsLong = useMemo(
+    () => plainText(listing.description).length > 260,
+    [listing.description],
+  );
 
   // Primary action button configuration
   const primaryAction = useMemo(() => {
@@ -978,13 +986,25 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
                   Description
                 </h2>
-                <div className="relative">
-                  <p
-                    className={`text-slate-600 text-sm leading-relaxed whitespace-pre-line ${!descExpanded && descriptionIsLong ? 'line-clamp-4' : ''
-                      }`}
+                <div>
+                  {/* Collapsed with a max-height rather than line-clamp, which
+                      needs -webkit-box and so only ever clamps a single text
+                      node - a description with a heading or a blank line in it
+                      would ignore it and render full length. */}
+                  <div
+                    className={`relative ${!descExpanded && descriptionIsLong ? 'max-h-24 overflow-hidden' : ''}`}
                   >
-                    {listing.description}
-                  </p>
+                    <RichText
+                      value={listing.description}
+                      className="text-slate-600 text-sm leading-relaxed"
+                    />
+                    {!descExpanded && descriptionIsLong && (
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent"
+                      />
+                    )}
+                  </div>
                   {descriptionIsLong && (
                     <button
                       onClick={() => setDescExpanded((v) => !v)}

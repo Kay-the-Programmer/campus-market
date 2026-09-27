@@ -17,7 +17,7 @@ type SellableCondition = Exclude<ListingCondition, 'N/A'>;
 import { api } from '../services/api';
 import { DetailScreen } from './DetailScreen';
 import { Modal } from './shared/Modal';
-import {  } from '../utils/currency';
+import { FormattedTextarea } from './shared/FormattedTextarea';
 import { uploadImageFile } from '../utils/images';
 
 interface SellScreenProps {
@@ -63,6 +63,14 @@ const FIELD_LABEL: Record<string, string> = {
 // stored is the URL that comes back, not the image.
 const MAX_PHOTOS = 5;
 const MAX_SOURCE_FILE_MB = 15;
+
+/**
+ * Generous enough that no honest description hits it, low enough that the
+ * formatting parser is never handed a novel. Mirrored by @Size on
+ * SaveListingRequest.description, since a limit only the browser enforces is
+ * not a limit.
+ */
+const DESCRIPTION_MAX = 4000;
 
 /** Splits a pre-existing free-text availability string into recognised chips
  *  plus whatever doesn't match one, so editing an older listing never silently
@@ -370,8 +378,6 @@ export const SellScreen: React.FC<SellScreenProps> = ({
       id: editingListing?.id ?? 'preview',
       title: title.trim() || 'Untitled listing',
       price: Number.isNaN(numericPrice) ? 0 : numericPrice,
-      // The preview has to show the markdown too, or "see how it looks" is
-      // answering a different question than the one the seller asked.
       compareAtPrice: discountPreview !== null ? numericCompareAt : undefined,
       discountPercent: discountPreview ?? undefined,
       priceUnit: offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
@@ -381,6 +387,9 @@ export const SellScreen: React.FC<SellScreenProps> = ({
       location: location || 'Not set yet',
       image: photos[0] || '',
       gallery: photos,
+      // Passed through with its markers intact: the preview renders it the way
+      // a buyer will see it, and "see how it looks" is the whole question the
+      // seller is asking here.
       description: description || 'No description yet.',
       seller: {
         id: currentUser?.id || 'me',
@@ -636,11 +645,18 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
-                    <textarea
+                    <label
+                      htmlFor="listing-description"
+                      className="block text-sm font-semibold text-slate-700 mb-1.5"
+                    >
+                      Description
+                    </label>
+                    <FormattedTextarea
+                      id="listing-description"
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
+                      onChange={setDescription}
+                      rows={5}
+                      maxLength={DESCRIPTION_MAX}
                       placeholder={
                         offeringType === 'Food'
                           ? "Describe what's included, portion size, any allergens…"
@@ -648,7 +664,6 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                             ? 'Describe what you offer and your experience…'
                             : "Describe the item's features, flaws, or why you're selling it…"
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
                     />
                   </div>
 

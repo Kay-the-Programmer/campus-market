@@ -22,6 +22,19 @@ public final class ListingRequests {
             @Size(max = 180, message = "Title is too long.")
             String title,
 
+            /**
+             * Free text, carrying the light formatting markers described in the
+             * frontend's richText.ts - a couple of asterisks for bold or italic
+             * and a leading hash for a bigger line. Stored exactly as typed:
+             * the markers are meaningful to the reader even where nothing
+             * renders them, and keeping the column plain text is what stops
+             * seller-written markup ever becoming HTML on someone's screen.
+             *
+             * <p>The cap mirrors DESCRIPTION_MAX in SellScreen.tsx. It is far
+             * above any real description and exists so neither the parser nor
+             * this column is ever handed something pathological.
+             */
+            @Size(max = 4000, message = "Description is too long.")
             String description,
 
             @NotNull(message = "Price is required.")
