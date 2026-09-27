@@ -6,18 +6,20 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * One admin-editable panel on the home page - a hero carousel slide or a
- * "Special offers" tile.
+ * One admin-editable panel - a hero carousel slide, a "Special offers" tile, or
+ * a call-to-action banner on the browse pages.
  *
- * <p>Both shapes share a table because they are the same thing wearing
- * different clothes: a headline, a line of copy, a button and somewhere to go.
- * {@link #placement} decides which grid renders it, and the two or three
- * fields that only apply to one placement are simply left null on the other.
- * Two near-identical tables would have meant two repositories, two services and
- * two admin screens for no gain.
+ * <p>They share a table because they are the same thing wearing different
+ * clothes: a headline, a line of copy, a button and somewhere to go. {@link
+ * #placement} decides which surface renders it, and the fields that apply to
+ * only one placement are simply left empty on the others. Near-identical
+ * tables would have meant a repository, a service and an admin screen each,
+ * for no gain.
  *
  * <p>These replace what used to be hardcoded arrays in the feed, so campaign
  * copy can change without a deploy.
@@ -106,6 +108,26 @@ public class PromoSlot {
      */
     @Column(name = "button_text_color", length = 7)
     private String buttonTextColor;
+
+    /**
+     * CTA_BANNER only: the pictures stacked beside the copy.
+     *
+     * <p>Order matters and is the admin's - the first is drawn largest, the
+     * last is the first to be dropped on a narrow screen - so this is a List
+     * with an explicit order column rather than a Set. Empty is a supported
+     * state, not a broken one: a banner with no collage renders as copy on a
+     * colour, which is where every new banner starts.
+     *
+     * <p>EAGER because every caller maps straight to a DTO and the list is at
+     * most a handful of short strings; making it lazy would buy nothing and
+     * cost a LazyInitializationException the first time one of these is
+     * mapped outside a transaction.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "promo_slot_images", joinColumns = @JoinColumn(name = "promo_id"))
+    @OrderColumn(name = "position")
+    @Column(name = "url", nullable = false, columnDefinition = "TEXT")
+    private List<String> collageImages = new ArrayList<>();
 
     /** BENTO only: whether the tile spans two columns. */
     @Column(nullable = false)

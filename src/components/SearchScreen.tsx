@@ -13,6 +13,7 @@ import { formatPrice } from '../utils/currency';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { ListingImage } from './shared/ListingImage';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
+import { CtaBanner, useCtaBanners, placeCtaBanners, CTA_INLINE_AFTER } from './shared/CtaBanner';
 
 const PAGE_SIZE = 24;
 
@@ -62,6 +63,11 @@ interface SearchScreenProps {
   listings: Listing[];
   /** Breadcrumb "Home". */
   onGoHome?: () => void;
+  /**
+   * Follows a marketing banner's link. Owned by App because the links point at
+   * the feed's filters, which this screen does not hold.
+   */
+  onPromoLink?: (link?: string) => void;
 }
 
 /**
@@ -81,7 +87,8 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   currentUser,
   onAddToCart,
   listings,
-  onGoHome }) => {
+  onGoHome,
+  onPromoLink }) => {
   const [results, setResults] = useState<Listing[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -94,6 +101,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   const [sortOpen, setSortOpen] = useState(false);
   /** Which card's quick-add is in flight, so only that button spins. */
   const [addingId, setAddingId] = useState<string | null>(null);
+
+  /* Marketing banners, drawn between the rows of results and after them.
+     Never two in a row - placeCtaBanners drops the inline one when there are
+     too few results to put real listings between them. */
+  const ctaBanners = useCtaBanners();
+  /* Withheld when there is nowhere to send people: a banner that cannot be
+     followed is an advert, not a call to action. */
+  const cta = placeCtaBanners(onPromoLink ? ctaBanners : [], results.length);
 
   /* Price is held as local text so a half-typed "1" doesn't immediately
      filter everything out; it is committed to the shared filters on blur. */
@@ -702,7 +717,20 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                {results.map(renderCard)}
+                {results.map((item, index) => (
+                  <React.Fragment key={item.id}>
+                    {/* Full width, so it starts its own row and leaves the
+                        cards above it aligned. */}
+                    {cta.inline && index === CTA_INLINE_AFTER && (
+                      <CtaBanner
+                        slot={cta.inline}
+                        onNavigate={onPromoLink!}
+                        className="col-span-full my-2"
+                      />
+                    )}
+                    {renderCard(item)}
+                  </React.Fragment>
+                ))}
               </div>
 
               {hasMore && (
@@ -721,6 +749,17 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                 <p className="text-center text-xs text-[#737686] py-8">That's every match.</p>
               )}
             </>
+          )}
+
+          {/* Last thing on the page, below the results and below whatever the
+              empty state offered. Held back while the first page is loading so
+              it is never the only thing on screen. */}
+          {!loading && cta.tail && (
+            <CtaBanner
+              slot={cta.tail}
+              onNavigate={onPromoLink!}
+              className="mt-8 mb-2"
+            />
           )}
         </div>
       </div>

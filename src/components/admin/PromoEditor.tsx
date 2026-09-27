@@ -2,18 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Loader2,
   ImagePlus, ImageOff, Sparkles, LayoutGrid, GalleryHorizontalEnd, Palette, AlertTriangle,
-  RotateCcw,
+  RotateCcw, Megaphone, ChevronLeft, ChevronRight, X,
 } from 'lucide-react';
 import {
   PromoSlot, PromoPlacement, PromoTheme,
-  PROMO_THEMES, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, contrastRatio,
-  readableTextOn,
+  PROMO_THEMES, PROMO_THEME_GRADIENT, PROMO_THEME_TILE, promoAppearance, promoVariant,
+  contrastRatio, readableTextOn,
 } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
 import { uploadImageFile } from '../../utils/images';
 import { ColorField } from './ColorField';
 import { ListingImage } from '../shared/ListingImage';
+import { CtaBanner, CTA_INLINE_AFTER } from '../shared/CtaBanner';
 
 /*
  * Banners are decorative and full-bleed, so they are compressed harder than
@@ -25,6 +26,24 @@ import { ListingImage } from '../shared/ListingImage';
 const BANNER_MAX_EDGE = 1280;
 const BANNER_QUALITY = 0.8;
 
+/*
+ * The CTA banner's collage pictures are drawn about 112 CSS pixels wide, so
+ * they are compressed harder still: at the full banner size each one would be
+ * eleven times wider than it is ever shown, and there are six of them.
+ */
+const COLLAGE_MAX_EDGE = 480;
+const COLLAGE_QUALITY = 0.8;
+
+/** What the banner layout draws, and what PromoService accepts. */
+const MAX_COLLAGE_IMAGES = 6;
+
+/** Human name per placement, used in headings, subtitles and empty states. */
+const PLACEMENT_LABEL: Record<PromoPlacement, string> = {
+  CAROUSEL: 'Hero carousel slide',
+  BENTO: 'Special offers tile',
+  CTA_BANNER: 'Browse page banner',
+};
+
 type Draft = {
   id?: string;
   placement: PromoPlacement;
@@ -34,6 +53,8 @@ type Draft = {
   ctaLink: string;
   badge: string;
   imageUrl: string;
+  /** CTA_BANNER only: the collage beside the copy, in draw order. */
+  collageImages: string[];
   imageOverlay: number;
   theme: PromoTheme;
   /* Custom colours, '' meaning "follow the theme". Kept as strings rather
@@ -51,10 +72,11 @@ const emptyDraft = (placement: PromoPlacement): Draft => ({
   placement,
   title: '',
   subtitle: '',
-  ctaLabel: placement === 'CAROUSEL' ? 'Explore listings' : '',
+  ctaLabel: placement === 'BENTO' ? '' : placement === 'CTA_BANNER' ? 'Shop now' : 'Explore listings',
   ctaLink: '/browse',
   badge: '',
   imageUrl: '',
+  collageImages: [],
   imageOverlay: 40,
   theme: 'BLUE',
   bgColor: '',
@@ -74,6 +96,7 @@ const toDraft = (p: PromoSlot): Draft => ({
   ctaLink: p.ctaLink ?? '',
   badge: p.badge ?? '',
   imageUrl: p.imageUrl ?? '',
+  collageImages: p.collageImages ?? [],
   imageOverlay: p.imageOverlay,
   theme: p.theme,
   bgColor: p.bgColor ?? '',
@@ -123,6 +146,9 @@ const LINK_PRESETS: { label: string; value: string }[] = [
   { label: 'Services', value: '/browse?type=Service' },
   { label: 'Food', value: '/browse?type=Food' },
   { label: 'Search: textbook', value: '/browse?q=textbook' },
+  // The one filter with no URL field of its own, and the one a discount
+  // campaign actually wants to point at.
+  { label: 'Deals only', value: '/browse?deals=1' },
   { label: 'Post a listing', value: '/sell' },
   { label: 'Downschool', value: '/browse?campusZone=DOWNSCHOOL' },
   { label: 'Upschool', value: '/browse?campusZone=UPSCHOOL' },
@@ -148,7 +174,9 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PromoSlot | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
+  const [collageBusy, setCollageBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const collageRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -164,6 +192,19 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     .filter((p) => p.placement === section)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  /**
+   * Where a browse banner lands, in the same words the pages use.
+   *
+   * <p>Only the first two visible ones are drawn, so a third is honestly
+   * labelled as waiting rather than left looking live.
+   */
+  const bannerSlotLabel = (slot: PromoSlot): string => {
+    const rank = visible.filter((p) => p.active).indexOf(slot);
+    if (rank === 0) return `After ${CTA_INLINE_AFTER} results`;
+    if (rank === 1) return 'End of page';
+    return 'Not shown yet';
+  };
+
   /*
    * What each colour would be if left alone.
    *
@@ -175,7 +216,9 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
    */
   const themeDefaults = React.useMemo(() => {
     if (!draft) return { background: '#2563eb', text: '#ffffff', button: '#ffffff', buttonText: '#0b1c30' };
-    return draft.placement === 'CAROUSEL'
+    // A browse banner is painted like a carousel slide - see promoVariant -
+    // so it takes the same defaults rather than a third set.
+    return promoVariant(draft.placement) === 'carousel'
       ? { background: THEME_BASE[draft.theme], text: '#ffffff', button: '#ffffff', buttonText: THEME_BASE[draft.theme] }
       : { background: '#eff4ff', text: THEME_BASE[draft.theme], button: THEME_BASE[draft.theme], buttonText: '#ffffff' };
   }, [draft]);
@@ -235,6 +278,10 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
       ctaLink: draft.ctaLink.trim() || undefined,
       badge: draft.badge.trim() || undefined,
       imageUrl: draft.imageUrl || undefined,
+      /* Dropped when the panel is not a banner: nothing else draws a collage,
+         and this endpoint replaces the whole panel, so keeping pictures that
+         no surface renders would be invisible state nobody can see to fix. */
+      collageImages: draft.placement === 'CTA_BANNER' ? draft.collageImages : [],
       imageOverlay: draft.imageOverlay,
       theme: draft.theme,
       // Sent as '' rather than omitted: this endpoint replaces the whole
@@ -318,11 +365,91 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     setImageBusy(false);
   };
 
+  /** Uploads one or more pictures onto the end of the banner's collage. */
+  const addCollageImages = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !draft) return;
+    const room = MAX_COLLAGE_IMAGES - draft.collageImages.length;
+    if (room <= 0) {
+      setError(`A banner holds ${MAX_COLLAGE_IMAGES} pictures at most. Remove one first.`);
+      return;
+    }
+    setCollageBusy(true);
+    setError(null);
+    try {
+      // Sequential rather than parallel: each upload is a compress in the same
+      // tab, and six at once on a laptop makes the whole console stutter.
+      const added: string[] = [];
+      for (const file of Array.from(files).slice(0, room)) {
+        added.push(await uploadImageFile(file, {
+          maxEdge: COLLAGE_MAX_EDGE, quality: COLLAGE_QUALITY, filename: 'promo-tile.webp',
+        }));
+      }
+      // Read from the setter rather than from `draft`: the loop above has been
+      // awaiting, and the draft captured at the top is stale by now.
+      setDraft((current) => (current
+        ? { ...current, collageImages: [...current.collageImages, ...added].slice(0, MAX_COLLAGE_IMAGES) }
+        : current));
+    } catch (e: any) {
+      setError(e?.message || 'Could not process that image.');
+    }
+    setCollageBusy(false);
+  };
+
+  const removeCollageImage = (index: number) => {
+    if (!draft) return;
+    setDraft({ ...draft, collageImages: draft.collageImages.filter((_, i) => i !== index) });
+  };
+
+  /** Order is the draw order - the first picture is the tallest. */
+  const moveCollageImage = (index: number, direction: -1 | 1) => {
+    if (!draft) return;
+    const next = [...draft.collageImages];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setDraft({ ...draft, collageImages: next });
+  };
+
   /* ------------------------------------------------------------------ */
   const renderPreview = (d: Draft) => {
-    // The same resolver the home page uses, so the preview cannot flatter the
+    // The same resolver the pages use, so the preview cannot flatter the
     // result - a preview that disagrees with the page is worse than none.
-    const look = promoAppearance(d, d.placement === 'CAROUSEL' ? 'carousel' : 'tile');
+    const look = promoAppearance(d, promoVariant(d.placement));
+
+    if (d.placement === 'CTA_BANNER') {
+      /*
+       * The real component, not a sketch of it. The banner is the one panel
+       * whose layout is non-obvious - copy on one side, a bleeding collage on
+       * the other - which is exactly the case a hand-drawn approximation gets
+       * wrong. It is inert here: a preview that navigated would take the admin
+       * off the page they are editing.
+       */
+      return (
+        <CtaBanner
+          slot={{
+            id: d.id ?? 'preview',
+            placement: 'CTA_BANNER',
+            title: d.title || 'Headline',
+            subtitle: d.subtitle || undefined,
+            ctaLabel: d.ctaLabel || undefined,
+            ctaLink: undefined,
+            badge: d.badge || undefined,
+            imageUrl: d.imageUrl || undefined,
+            collageImages: d.collageImages,
+            imageOverlay: d.imageOverlay,
+            theme: d.theme,
+            bgColor: d.bgColor || null,
+            textColor: d.textColor || null,
+            buttonColor: d.buttonColor || null,
+            buttonTextColor: d.buttonTextColor || null,
+            wide: false,
+            active: d.active,
+            sortOrder: 0,
+          }}
+          onNavigate={() => {}}
+        />
+      );
+    }
 
     if (d.placement === 'CAROUSEL') {
       return (
@@ -416,10 +543,10 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
     <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Home page</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Promos &amp; banners</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Edit the hero carousel and the Special offers tiles. Changes are live immediately —
-            no deploy needed.
+            The home page's hero carousel and Special offers tiles, and the call-to-action
+            banners on the browse pages. Changes are live immediately — no deploy needed.
           </p>
         </div>
         <button
@@ -437,6 +564,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
         {([
           ['CAROUSEL', 'Hero carousel', GalleryHorizontalEnd],
           ['BENTO', 'Special offers', LayoutGrid],
+          ['CTA_BANNER', 'Browse banners', Megaphone],
         ] as const).map(([key, label, Icon]) => (
           <button
             key={key}
@@ -454,6 +582,21 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
         ))}
       </div>
 
+      {/*
+        Where the banners actually land, stated once rather than left to be
+        discovered. Only two are drawn and they are never adjacent - the page
+        drops the in-grid one rather than stack them - so an admin who writes a
+        third needs to know it is queued, not broken.
+      */}
+      {section === 'CTA_BANNER' && (
+        <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 leading-relaxed">
+          The browse and search pages draw the first two visible banners: the
+          first {CTA_INLINE_AFTER} results in, the second after the last result. They are never
+          placed next to each other — on a short page only the second one is shown. Anything
+          below the first two waits its turn.
+        </p>
+      )}
+
       {loading ? (
         <div className="flex items-center gap-2 py-16 justify-center text-slate-500 text-sm">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading panels…
@@ -465,7 +608,9 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
           <p className="text-sm text-slate-500 mt-1">
             {section === 'CAROUSEL'
               ? 'With no slides the hero is hidden entirely.'
-              : 'With no tiles the Special offers row is hidden entirely.'}
+              : section === 'BENTO'
+                ? 'With no tiles the Special offers row is hidden entirely.'
+                : 'With no banners the browse pages simply end at the last listing.'}
           </p>
         </div>
       ) : (
@@ -478,7 +623,11 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
               }`}
             >
               <div className="flex flex-wrap items-start gap-4">
-                <div className="w-40 shrink-0">{renderPreview(toDraft(p))}</div>
+                {/* A banner is a wide panel; squeezed into a 160px thumbnail
+                    it would preview as something the page never draws. */}
+                <div className={p.placement === 'CTA_BANNER' ? 'w-full order-2' : 'w-40 shrink-0'}>
+                  {renderPreview(toDraft(p))}
+                </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -491,6 +640,14 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                     {p.wide && p.placement === 'BENTO' && (
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
                         Wide
+                      </span>
+                    )}
+                    {/* Which of the two slots this banner holds, if either.
+                        Derived from the live order, so dragging one above
+                        another or hiding one updates every row at once. */}
+                    {p.placement === 'CTA_BANNER' && p.active && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">
+                        {bannerSlotLabel(p)}
                       </span>
                     )}
                   </div>
@@ -553,7 +710,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
         isOpen={!!draft}
         onClose={() => setDraft(null)}
         title={draft?.id ? 'Edit panel' : 'New panel'}
-        subtitle={draft?.placement === 'CAROUSEL' ? 'Hero carousel slide' : 'Special offers tile'}
+        subtitle={draft ? PLACEMENT_LABEL[draft.placement] : undefined}
         footer={
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => setDraft(null)} className="btn-ghost !rounded-xl !text-sm">
@@ -575,16 +732,17 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
             <div className="mb-4">{renderPreview(draft)}</div>
 
             <Field label="Appears in">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {([
                   ['CAROUSEL', 'Hero carousel'],
                   ['BENTO', 'Special offers'],
+                  ['CTA_BANNER', 'Browse banner'],
                 ] as const).map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setDraft({ ...draft, placement: key })}
-                    className={`px-3 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
                       draft.placement === key
                         ? 'border-slate-900 bg-slate-900 text-white'
                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
@@ -615,17 +773,32 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
               />
             </Field>
 
-            {draft.placement === 'CAROUSEL' ? (
-              <Field label="Button text (optional)" hint="Leave empty for a slide with no button.">
+            {/* A banner has both: the button is what it is for, and the badge
+                is how a campaign labels itself ("Freshers' week", "50% off").
+                The other two placements each only draw one of the two. */}
+            {draft.placement !== 'BENTO' && (
+              <Field
+                label="Button text (optional)"
+                hint={draft.placement === 'CTA_BANNER'
+                  ? 'Leave empty and the whole banner becomes the button.'
+                  : 'Leave empty for a slide with no button.'}
+              >
                 <input
                   value={draft.ctaLabel}
                   onChange={(e) => setDraft({ ...draft, ctaLabel: e.target.value })}
                   className="input-base text-sm"
-                  placeholder="Browse books"
+                  placeholder={draft.placement === 'CTA_BANNER' ? 'Shop now' : 'Browse books'}
                 />
               </Field>
-            ) : (
-              <Field label="Badge (optional)" hint="Small corner flag, e.g. New or Hot.">
+            )}
+
+            {draft.placement !== 'CAROUSEL' && (
+              <Field
+                label="Badge (optional)"
+                hint={draft.placement === 'CTA_BANNER'
+                  ? 'Small flag above the headline, e.g. Limited or 50% off.'
+                  : 'Small corner flag, e.g. New or Hot.'}
+              >
                 <input
                   value={draft.badge}
                   onChange={(e) => setDraft({ ...draft, badge: e.target.value })}
@@ -779,6 +952,87 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
               )}
             </div>
 
+            {/* ── The collage, banners only ──────────────────────────────
+                 The pictures beside the copy. Order is draw order: the first
+                 is the tallest, and the last ones are the first to be dropped
+                 on a narrow screen - which is why they can be moved rather
+                 than only added and removed. ── */}
+            {draft.placement === 'CTA_BANNER' && (
+              <Field
+                label={`Pictures (${draft.collageImages.length}/${MAX_COLLAGE_IMAGES})`}
+                hint="Shown beside the copy, at staggered heights. A banner with none is just copy on a colour — which is fine."
+              >
+                <input
+                  ref={collageRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    addCollageImages(e.target.files);
+                    // Cleared so picking the same file twice still fires change.
+                    e.target.value = '';
+                  }}
+                />
+
+                {draft.collageImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {draft.collageImages.map((url, i) => (
+                      <div
+                        key={`${url}-${i}`}
+                        className="relative w-20 group rounded-xl overflow-hidden border border-slate-200 bg-slate-50"
+                      >
+                        <ListingImage
+                          src={url}
+                          alt={`Banner picture ${i + 1}`}
+                          sizes="80px"
+                          className="w-full h-24 object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCollageImage(i)}
+                          aria-label={`Remove picture ${i + 1}`}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/70 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <div className="absolute inset-x-0 bottom-0 flex">
+                          <button
+                            type="button"
+                            onClick={() => moveCollageImage(i, -1)}
+                            disabled={i === 0}
+                            aria-label={`Move picture ${i + 1} earlier`}
+                            className="flex-1 py-1 bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronLeft className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveCollageImage(i, 1)}
+                            disabled={i === draft.collageImages.length - 1}
+                            aria-label={`Move picture ${i + 1} later`}
+                            className="flex-1 py-1 bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => collageRef.current?.click()}
+                  disabled={collageBusy || draft.collageImages.length >= MAX_COLLAGE_IMAGES}
+                  className="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {collageBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  {draft.collageImages.length >= MAX_COLLAGE_IMAGES ? 'Six is the maximum' : 'Add pictures'}
+                </button>
+              </Field>
+            )}
+
             <Field
               label="Background image (optional)"
               hint="Sits over the colour theme. Compressed automatically before upload."
@@ -847,7 +1101,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
                   onChange={(e) => setDraft({ ...draft, active: e.target.checked })}
                   className="w-4 h-4 accent-slate-900"
                 />
-                Visible on the home page
+                {draft.placement === 'CTA_BANNER' ? 'Visible on the browse pages' : 'Visible on the home page'}
               </label>
             </div>
           </div>
@@ -877,7 +1131,7 @@ export const PromoEditor: React.FC<PromoEditorProps> = ({ onNotice }) => {
         }
       >
         <p className="text-xs text-slate-600">
-          This cannot be undone. If you only want it off the home page for now, hide it instead —
+          This cannot be undone. If you only want it off the page for now, hide it instead —
           the eye icon — and it keeps its content and position.
         </p>
       </Modal>

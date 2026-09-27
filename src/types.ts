@@ -284,11 +284,12 @@ export interface Order {
   createdAt: string;
 }
 
-/* ── Home-page promo panels ───────────────────────────────────────────────
-   Admin-editable carousel slides and "Special offers" tiles. Both share one
-   shape; `placement` decides which grid renders it.                         */
+/* ── Admin-editable promo panels ──────────────────────────────────────────
+   Carousel slides, "Special offers" tiles, and the call-to-action banners on
+   the browse pages. All three share one shape; `placement` decides which
+   surface renders it.                                                       */
 
-export type PromoPlacement = 'CAROUSEL' | 'BENTO';
+export type PromoPlacement = 'CAROUSEL' | 'BENTO' | 'CTA_BANNER';
 
 export type PromoTheme = 'BLUE' | 'GREEN' | 'PURPLE' | 'DARK' | 'AMBER';
 
@@ -302,6 +303,13 @@ export interface PromoSlot {
   ctaLink?: string;
   badge?: string;
   imageUrl?: string;
+  /**
+   * CTA_BANNER only: the pictures stacked beside the copy, in draw order.
+   *
+   * <p>Optional and often empty - a banner with no collage is copy on a
+   * colour, which is where every new banner starts and has to look right.
+   */
+  collageImages?: string[];
   /** 0-100 scrim over the image so the copy stays readable. */
   imageOverlay: number;
   theme: PromoTheme;
@@ -544,6 +552,17 @@ export function promoAppearance(
     customBackground: Boolean(bg),
   };
 }
+
+/**
+ * Which painting style a placement uses.
+ *
+ * <p>Two styles, three placements: a browse banner is painted exactly like a
+ * carousel slide - white copy over a dark gradient, a pale button - because it
+ * is the same full-bleed panel at a different size. Resolved here so the pages
+ * and the admin preview cannot drift apart on it.
+ */
+export const promoVariant = (placement: PromoPlacement): 'carousel' | 'tile' =>
+  placement === 'BENTO' ? 'tile' : 'carousel';
 
 /**
  * Contrast ratio between two hex colours, per WCAG 2.
