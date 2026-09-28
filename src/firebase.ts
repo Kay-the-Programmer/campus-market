@@ -24,6 +24,41 @@ export const firebaseConfig: FirebaseOptions = {
 export const isGoogleSignInConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 /**
+ * Warn when the auth handler is being fetched from somewhere other than here.
+ *
+ * vercel.json rewrites /__/auth/* to Firebase so the OAuth handler is served by
+ * this app's own domain, which keeps Firebase's auth storage first-party. Point
+ * VITE_FIREBASE_AUTH_DOMAIN at <project>.firebaseapp.com instead and that
+ * storage becomes third-party, which Safari's ITP and Edge's Tracking
+ * Prevention block by default.
+ *
+ * That failure deserves a warning precisely because of how it presents: it
+ * works in a plain Chrome window, so it passes every check the person who
+ * deployed it is likely to run, and fails for a large share of real users with
+ * nothing in the console but "Tracking Prevention blocked access to storage" -
+ * which names the browser, not the setting that caused it.
+ *
+ * Localhost is exempt: there is no rewrite in front of the dev server, and
+ * Firebase authorizes localhost out of the box.
+ */
+export function authDomainWarning(
+  hostname: string,
+  authDomain: string | undefined,
+): string | null {
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
+  if (isLocal || !authDomain || authDomain === hostname) return null;
+
+  return `[auth] VITE_FIREBASE_AUTH_DOMAIN is "${authDomain}" but this app is served from `
+    + `"${hostname}". Google sign-in will run third-party, which Safari and Edge block by `
+    + `default. Set it to "${hostname}" - /__/auth/* is already proxied to Firebase.`;
+}
+
+if (typeof window !== 'undefined' && isGoogleSignInConfigured) {
+  const warning = authDomainWarning(window.location.hostname, firebaseConfig.authDomain);
+  if (warning) console.warn(warning);
+}
+
+/**
  * Web Push needs two things Google sign-in does not: a sender id to route
  * through, and the project's public VAPID key to sign the subscription with.
  * Missing either, the app keeps in-app notifications and hides the push opt-in.
