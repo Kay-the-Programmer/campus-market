@@ -26,6 +26,11 @@
 
   <!-- Apple honours the manifest from iOS 16.4, but still reads these, and
        they cost nothing on the versions that predate it. -->
+  <!-- Both spellings on purpose. Chrome deprecated the apple- prefixed one and
+       warns in the console about it, but iOS Safari still reads only that name,
+       and it is the one that makes an added-to-home-screen app run standalone -
+       which is the whole reason iPhones can receive push at all here. -->
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="CampusMarket" />

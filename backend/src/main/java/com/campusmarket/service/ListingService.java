@@ -684,6 +684,22 @@ public class ListingService {
     }
 
     /**
+     * The asking price, with the one rule a field-level constraint cannot see.
+     *
+     * <p>A service may go unpriced: some jobs cannot be quoted before they are
+     * looked at, and the seller settles the figure in chat and confirms it when
+     * they mark the work done. Nothing else may - a product or a meal without a
+     * price is a mistake, and letting one through would put "K0" on a card that
+     * is not free.
+     */
+    private BigDecimal priceFor(ListingType type, BigDecimal price) {
+        if (price == null && type != ListingType.SERVICE) {
+            throw ApiException.badRequest("PRICE_REQUIRED", "Price is required.");
+        }
+        return price;
+    }
+
+    /**
      * The seller's own "was" price.
      *
      * <p>Self-service on purpose, and deliberately NOT the same thing as the
@@ -700,22 +716,6 @@ public class ListingService {
      * about, and quietly discarding it would leave them believing their item is
      * listed as reduced when it is not.
      */
-    /**
-     * The asking price, with the one rule a field-level constraint cannot see.
-     *
-     * <p>A service may go unpriced: some jobs cannot be quoted before they are
-     * looked at, and the seller settles the figure in chat and confirms it when
-     * they mark the work done. Nothing else may - a product or a meal without a
-     * price is a mistake, and letting one through would put "K0" on a card that
-     * is not free.
-     */
-    private BigDecimal priceFor(ListingType type, BigDecimal price) {
-        if (price == null && type != ListingType.SERVICE) {
-            throw ApiException.badRequest("PRICE_REQUIRED", "Price is required.");
-        }
-        return price;
-    }
-
     private void applyCompareAtPrice(Listing listing, BigDecimal compareAtPrice) {
         if (compareAtPrice == null) {
             // Clearing it is how a seller ends a sale, so null is a real value
