@@ -14,7 +14,7 @@ import { api } from '../services/api';
 import { getRecentlyViewed } from '../services/recentlyViewed';
 import { getIntent, setIntent, type Intent } from '../services/intent';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-import { formatPrice } from '../utils/currency';
+import { formatListingPrice, formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
 import {
@@ -371,8 +371,11 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
      shift the handles under the person dragging them. */
   useEffect(() => {
     api.listings.search({ sort: 'price_desc', size: 1 }).then((res) => {
-      const dearest = res.listings[0]?.price ?? 0;
-      setPriceCeiling(niceCeiling(dearest));
+      // Null when nothing came back, or when the catalogue holds only services
+      // priced on request. Keeping the default beats collapsing the slider to a
+      // ceiling of zero, which would filter everything out.
+      const dearest = res.listings[0]?.price;
+      if (dearest != null) setPriceCeiling(niceCeiling(dearest));
     });
   }, []);
 
@@ -1570,7 +1573,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                     )}
                   </div>
                   <p className="text-xs font-semibold text-[#0b1c30] truncate mt-1.5">{item.title}</p>
-                  <p className="text-xs font-extrabold text-[#2563eb]">{formatPrice(item.price)}</p>
+                  <p className="text-xs font-extrabold text-[#2563eb]">{formatListingPrice(item.price)}</p>
                 </button>
               ))}
             </div>

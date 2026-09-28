@@ -4,7 +4,7 @@ import {
   ChevronDown, ShoppingBag, BellRing, Loader2,
 } from 'lucide-react';
 import { AddToCart, AuthSession, Listing, SavedSearchRow } from '../types';
-import { formatPrice } from '../utils/currency';
+import { formatListingPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 import { SavedSearchList } from './shared/SavedSearchList';
 
@@ -67,9 +67,15 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
      listing carries would order by when it was POSTED, which is a different
      thing wearing the same label. */
   const sortedListings = [...savedListings].sort((a, b) => {
-    if (sortBy === 'PriceLow') return a.price - b.price;
-    if (sortBy === 'PriceHigh') return b.price - a.price;
-    return 0;
+    if (sortBy !== 'PriceLow' && sortBy !== 'PriceHigh') return 0;
+    /* A service priced on request has no position on a price axis, so it goes
+       last in BOTH directions rather than counting as free and heading the
+       cheapest-first list. */
+    if (a.price == null || b.price == null) {
+      if (a.price == null && b.price == null) return 0;
+      return a.price == null ? 1 : -1;
+    }
+    return sortBy === 'PriceLow' ? a.price - b.price : b.price - a.price;
   });
 
   const sortLabel = SORTS.find((s) => s.value === sortBy)!.label;
@@ -337,7 +343,7 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({
                     <div className={`font-extrabold text-xl shrink-0 ${
                       unavailable ? 'text-[#a0a3b1]' : 'text-[#2563eb]'
                     }`}>
-                      {formatPrice(item.price)}
+                      {formatListingPrice(item.price)}
                     </div>
                   </div>
 

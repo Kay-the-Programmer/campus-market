@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatPrice, CURRENCY_SYMBOL } from './currency';
+import { CURRENCY_SYMBOL, PRICE_ON_REQUEST, formatListingPrice, formatPrice } from './currency';
 
 /*
  * Money is the one thing on the page a person will act on, so the cases that
@@ -42,5 +42,30 @@ describe('formatPrice', () => {
 
   it('handles zero as a real value, not as missing', () => {
     expect(formatPrice(0)).toBe('K0');
+  });
+});
+
+/*
+ * The distinction this whole pair of functions exists to keep: a service the
+ * seller quotes per job versus something that genuinely costs nothing. Both are
+ * real listings on a student marketplace, and rendering the first as the second
+ * advertises a price the seller never agreed to.
+ */
+describe('formatListingPrice', () => {
+  it('says the price is on request when there is not one', () => {
+    expect(formatListingPrice(null)).toBe(PRICE_ON_REQUEST);
+    expect(formatListingPrice(undefined)).toBe(PRICE_ON_REQUEST);
+  });
+
+  it('still renders zero as a price, because free is not the same as unpriced', () => {
+    // The failure this guards is a phone repair listed at "K0" - which reads as
+    // free - because a null price was coerced somewhere on the way to the page.
+    expect(formatListingPrice(0)).toBe('K0');
+    expect(formatListingPrice(0)).not.toBe(PRICE_ON_REQUEST);
+  });
+
+  it('formats an ordinary price exactly as formatPrice does', () => {
+    expect(formatListingPrice(12.5)).toBe(formatPrice(12.5));
+    expect(formatListingPrice(75)).toBe('K75');
   });
 });

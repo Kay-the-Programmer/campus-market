@@ -5,7 +5,7 @@ import { Listing, Suggestion } from '../../types';
 import { api } from '../../services/api';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { getRecentSearches, removeRecentSearch, clearRecentSearches } from '../../services/recentSearches';
-import { formatPrice } from '../../utils/currency';
+import { PRICE_ON_REQUEST, formatPrice } from '../../utils/currency';
 import { ListingImage } from '../shared/ListingImage';
 
 const MIN_QUERY = 2;
@@ -274,7 +274,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
    * shortest route search has: query to product, no results page in between.
    */
   const listingCard = (
-    { id, label, image, price }: { id: string; label: string; image?: string; price?: number },
+    { id, label, image, price }: { id: string; label: string; image?: string; price?: number | null },
     i: number,
   ) => (
     <button
@@ -304,10 +304,19 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         <span className="block text-[13px] font-medium text-[#0b1c30] leading-snug line-clamp-2">
           {label}
         </span>
-        {price != null && (
-          <span className="block mt-1 text-sm font-extrabold text-[#2563eb]">
-            {formatPrice(Number(price))}
-          </span>
+        {/* Undefined means this row is not a priced thing at all. Null means it
+            is a listing whose seller quotes per job, which is worth saying
+            rather than leaving a gap beside cards that all show a figure. */}
+        {price !== undefined && (
+          price === null ? (
+            <span className="block mt-1 text-[11px] font-semibold text-[#737686]">
+              {PRICE_ON_REQUEST}
+            </span>
+          ) : (
+            <span className="block mt-1 text-sm font-extrabold text-[#2563eb]">
+              {formatPrice(price)}
+            </span>
+          )
         )}
       </div>
     </button>
@@ -549,10 +558,16 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                     </span>
                   )}
                 </span>
-                {s.price != null && (
-                  <span className="text-sm font-extrabold text-[#2563eb] shrink-0">
-                    {formatPrice(Number(s.price))}
-                  </span>
+                {s.price !== undefined && (
+                  s.price === null ? (
+                    <span className="text-[11px] font-semibold text-[#737686] shrink-0">
+                      {PRICE_ON_REQUEST}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-extrabold text-[#2563eb] shrink-0">
+                      {formatPrice(s.price)}
+                    </span>
+                  )
                 )}
               </button>
             );

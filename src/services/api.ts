@@ -271,7 +271,10 @@ export function toListing(dto: any): Listing {
   return {
     id: dto?.id,
     title: dto?.title ?? '',
-    price: Number(dto?.price ?? 0),
+    // Null and absent both mean "priced on request" - the server omits null
+    // fields entirely. Coercing to 0 here is what would turn a service the
+    // seller has not quoted into one advertised as free.
+    price: dto?.price == null ? null : Number(dto.price),
     priceUnit: dto?.priceUnit ?? undefined,
     category: TYPE_LABELS[dto?.type] ?? 'Product',
     condition: dto?.condition ? CONDITION_LABELS[dto.condition] ?? 'N/A' : 'N/A',
@@ -646,7 +649,17 @@ export const api = {
       const res = await get(
         `/api/listings/suggestions?q=${encodeURIComponent(q)}&limit=${limit}`, signal);
       return {
-        listings: (res.data?.listings ?? []) as Suggestion[],
+        /*
+         * Normalise the missing price to null rather than leaving it absent.
+         * The server omits null fields, so an unpriced service arrives here
+         * with no `price` key at all - and to a Suggestion, absent means "not
+         * a priced thing, like a category" while null means "priced on
+         * request". Without this the same service reads "Price on request" in
+         * the trending grid, which goes through the full listing mapper, and
+         * shows a blank space here.
+         */
+        listings: ((res.data?.listings ?? []) as Suggestion[])
+          .map((s) => ({ ...s, price: s.price ?? null })),
         categories: (res.data?.categories ?? []) as Suggestion[],
         aborted: res.code === 'ABORTED',
         error: res.error,

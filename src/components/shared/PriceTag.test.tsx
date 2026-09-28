@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PriceTag, DiscountFlag } from './PriceTag';
+import { PRICE_ON_REQUEST } from '../../utils/currency';
 
 /*
  * These are claims about money, which is why they are pinned down here.
@@ -41,6 +42,39 @@ describe('PriceTag', () => {
     render(<PriceTag listing={{ price: 50, priceUnit: '/hr' }} />);
 
     expect(screen.getByText('/hr')).toBeInTheDocument();
+  });
+
+  it('says the price is on request rather than quoting a number', () => {
+    // A service the seller can only quote once they have seen the job. The
+    // failure being guarded is "K0", which reads as free.
+    render(<PriceTag listing={{ price: null }} />);
+
+    expect(screen.getByText(PRICE_ON_REQUEST)).toBeInTheDocument();
+    expect(screen.queryByText(/K0/)).toBeNull();
+  });
+
+  it('still prices a giveaway at zero, which is a different thing', () => {
+    render(<PriceTag listing={{ price: 0 }} />);
+
+    expect(screen.getByText('K0')).toBeInTheDocument();
+    expect(screen.queryByText(PRICE_ON_REQUEST)).toBeNull();
+  });
+
+  it('draws no unit on an unpriced listing, since there is nothing to qualify', () => {
+    // "/hr" beside "Price on request" would claim an hourly rate nobody set.
+    render(<PriceTag listing={{ price: null, priceUnit: '/hr' }} />);
+
+    expect(screen.queryByText('/hr')).toBeNull();
+  });
+
+  it('draws no saving on an unpriced listing', () => {
+    // The server rejects this combination outright, so it should only ever
+    // arrive from stale data - and a "was" with nothing to compare against is
+    // the fake-discount case this component exists to prevent.
+    render(<PriceTag listing={{ price: null, compareAtPrice: 200, discountPercent: 40 }} />);
+
+    expect(document.querySelector('.line-through')).toBeNull();
+    expect(screen.queryByText('−40%')).toBeNull();
   });
 });
 

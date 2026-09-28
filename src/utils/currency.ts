@@ -12,6 +12,16 @@
 
 export const CURRENCY_SYMBOL = 'K';
 
+/**
+ * What a listing says where a number would go when it has no asking price.
+ *
+ * Some services cannot be quoted before the seller has seen the job, so the
+ * figure is settled in chat. The one thing this must never render as is "K0",
+ * which reads as free - and free is a real, separate thing on a marketplace
+ * where people give away furniture at the end of term.
+ */
+export const PRICE_ON_REQUEST = 'Price on request';
+
 /** ISO code, for anywhere that needs to be unambiguous rather than short. */
 export const CURRENCY_CODE = 'ZMW';
 
@@ -47,4 +57,17 @@ export function formatPrice(value: number | string | null | undefined, opts: For
       maximumFractionDigits: fractional ? 2 : 0,
     })
   );
+}
+
+/**
+ * A listing's price for display, including the case where there is not one.
+ *
+ * Separate from {@link formatPrice} rather than folded into it, because the two
+ * absences mean opposite things. A null reaching formatPrice is a bad value on
+ * something that does have a price, and "K0" is the right way to fail quietly.
+ * A null Listing.price is the seller deliberately not quoting, and "K0" would
+ * be a false claim about what the thing costs.
+ */
+export function formatListingPrice(value: number | null | undefined): string {
+  return value == null ? PRICE_ON_REQUEST : formatPrice(value);
 }

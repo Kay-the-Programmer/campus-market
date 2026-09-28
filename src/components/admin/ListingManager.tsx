@@ -5,7 +5,7 @@ import {
 import { Listing } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner } from '../shared/Modal';
-import { formatPrice } from '../../utils/currency';
+import { formatListingPrice } from '../../utils/currency';
 import { ListingImage } from '../shared/ListingImage';
 
 interface ListingManagerProps {
@@ -176,7 +176,7 @@ export const ListingManager: React.FC<ListingManagerProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5 truncate">
-                    {formatPrice(l.price)} · {l.seller?.name} · {l.location}
+                    {formatListingPrice(l.price)} · {l.seller?.name} · {l.location}
                   </p>
                 </div>
 

@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import {
   X, ShoppingBag, Briefcase, Utensils, Plus, Minus, CheckCircle2, Check,
   MapPin, AlertCircle, ImagePlus, Loader2, Eye, Trash2, ChevronLeft,
-  Camera, Tag, DollarSign,  Layers, Clock, Wheat, 
+  Camera, Tag, Layers, Clock, Wheat, 
   CalendarClock, DoorOpen } from 'lucide-react';
 import { AuthSession, CampusZone, CAMPUS_ZONES, Listing, ListingCategory, ListingCondition } from '../types';
 
@@ -107,7 +107,11 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
-  const [price, setPrice] = useState(editingListing ? String(editingListing.price) : '');
+  /* Empty for a service the seller quotes per job, which is a real saved state
+     rather than an unfinished form - so an edit must not seed it with "null". */
+  const [price, setPrice] = useState(
+    editingListing?.price != null ? String(editingListing.price) : '',
+  );
   /* The optional "was" price. Held as text like `price` so an empty box stays
      distinguishable from zero, and seeded from the listing on edit so saving an
      unrelated change never silently drops an existing markdown. */
@@ -176,6 +180,31 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   }, []);
 
   const numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''));
+  const hasPrice = price.trim() !== '' && !Number.isNaN(numericPrice);
+  /*
+   * A service may be published with the price box left empty.
+   *
+   * Some jobs genuinely cannot be quoted in advance - a phone repair depends on
+   * what is broken - and the sellers doing them were otherwise choosing between
+   * inventing a number they would have to walk back in chat, or typing 0, which
+   * renders as "K0" and reads as free. The figure gets agreed in the thread and
+   * confirmed when they mark the work done, which is where the app already asks
+   * for a final price. Products and food still need one.
+   */
+  const priceOptional = offeringType === 'Service';
+
+  /*
+   * What an empty price box sends.
+   *
+   * Null - "quoted per job" - is a claim only a service is allowed to make, and
+   * the server and the table both reject it from anything else. For a product
+   * or a meal an empty box can only happen on a draft, since Publish is blocked
+   * without a price, and a draft has always stored 0 as its placeholder. Save
+   * Draft deliberately asks for nothing but a title, so sending null there
+   * would make saving an incomplete product fail - which is the one thing
+   * drafts exist to allow.
+   */
+  const payloadPrice = hasPrice ? numericPrice : priceOptional ? null : 0;
   /* NaN while the box is empty, which is what every check below tests for -
      an absent markdown is not a zero one. */
   const numericCompareAt = parseFloat(compareAtPrice.replace(/[^0-9.]/g, ''));
@@ -189,7 +218,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   const isDirty =
     title !== (editingListing?.title ?? '') ||
     description !== (editingListing?.description ?? '') ||
-    price !== (editingListing ? String(editingListing.price) : '') ||
+    price !== (editingListing?.price != null ? String(editingListing.price) : '') ||
     compareAtPrice !== (editingListing?.compareAtPrice != null
       ? String(editingListing.compareAtPrice) : '') ||
     location !== (editingListing?.location ?? '') ||
@@ -202,14 +231,18 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     const next: Record<string, string> = {};
     if (!offeringType) return next; // nothing else can be wrong before a type exists
     if (!title.trim()) next.title = 'Give your listing a title.';
-    if (!price.trim() || Number.isNaN(numericPrice)) next.price = 'Enter a price.';
-    else if (numericPrice < 0) next.price = 'Price cannot be negative.';
+    if (!hasPrice) {
+      if (!priceOptional) next.price = 'Enter a price.';
+    } else if (numericPrice < 0) next.price = 'Price cannot be negative.';
     /* Mirrors ListingService.applyCompareAtPrice, so the form refuses what the
        server would refuse rather than letting someone hit Publish and bounce.
        Only checked when they actually entered one - it is an optional field. */
     if (hasCompareAt) {
       if (numericCompareAt <= 0) next.compareAtPrice = 'The original price must be more than zero.';
-      else if (!Number.isNaN(numericPrice) && numericCompareAt <= numericPrice) {
+      else if (!hasPrice) {
+        // "Was K200, now ask me" is not a saving anyone can check.
+        next.compareAtPrice = 'Set an asking price before adding an original price.';
+      } else if (numericCompareAt <= numericPrice) {
         next.compareAtPrice = "The original price has to be higher than what you're asking now.";
       }
     }
@@ -234,7 +267,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
   // section" wayfinding, not a hard gate, so it can't block or nag early.
   const photosDone = photos.length > 0;
   const detailsDone = Boolean(
-    title.trim() && price.trim() && !Number.isNaN(numericPrice) &&
+    title.trim() && (hasPrice || priceOptional) &&
     (offeringType !== 'Food' || (parseInt(quantity, 10) > 0 && pickupWindow.trim())),
   );
   const locationDone = Boolean(location.trim() && campusZone);
@@ -250,12 +283,12 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     type: offeringType!.toUpperCase(),
     title: title.trim(),
     description: description.trim(),
-    price: Number.isNaN(numericPrice) ? 0 : numericPrice,
+    price: payloadPrice,
     /* Sent as an explicit null when cleared, not omitted: clearing the box is
        how a seller ends a sale, and an absent key would leave the old "was"
        price on the listing. */
     compareAtPrice: hasCompareAt ? numericCompareAt : null,
-    priceUnit: offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
+    priceUnit: hasPrice && offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
     categoryId: categoryId || undefined,
     location: location.trim(),
     campusZone: campusZone || undefined,
@@ -377,10 +410,12 @@ export const SellScreen: React.FC<SellScreenProps> = ({
     return {
       id: editingListing?.id ?? 'preview',
       title: title.trim() || 'Untitled listing',
-      price: Number.isNaN(numericPrice) ? 0 : numericPrice,
+      /* Null rather than payloadPrice's draft placeholder: this is the buyer's
+         view, and "K0" would show an unfinished product as a giveaway. */
+      price: hasPrice ? numericPrice : null,
       compareAtPrice: discountPreview !== null ? numericCompareAt : undefined,
       discountPercent: discountPreview ?? undefined,
-      priceUnit: offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
+      priceUnit: hasPrice && offeringType === 'Service' && rateType === 'HOURLY' ? '/hr' : undefined,
       category: offeringType,
       condition: offeringType === 'Product' ? (condition as any) : 'N/A',
       brand: offeringType === 'Product' ? brand : undefined,
@@ -671,28 +706,45 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                         Price{offeringType === 'Service' ? '' : ' (K)'}
+                        {priceOptional && (
+                          <span className="ml-1.5 font-medium text-slate-400">— optional</span>
+                        )}
                       </label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          {/* A "K", not a dollar glyph: this marketplace only
+                              ever trades in kwacha. */}
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
+                            K
+                          </span>
                           <input
                             type="number"
                             step="0.01"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
                             disabled={isSoldListing}
-                            placeholder="0.00"
+                            placeholder={priceOptional ? 'Leave blank to quote later' : '0.00'}
                             className="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-60"
                           />
                         </div>
                         {offeringType === 'Service' && (
-                          <div className="flex items-center bg-slate-100 rounded-xl p-1 shrink-0">
+                          /* Greyed out with no price, for the same reason the
+                             unit is not stored without one: "Per Hour" answers
+                             "per hour of what" about a figure that is not there
+                             yet. Disabled rather than hidden so the row does not
+                             jump as the price box is typed into. */
+                          <div
+                            className={`flex items-center bg-slate-100 rounded-xl p-1 shrink-0 ${
+                              hasPrice ? '' : 'opacity-50'
+                            }`}
+                          >
                             {(['HOURLY', 'FIXED'] as const).map((rt) => (
                               <button
                                 key={rt}
                                 type="button"
                                 onClick={() => setRateType(rt)}
-                                className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${rateType === rt ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                disabled={!hasPrice}
+                                className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all disabled:cursor-not-allowed ${rateType === rt ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 enabled:hover:text-slate-700'
                                   }`}
                               >
                                 {rt === 'HOURLY' ? 'Per Hour' : 'Fixed'}
@@ -707,6 +759,17 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                         </p>
                       )}
                       <FieldError name="price" />
+
+                      {/* Only once the box is actually empty, so it reads as
+                          confirmation of what they just chose rather than as
+                          an instruction they have to act on. */}
+                      {priceOptional && !hasPrice && !isSoldListing && (
+                        <p className="mt-1.5 text-xs text-violet-700 bg-violet-50 px-3 py-2 rounded-lg border border-violet-200">
+                          Your listing will show <span className="font-semibold">“Price on request”</span>.
+                          Good for jobs you can only quote once you have seen them — agree the figure
+                          in chat, then confirm it when you mark the work done.
+                        </p>
+                      )}
 
                       {/*
                         The markdown, tucked under the price it belongs to
@@ -729,11 +792,21 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                               step="0.01"
                               value={compareAtPrice}
                               onChange={(e) => setCompareAtPrice(e.target.value)}
+                              /* A markdown has to be measured against
+                                 something. Disabled rather than hidden so the
+                                 form does not reflow on every keystroke in the
+                                 price box above. */
+                              disabled={!hasPrice}
                               placeholder="What it used to cost"
-                              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                           </div>
-                          {discountPreview !== null ? (
+                          {!hasPrice ? (
+                            <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+                              Needs an asking price above — there has to be a figure for the
+                              original price to be higher than.
+                            </p>
+                          ) : discountPreview !== null ? (
                             <p className="mt-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
                               Shows as <span className="font-extrabold">{discountPreview}% off</span> and
                               appears under Deals.

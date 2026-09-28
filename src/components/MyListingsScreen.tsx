@@ -9,6 +9,7 @@ import { api } from '../services/api';
 import { MarkSoldModal } from './shared/MarkSoldModal';
 import { Modal, ErrorBanner } from './shared/Modal';
 import { ListingImage } from './shared/ListingImage';
+import { formatListingPrice } from '../utils/currency';
 
 interface MyListingsScreenProps {
   onBack: () => void;
@@ -416,7 +417,9 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
         {/* Price */}
         <div className="shrink-0 text-right">
           <p className="text-sm sm:text-base font-extrabold text-[#2563eb] whitespace-nowrap">
-            ${item.price}{item.priceUnit || ''}
+            {/* Was a bare `${item.price}` - a literal dollar sign on a kwacha
+                marketplace, and "null" once a price became optional. */}
+            {formatListingPrice(item.price)}{item.price != null && (item.priceUnit || '')}
           </p>
         </div>
 

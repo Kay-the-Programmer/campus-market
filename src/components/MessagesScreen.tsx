@@ -8,7 +8,7 @@ import { useLiveCounts } from '../hooks/useLiveCounts';
 import { MarkSoldModal } from './shared/MarkSoldModal';
 import { ReviewModal } from './shared/ReviewModal';
 import { ErrorBanner } from './shared/Modal';
-import { formatPrice } from '../utils/currency';
+import { formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 
 interface MessagesScreenProps {
@@ -23,7 +23,7 @@ interface MessagesScreenProps {
 interface ThreadSummary {
   id: string;
   peer: { id: string; name: string; avatarUrl?: string };
-  listing: { id: string; title: string; price: number; image?: string; removed: boolean };
+  listing: { id: string; title: string; price: number | null; image?: string; removed: boolean };
   lastMessage: string;
   lastMessageAt: string;
   unreadCount: number;
@@ -33,7 +33,7 @@ interface ThreadSummary {
 interface ThreadDetail {
   id: string;
   peer: { id: string; name: string; avatarUrl?: string };
-  listing: { id: string; title: string; price: number; image?: string; status: string; removed: boolean };
+  listing: { id: string; title: string; price: number | null; image?: string; status: string; removed: boolean };
   role: 'Buying' | 'Selling' | 'Mediating';
   canMarkSold: boolean;
   messages: { id: string; senderId: string; mine: boolean; body: string; createdAt: string; readAt?: string | null }[];
@@ -41,7 +41,7 @@ interface ThreadDetail {
 
 interface DealRow {
   id: string;
-  listing: { id: string; title: string; price: number; image?: string; removed: boolean };
+  listing: { id: string; title: string; price: number | null; image?: string; removed: boolean };
   counterparty: { id: string; name: string; avatarUrl?: string };
   role: 'buyer' | 'seller';
   price: number;
@@ -868,7 +868,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                         ) : (
                           <>
                             <span className="font-semibold text-[#2563eb]">
-                              {formatPrice(thread.listing.price)}
+                              {formatListingPrice(thread.listing.price)}
                             </span>
                             {' · '}
                             {thread.listing.title}
@@ -911,7 +911,7 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[#2563eb] font-extrabold text-sm">{formatPrice(thread.listing.price)}</span>
+                          <span className="text-[#2563eb] font-extrabold text-sm">{formatListingPrice(thread.listing.price)}</span>
                           {onViewListing && !thread.listing.removed && (
                             <button
                               onClick={() => onViewListing(thread.listing.id)}

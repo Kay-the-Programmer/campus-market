@@ -479,6 +479,13 @@ public class AdminService {
                     throw ApiException.badRequest("INVALID_COMPARE_PRICE",
                             "The usual price must be more than zero.");
                 }
+                // An unpriced service - one quoted per job - has nothing for a
+                // "usual price" to be a saving against, and no offer price to
+                // put on the shelf beside it.
+                if (listing.getPrice() == null) {
+                    throw ApiException.badRequest("INVALID_COMPARE_PRICE",
+                            "That listing is priced on request, so it has no offer price to mark down.");
+                }
                 if (compareAtPrice.compareTo(listing.getPrice()) <= 0) {
                     throw ApiException.badRequest("INVALID_COMPARE_PRICE",
                             "The usual price has to be higher than the offer price.");

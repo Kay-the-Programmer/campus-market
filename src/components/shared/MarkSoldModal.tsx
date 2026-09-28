@@ -9,7 +9,9 @@ interface MarkSoldModalProps {
   onClose: () => void;
   listingId: string;
   listingTitle: string;
-  listingPrice: number;
+  /** Starting value for the final price. Null for a service priced on request,
+   *  which leaves the box empty for the figure they actually agreed. */
+  listingPrice: number | null;
   /** Supplied when launched from a chat thread - the buyer is already known. */
   presetBuyer?: { id: string; name: string };
   onSold: () => void;

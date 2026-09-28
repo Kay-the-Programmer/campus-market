@@ -639,7 +639,7 @@ public class ListingService {
         listing.setType(parseType(request.type()));
         listing.setTitle(request.title().trim());
         listing.setDescription(request.description() == null ? "" : request.description().trim());
-        listing.setPrice(request.price());
+        listing.setPrice(priceFor(listing.getType(), request.price()));
         applyCompareAtPrice(listing, request.compareAtPrice());
         listing.setPriceUnit(blankToNull(request.priceUnit()));
         listing.setLocation(blankToNull(request.location()));
@@ -700,6 +700,22 @@ public class ListingService {
      * about, and quietly discarding it would leave them believing their item is
      * listed as reduced when it is not.
      */
+    /**
+     * The asking price, with the one rule a field-level constraint cannot see.
+     *
+     * <p>A service may go unpriced: some jobs cannot be quoted before they are
+     * looked at, and the seller settles the figure in chat and confirms it when
+     * they mark the work done. Nothing else may - a product or a meal without a
+     * price is a mistake, and letting one through would put "K0" on a card that
+     * is not free.
+     */
+    private BigDecimal priceFor(ListingType type, BigDecimal price) {
+        if (price == null && type != ListingType.SERVICE) {
+            throw ApiException.badRequest("PRICE_REQUIRED", "Price is required.");
+        }
+        return price;
+    }
+
     private void applyCompareAtPrice(Listing listing, BigDecimal compareAtPrice) {
         if (compareAtPrice == null) {
             // Clearing it is how a seller ends a sale, so null is a real value
@@ -711,7 +727,13 @@ public class ListingService {
             throw ApiException.badRequest("INVALID_COMPARE_PRICE",
                     "The original price must be more than zero.");
         }
-        if (listing.getPrice() != null && compareAtPrice.compareTo(listing.getPrice()) <= 0) {
+        // "Was K200, now ask me" is not a saving anyone can check. A listing
+        // with no asking price has nothing for the comparison to be above.
+        if (listing.getPrice() == null) {
+            throw ApiException.badRequest("INVALID_COMPARE_PRICE",
+                    "Set an asking price before adding an original price.");
+        }
+        if (compareAtPrice.compareTo(listing.getPrice()) <= 0) {
             throw ApiException.badRequest("INVALID_COMPARE_PRICE",
                     "The original price has to be higher than what you're asking now.");
         }
@@ -720,8 +742,11 @@ public class ListingService {
 
     /** Sold listings accept description and nothing else that could mislead. */
     private void applySoldListingEdits(Listing listing, SaveListingRequest request) {
+        // Null on the stored side is a service that was never priced, so any
+        // figure the request carries is a change to it.
         boolean priceChanged = request.price() != null
-                && listing.getPrice().compareTo(request.price()) != 0;
+                && (listing.getPrice() == null
+                    || listing.getPrice().compareTo(request.price()) != 0);
         boolean photosChanged = request.images() != null
                 && request.images().size() != listing.getImages().size();
 
@@ -787,8 +812,20 @@ public class ListingService {
             return newest;
         }
         return switch (sort.trim().toLowerCase()) {
-            case "price_asc" -> Sort.by(Sort.Order.asc("price"), Sort.Order.desc("createdAt"));
-            case "price_desc" -> Sort.by(Sort.Order.desc("price"), Sort.Order.desc("createdAt"));
+            /*
+             * nullsLast on both, and it is load-bearing in both directions. A
+             * service priced on request has no place on a price axis, and
+             * Postgres would otherwise default it to the front of "high to
+             * low" - putting the listings with no price at all at the top of
+             * the dearest-first feed. The browse and search screens also read
+             * the first row of price_desc to size their price slider, which
+             * would collapse to zero the moment an unpriced service outranked
+             * every real price.
+             */
+            case "price_asc" -> Sort.by(
+                    Sort.Order.asc("price").nullsLast(), Sort.Order.desc("createdAt"));
+            case "price_desc" -> Sort.by(
+                    Sort.Order.desc("price").nullsLast(), Sort.Order.desc("createdAt"));
             /* "popular" is handled before this, as an ordering spec: it counts
                views within a window, which a property Sort cannot express. It
                falls through to newest here only if it somehow reaches this

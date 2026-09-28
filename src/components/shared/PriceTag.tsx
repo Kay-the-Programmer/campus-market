@@ -1,7 +1,7 @@
 import React from 'react';
 import { Eye } from 'lucide-react';
 import { Listing } from '../../types';
-import { formatPrice } from '../../utils/currency';
+import { PRICE_ON_REQUEST, formatPrice } from '../../utils/currency';
 
 interface PriceTagProps {
   listing: Pick<Listing, 'price' | 'priceUnit' | 'compareAtPrice' | 'discountPercent'>;
@@ -10,10 +10,16 @@ interface PriceTagProps {
   className?: string;
 }
 
-const SIZE: Record<NonNullable<PriceTagProps['size']>, { now: string; was: string; unit: string }> = {
-  sm: { now: 'text-base', was: 'text-[11px]', unit: 'text-[10px]' },
-  md: { now: 'text-lg sm:text-xl', was: 'text-xs', unit: 'text-xs' },
-  lg: { now: 'text-3xl', was: 'text-sm', unit: 'text-sm' },
+const SIZE: Record<
+  NonNullable<PriceTagProps['size']>,
+  { now: string; was: string; unit: string; onRequest: string }
+> = {
+  // `onRequest` sits a step below `now`: it is a phrase rather than a figure,
+  // and at the same size it reads as shouting on a card and wraps on a narrow
+  // one. Not as small as `unit`, which would make it look like a footnote.
+  sm: { now: 'text-base', was: 'text-[11px]', unit: 'text-[10px]', onRequest: 'text-xs' },
+  md: { now: 'text-lg sm:text-xl', was: 'text-xs', unit: 'text-xs', onRequest: 'text-sm' },
+  lg: { now: 'text-3xl', was: 'text-sm', unit: 'text-sm', onRequest: 'text-lg' },
 };
 
 /**
@@ -35,6 +41,24 @@ export const PriceTag: React.FC<PriceTagProps> = ({ listing, size = 'md', classN
   const s = SIZE[size];
   // The server's own answer to "is this reduced", not a re-derivation of it.
   const reduced = listing.discountPercent != null && listing.compareAtPrice != null;
+
+  /*
+   * A service the seller quotes per job. Rendered as a phrase rather than a
+   * figure - smaller, and in the muted colour the unit already uses - because
+   * it is the absence of a price, and dressing it in the big blue numerals
+   * would have it scanned as one. The struck-through "was" cannot apply here:
+   * there is no asking price for a saving to be measured against, and the
+   * server rejects the combination outright.
+   */
+  if (listing.price == null) {
+    return (
+      <div className={`flex items-baseline flex-wrap gap-x-2 gap-y-0.5 ${className}`}>
+        <span className={`${s.onRequest} font-bold text-[#737686] tracking-tight`}>
+          {PRICE_ON_REQUEST}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex items-baseline flex-wrap gap-x-2 gap-y-0.5 ${className}`}>

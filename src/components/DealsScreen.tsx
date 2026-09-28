@@ -15,7 +15,7 @@ interface DealsScreenProps {
 
 interface DealRow {
   id: string;
-  listing: { id: string; title: string; price: number; image?: string; status: string; removed: boolean };
+  listing: { id: string; title: string; price: number | null; image?: string; status: string; removed: boolean };
   counterparty: { id: string; name: string; avatarUrl?: string };
   role: 'buyer' | 'seller';
   price: number;

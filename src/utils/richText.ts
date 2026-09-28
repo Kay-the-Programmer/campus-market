@@ -69,7 +69,8 @@ export const SIZE_PREFIX: Record<BlockSize, string> = {
   large: '# ',
 };
 
-const ESCAPE = '\\';
+/** Backslash, the one way to keep a marker literal. */
+export const ESCAPE = '\\';
 
 /** Only characters that actually mean something need escaping. */
 const ESCAPABLE = [ITALIC_MARKER, '#', ESCAPE];

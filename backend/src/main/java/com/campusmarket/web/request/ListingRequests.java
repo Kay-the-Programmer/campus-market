@@ -37,7 +37,19 @@ public final class ListingRequests {
             @Size(max = 4000, message = "Description is too long.")
             String description,
 
-            @NotNull(message = "Price is required.")
+            /**
+             * Null means the seller is not quoting a price here.
+             *
+             * <p>Allowed only on a SERVICE, because some jobs cannot be priced
+             * before they are seen - a phone repair depends on what is broken.
+             * The "unless it is a service" half of that rule is enforced in
+             * {@code ListingService}, not here: a field-level constraint cannot
+             * see {@code type}. There is a matching CHECK on the table, so the
+             * rule survives a caller that forgets it.
+             *
+             * <p>Null is not 0. Zero is a real price meaning free, and the two
+             * must keep rendering differently.
+             */
             @PositiveOrZero(message = "Price cannot be negative.")
             BigDecimal price,
 

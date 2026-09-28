@@ -11,7 +11,7 @@ import { BookingModal } from './shared/BookingModal';
 import { Modal, ErrorBanner, Field } from './shared/Modal';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { useToast } from './shared/ToastProvider';
-import { formatPrice } from '../utils/currency';
+import { PRICE_ON_REQUEST, formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { RichText } from './shared/RichText';
@@ -144,7 +144,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     const url = `${window.location.origin}/listing/${listing.id}`;
     const shareData = {
       title: listing.title,
-      text: `${listing.title} — ${formatPrice(listing.price)} on CampusMarket`,
+      text: `${listing.title} — ${formatListingPrice(listing.price)} on CampusMarket`,
       url };
 
     if (navigator.share) {
@@ -588,10 +588,19 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                 </h1>
 
                 <div className="mt-4 flex items-baseline gap-2 flex-wrap">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                    {formatPrice(listing.price)}
-                  </span>
-                  {listing.priceUnit && (
+                  {/* A phrase, not a figure, so it is set smaller and muted -
+                      at 4xl "Price on request" wraps across the headline slot
+                      and reads as the loudest thing on the page. */}
+                  {listing.price == null ? (
+                    <span className="text-xl sm:text-2xl font-bold text-slate-500 tracking-tight">
+                      {PRICE_ON_REQUEST}
+                    </span>
+                  ) : (
+                    <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                      {formatPrice(listing.price)}
+                    </span>
+                  )}
+                  {listing.priceUnit && listing.price != null && (
                     <span className="text-base font-semibold text-slate-500">{listing.priceUnit}</span>
                   )}
                   {/* The saving, on the one screen where the decision is
@@ -1135,8 +1144,12 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     are about to commit to. */}
                 <div className="flex items-baseline justify-between gap-3 mb-2.5">
                   <span className="text-lg font-extrabold text-slate-900 tracking-tight">
-                    {formatPrice(listing.price)}
-                    {listing.priceUnit && (
+                    {listing.price == null ? (
+                      <span className="text-sm font-bold text-slate-500">{PRICE_ON_REQUEST}</span>
+                    ) : (
+                      formatPrice(listing.price)
+                    )}
+                    {listing.priceUnit && listing.price != null && (
                       <span className="text-xs font-semibold text-slate-500 ml-0.5">
                         {listing.priceUnit}
                       </span>

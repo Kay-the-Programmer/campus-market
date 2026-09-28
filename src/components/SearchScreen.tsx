@@ -131,8 +131,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   const [priceCeiling, setPriceCeiling] = useState(DEFAULT_PRICE_CEILING);
   useEffect(() => {
     api.listings.search({ sort: 'price_desc', size: 1 }).then((res) => {
-      const dearest = res.listings[0]?.price ?? 0;
-      setPriceCeiling(niceCeiling(dearest));
+      // Null when nothing came back, or when the catalogue holds only services
+      // priced on request. Keeping the default beats collapsing the slider to a
+      // ceiling of zero, which would filter everything out.
+      const dearest = res.listings[0]?.price;
+      if (dearest != null) setPriceCeiling(niceCeiling(dearest));
     });
   }, []);
 

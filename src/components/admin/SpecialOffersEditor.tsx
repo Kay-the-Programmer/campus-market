@@ -3,7 +3,7 @@ import { Tag, Loader2, Search,  Plus, Trash2, AlertTriangle } from 'lucide-react
 import { Listing } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from '../shared/Modal';
-import { formatPrice } from '../../utils/currency';
+import { formatListingPrice, formatPrice } from '../../utils/currency';
 import { ListingImage } from '../shared/ListingImage';
 
 interface SpecialOffersEditorProps {
@@ -64,6 +64,12 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
     if (parsed !== undefined) {
       if (!Number.isFinite(parsed) || parsed <= 0) {
         setError('The usual price must be a number above zero.');
+        return;
+      }
+      // A service quoted per job has no offer price for a saving to be measured
+      // against, so there is nothing honest to strike through.
+      if (target.price == null) {
+        setError('That listing is priced on request, so there is no offer price to mark down.');
         return;
       }
       // Checked here as well as server-side so the admin is corrected while
@@ -153,7 +159,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
                 <div className="p-4">
                   <p className="font-bold text-slate-900 text-sm truncate">{o.title}</p>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="font-extrabold text-[#b3123c]">{formatPrice(o.price)}</span>
+                    <span className="font-extrabold text-[#b3123c]">{formatListingPrice(o.price)}</span>
                     {typeof o.compareAtPrice === 'number' && (
                       <span className="text-xs text-slate-400 line-through">
                         {formatPrice(o.compareAtPrice)}
@@ -239,7 +245,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-900 truncate">{l.title}</p>
                   <p className="text-xs text-slate-500 truncate">
-                    {formatPrice(l.price)} · {l.seller?.name}
+                    {formatListingPrice(l.price)} · {l.seller?.name}
                   </p>
                 </div>
                 <Plus className="w-4 h-4 text-slate-400 shrink-0" />
@@ -254,7 +260,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
         isOpen={!!target}
         onClose={() => { setTarget(null); setError(null); }}
         title={target ? `Promote "${target.title}"` : ''}
-        subtitle={target ? `Selling at ${formatPrice(target.price)}` : undefined}
+        subtitle={target ? `Selling at ${formatListingPrice(target.price)}` : undefined}
         footer={
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -281,7 +287,7 @@ export const SpecialOffersEditor: React.FC<SpecialOffersEditorProps> = ({ onNoti
             min={0}
             value={wasPrice}
             onChange={(e) => setWasPrice(e.target.value)}
-            placeholder={target ? String(Math.round(target.price * 1.3)) : ''}
+            placeholder={target && target.price != null ? String(Math.round(target.price * 1.3)) : ''}
             className="input-base text-sm"
           />
         </Field>

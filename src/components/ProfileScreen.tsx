@@ -9,7 +9,7 @@ import { InstallApp } from './shared/InstallApp';
 import { ReportModal } from './shared/ReportModal';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
 import { ProfileEditor } from './shared/ProfileEditor';
-import { formatPrice } from '../utils/currency';
+import { formatListingPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 
 interface ProfileScreenProps {
@@ -451,7 +451,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       )}
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <span className="text-[#2563eb] font-extrabold text-base">{formatPrice(item.price)}</span>
+                      <span className="text-[#2563eb] font-extrabold text-base">{formatListingPrice(item.price)}</span>
                       <span className="text-xs text-[#737686] font-medium">{item.postedAt}</span>
                     </div>
                   </div>

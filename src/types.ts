@@ -147,7 +147,19 @@ export interface NotificationPreferences {
 export interface Listing {
   id: string;
   title: string;
-  price: number;
+  /**
+   * The asking price, or null when the seller quotes per job.
+   *
+   * Only a service may be null: a phone repair cannot be priced before anyone
+   * has seen what is broken, so the figure is agreed in chat and confirmed when
+   * the work is marked done. Enforced server-side, including a CHECK on the
+   * table.
+   *
+   * Null is NOT zero. Zero is a real price meaning free, which is an ordinary
+   * listing at the end of term - so anything rendering this has to tell the two
+   * apart. Use formatListingPrice, or PriceTag, rather than formatPrice.
+   */
+  price: number | null;
   priceUnit?: string; // e.g. "/hr" for tutoring
   category: ListingCategory;
   condition?: ListingCondition;
@@ -368,7 +380,13 @@ export interface Suggestion {
   /** Type chip for listings, listing count for categories. */
   detail?: string;
   image?: string;
-  price?: number;
+  /**
+   * Undefined where a price makes no sense - a category row has none. Null
+   * where the thing IS a listing but the seller quotes per job, which is worth
+   * saying out loud rather than leaving a blank where every neighbouring row
+   * shows a figure.
+   */
+  price?: number | null;
 }
 
 export interface Suggestions {

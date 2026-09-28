@@ -63,7 +63,6 @@ const ScreenLoading: React.FC = () => (
 );
 import { NotFoundScreen } from './components/NotFoundScreen';
 import { DetailSkeleton, DetailUnavailable } from './components/DetailSkeleton';
-import {  } from './components/RoleSwitcherBar';
 import { AuthMode } from './components/AuthModal';
 import { useToast } from './components/shared/ToastProvider';
 import { useOrderToasts } from './hooks/useOrderToasts';

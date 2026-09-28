@@ -6,7 +6,7 @@ import {
 import { api } from '../services/api';
 import { AuthSession, CAMPUS_ZONES, CampusZone, Order, zoneLabel } from '../types';
 import { Modal, ErrorBanner, Field } from './shared/Modal';
-import { formatPrice } from '../utils/currency';
+import { formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 
 interface CartScreenProps {
@@ -500,7 +500,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({
                             <div className="flex items-baseline gap-1.5 mt-1">
                               <span className="text-lg font-extrabold text-[#2563eb]">{formatPrice(row.lineTotal)}</span>
                               {row.quantity > 1 && (
-                                <span className="text-xs text-[#a0a3b1]">({formatPrice(row.listing.price)} each)</span>
+                                <span className="text-xs text-[#a0a3b1]">({formatListingPrice(row.listing.price)} each)</span>
                               )}
                             </div>
                           ) : (
