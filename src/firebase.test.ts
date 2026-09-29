@@ -25,6 +25,16 @@ describe('authDomainWarning', () => {
     expect(warning).toContain('www.campusmarketmulungushi.online');
   });
 
+  it('gives the whole fix, not just the variable to change', () => {
+    // Changing the variable alone is a trap: Google rejects any redirect_uri it
+    // was not told about, so sign-in then dies on redirect_uri_mismatch. A
+    // warning that stops at "set it to X" sends the reader into exactly that.
+    const warning = authDomainWarning('shop.example.com', 'demo.firebaseapp.com');
+
+    expect(warning).toContain('https://shop.example.com/__/auth/handler');
+    expect(warning).toContain('redirect_uri_mismatch');
+  });
+
   it('stays quiet when the auth domain is the app\'s own host', () => {
     expect(authDomainWarning('www.example.com', 'www.example.com')).toBeNull();
   });

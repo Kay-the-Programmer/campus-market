@@ -50,7 +50,10 @@ export function authDomainWarning(
 
   return `[auth] VITE_FIREBASE_AUTH_DOMAIN is "${authDomain}" but this app is served from `
     + `"${hostname}". Google sign-in will run third-party, which Safari and Edge block by `
-    + `default. Set it to "${hostname}" - /__/auth/* is already proxied to Firebase.`;
+    + `default. Set it to "${hostname}" - /__/auth/* is already proxied to Firebase - AND `
+    + `register "https://${hostname}/__/auth/handler" as an authorized redirect URI on the `
+    + `OAuth client in the Google Cloud Console. Doing only the first half fails every `
+    + `sign-in with "Error 400: redirect_uri_mismatch".`;
 }
 
 if (typeof window !== 'undefined' && isGoogleSignInConfigured) {
