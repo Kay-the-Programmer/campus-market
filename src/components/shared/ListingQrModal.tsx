@@ -73,11 +73,17 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
         const canvas = await renderQrCard({
           title: listing.title,
           price: formatListingPrice(listing.price),
+          compareAtPrice: listing.compareAtPrice != null
+            ? formatListingPrice(listing.compareAtPrice) : undefined,
+          discountPercent: listing.discountPercent,
           url,
           prettyUrl: url.replace(/^https?:\/\//, ''),
           imageUrl: listing.image || undefined,
-          detail: [listing.condition !== 'N/A' ? listing.condition : null, listing.location]
-            .filter(Boolean).join(' · ') || undefined,
+          eyebrow: listing.categoryName || listing.category,
+          chips: [
+            listing.condition && listing.condition !== 'N/A' ? listing.condition : null,
+            listing.location,
+          ].filter(Boolean) as string[],
         });
         if (!alive) return;
         setPreview(canvas.toDataURL('image/png'));

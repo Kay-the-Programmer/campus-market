@@ -475,6 +475,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                   for a card going onto a noticeboard. */}
               <button
                 onClick={() => setQrOpen(true)}
+                data-onboarding="detail-qr"
                 aria-label="Show a QR code for this listing"
                 title="QR code"
                 className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
@@ -674,7 +675,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                       a "was" price that is at or below what is being asked. */}
                   {listing.discountPercent != null && listing.compareAtPrice != null && (
                     <>
-                      <span className="text-base font-semibold text-slate-400 line-through">
+                      <span className="relative text-base font-semibold text-slate-400 line-through">
                         <span className="sr-only">Was </span>
                         {formatPrice(listing.compareAtPrice)}
                       </span>
@@ -1224,7 +1225,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                         seen before committing, and "K80" alone is a weaker
                         number than "K80, down from K120". */}
                     {listing.discountPercent != null && listing.compareAtPrice != null && (
-                      <span className="text-xs font-semibold text-slate-400 line-through ml-1.5">
+                      <span className="relative text-xs font-semibold text-slate-400 line-through ml-1.5">
                         <span className="sr-only">Was </span>
                         {formatPrice(listing.compareAtPrice)}
                       </span>

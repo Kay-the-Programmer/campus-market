@@ -3,11 +3,13 @@ import QRCode from 'qrcode';
 /**
  * Draws the shareable QR card for a listing.
  *
- * <p>A card rather than a bare QR code, because of where it ends up: pasted
- * into a WhatsApp group among a hundred other messages, or printed and stuck
- * on a noticeboard. A naked black square says nothing about what scanning it
- * will do, and nobody scans a square they cannot place. The title, the price
- * and the photo do the persuading; the code is only the door.
+ * <p>The card has one job and it is not information: it has to survive a
+ * thumb moving at speed through a WhatsApp group. Whoever sends it is doing
+ * the platform a favour, and they will only do it if the thing looks like
+ * something they are happy to have their name on. So the composition is built
+ * the way a poster is - one photo edge to edge, one number you can read
+ * across a room, and the code on a clean white slab at the foot where the eye
+ * lands last.
  *
  * <p>Everything is drawn to a canvas rather than composed in the DOM, for the
  * one reason that matters here: sharing needs a PNG file, and the only way to
@@ -18,23 +20,39 @@ import QRCode from 'qrcode';
 export const CARD_W = 1080;
 export const CARD_H = 1350;
 
+/** One margin, used by everything. Nothing on this card is aligned to anything else. */
+const M = 72;
+
 const BRAND = '#2563eb';
 const INK = '#0b1c30';
-const MUTED = '#737686';
 const PAPER = '#ffffff';
+const MUTED = '#737686';
+const SALE = '#e11d48';
+
+/** Vertical anchors. Fixed, so a one-line title and a two-line one both land right. */
+const PHOTO_H = 560;
+const PRICE_BASELINE = 852;
+const TICKET_TOP = 922;
+const TICKET_H = 356;
 
 export interface QrCardContent {
   title: string;
   /** Pre-formatted, so the card cannot disagree with the page about currency. */
   price: string;
+  /** Struck through beside the price when there is a real reduction. */
+  compareAtPrice?: string;
+  /** Drives the corner flash. Whole percent. */
+  discountPercent?: number;
   /** Shown under the code. The full URL is what the code itself carries. */
   prettyUrl: string;
   /** The listing's photo. Omitted or unreachable is fine - see drawPhoto. */
   imageUrl?: string;
   /** What the code encodes. */
   url: string;
-  /** Condition, zone - a couple of words of context at most. */
-  detail?: string;
+  /** Short facts as chips over the photo: condition, campus zone. */
+  chips?: string[];
+  /** Small label above the title - the category. Fills the gap under the photo. */
+  eyebrow?: string;
 }
 
 /** Rounded rectangle path, since Safari still lacks roundRect in some versions. */
@@ -63,7 +81,7 @@ function roundRect(
  * the hole in the middle. Anything lower and a code with a logo on it is a
  * code that sometimes does not scan, which is worse than a plain one.
  */
-function drawQr(ctx: CanvasRenderingContext2D, url: string, x: number, y: number, size: number) {
+function drawQr(ctx: CanvasRenderingContext2D, url: string, boxX: number, boxY: number, box: number) {
   const qr = QRCode.create(url, { errorCorrectionLevel: 'H' });
   const count = qr.modules.size;
   const data = qr.modules.data;
@@ -76,33 +94,20 @@ function drawQr(ctx: CanvasRenderingContext2D, url: string, x: number, y: number
    * decodes from a tight crop - the data is all there - but a scanner looking
    * at the whole card has nothing telling it where the code ends, and finds
    * nothing at all. Measured on the rendered card: no quiet zone, no decode;
-   * with it, it reads first time.
+   * with it, it reads first time, and still reads at a third of the size.
    */
   const QUIET = 4;
-  const cell = size / (count + QUIET * 2);
+  const cell = box / (count + QUIET * 2);
+  const x = boxX + QUIET * cell;
+  const y = boxY + QUIET * cell;
 
-  // White under the whole box, including the margin, so the panel's tint
-  // cannot eat into the contrast the scanner is looking for.
-  ctx.fillStyle = PAPER;
-  roundRect(ctx, x, y, size, size, cell * 2);
-  ctx.fill();
-
-  x += QUIET * cell;
-  y += QUIET * cell;
-
-  /* The middle is left blank for the mark. Kept to a small share of the code
-     - the 30% budget is for damage and dirt as well, and spending all of it on
-     decoration is how a pretty code becomes an unscannable one. */
   const holeCells = Math.floor(count * 0.22);
   const holeStart = Math.floor((count - holeCells) / 2);
   const holeEnd = holeStart + holeCells;
 
-  const isFinder = (row: number, col: number) => {
-    const inTopLeft = row < 7 && col < 7;
-    const inTopRight = row < 7 && col >= count - 7;
-    const inBottomLeft = row >= count - 7 && col < 7;
-    return inTopLeft || inTopRight || inBottomLeft;
-  };
+  const isFinder = (row: number, col: number) => (
+    (row < 7 && col < 7) || (row < 7 && col >= count - 7) || (row >= count - 7 && col < 7)
+  );
 
   ctx.fillStyle = INK;
   for (let row = 0; row < count; row += 1) {
@@ -111,13 +116,8 @@ function drawQr(ctx: CanvasRenderingContext2D, url: string, x: number, y: number
       if (isFinder(row, col)) continue;
       if (row >= holeStart && row < holeEnd && col >= holeStart && col < holeEnd) continue;
 
-      // Dots, insetscornerwise so neighbours stay visually separate - a solid
-      // run of squares reads as a bar and loses the texture that makes the
-      // thing look deliberate.
-      const cx = x + col * cell + cell / 2;
-      const cy = y + row * cell + cell / 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, cell * 0.42, 0, Math.PI * 2);
+      ctx.arc(x + col * cell + cell / 2, y + row * cell + cell / 2, cell * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -135,37 +135,36 @@ function drawQr(ctx: CanvasRenderingContext2D, url: string, x: number, y: number
     roundRect(ctx, ex + cell, ey + cell, cell * 5, cell * 5, cell * 1.6);
     ctx.fill();
     ctx.fillStyle = BRAND;
-    roundRect(ctx, ex + cell * 2, ey + cell * 2, cell * 3, cell * 3, cell * 1);
+    roundRect(ctx, ex + cell * 2, ey + cell * 2, cell * 3, cell * 3, cell);
     ctx.fill();
   };
   eye(0, 0);
   eye(0, count - 7);
   eye(count - 7, 0);
 
-  // The mark in the hole: a brand-coloured disc with the app's initial.
+  // The mark in the hole: a brand disc with the app's initial.
   const holePx = holeCells * cell;
-  const hx = x + holeStart * cell;
-  const hy = y + holeStart * cell;
+  const cx = x + holeStart * cell + holePx / 2;
+  const cy = y + holeStart * cell + holePx / 2;
   ctx.fillStyle = PAPER;
   ctx.beginPath();
-  ctx.arc(hx + holePx / 2, hy + holePx / 2, holePx * 0.62, 0, Math.PI * 2);
+  ctx.arc(cx, cy, holePx * 0.66, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = BRAND;
   ctx.beginPath();
-  ctx.arc(hx + holePx / 2, hy + holePx / 2, holePx * 0.5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, holePx * 0.52, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = PAPER;
-  ctx.font = `700 ${holePx * 0.6}px system-ui, sans-serif`;
+  ctx.font = `800 ${holePx * 0.62}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('C', hx + holePx / 2, hy + holePx / 2 + holePx * 0.02);
+  ctx.fillText('C', cx, cy + holePx * 0.03);
 }
 
-/** Wraps to at most `maxLines`, ellipsising the last one. */
-function drawWrapped(
-  ctx: CanvasRenderingContext2D, text: string, x: number, y: number,
-  maxWidth: number, lineHeight: number, maxLines: number,
-): number {
+/** Splits into at most `maxLines`, ellipsising the last. Measures with the current font. */
+function wrap(
+  ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number,
+): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = '';
@@ -182,16 +181,32 @@ function drawWrapped(
   }
   if (lines.length < maxLines && line) lines.push(line);
 
-  let last = lines[lines.length - 1] ?? '';
-  if (lines.length === maxLines && ctx.measureText(last).width > maxWidth) {
-    while (last && ctx.measureText(`${last}…`).width > maxWidth) {
-      last = last.slice(0, -1);
-    }
-    lines[lines.length - 1] = `${last}…`;
+  const lastIndex = lines.length - 1;
+  if (lines.length === maxLines && ctx.measureText(lines[lastIndex]).width > maxWidth) {
+    let last = lines[lastIndex];
+    while (last && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+    lines[lastIndex] = `${last}…`;
   }
+  return lines;
+}
 
-  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
-  return y + lines.length * lineHeight;
+/** A pill of text. Returns the width used, so a row of them can be laid out. */
+function chip(
+  ctx: CanvasRenderingContext2D, text: string, x: number, centerY: number,
+  bg: string, fg: string, font: string,
+): number {
+  ctx.font = font;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const padding = 26;
+  const h = 52;
+  const w = ctx.measureText(text).width + padding * 2;
+  ctx.fillStyle = bg;
+  roundRect(ctx, x, centerY - h / 2, w, h, h / 2);
+  ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.fillText(text, x + padding, centerY + 1);
+  return w;
 }
 
 /**
@@ -213,28 +228,50 @@ function loadImage(src?: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Draws the photo panel, or a brand-coloured stand-in when there is none. */
-function drawPhoto(
-  ctx: CanvasRenderingContext2D, img: HTMLImageElement | null,
-  x: number, y: number, w: number, h: number,
-) {
+/** Full-bleed photo, or a brand wash when there is none. */
+function drawPhoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
+  /*
+   * Clipped to its band before anything is drawn.
+   *
+   * A cover fit is deliberately larger than the box on one axis - that is what
+   * "cover" means - so without this the overflow paints straight down the card
+   * and the title ends up written across the bottom of the photograph.
+   */
   ctx.save();
-  roundRect(ctx, x, y, w, h, 40);
+  ctx.beginPath();
+  ctx.rect(0, 0, CARD_W, PHOTO_H);
   ctx.clip();
 
   if (img) {
     // Cover, not stretch: a distorted product photo is worse than a cropped one.
-    const scale = Math.max(w / img.width, h / img.height);
+    const scale = Math.max(CARD_W / img.width, PHOTO_H / img.height);
     const dw = img.width * scale;
     const dh = img.height * scale;
-    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    ctx.drawImage(img, (CARD_W - dw) / 2, (PHOTO_H - dh) / 2, dw, dh);
   } else {
-    const wash = ctx.createLinearGradient(x, y, x + w, y + h);
-    wash.addColorStop(0, '#dbe1ff');
-    wash.addColorStop(1, '#eff4ff');
+    const wash = ctx.createLinearGradient(0, 0, CARD_W, PHOTO_H);
+    wash.addColorStop(0, '#1e3a8a');
+    wash.addColorStop(1, BRAND);
     ctx.fillStyle = wash;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(0, 0, CARD_W, PHOTO_H);
   }
+
+  /* Two scrims, each earning its place: the top one so the wordmark stays
+     legible over a bright photo, the bottom one so the photo dissolves into
+     the card instead of ending at a hard line across the middle. */
+  const top = ctx.createLinearGradient(0, 0, 0, 220);
+  top.addColorStop(0, 'rgba(11,28,48,0.62)');
+  top.addColorStop(1, 'rgba(11,28,48,0)');
+  ctx.fillStyle = top;
+  ctx.fillRect(0, 0, CARD_W, 220);
+
+  const bottom = ctx.createLinearGradient(0, PHOTO_H - 320, 0, PHOTO_H);
+  bottom.addColorStop(0, 'rgba(11,28,48,0)');
+  bottom.addColorStop(0.55, 'rgba(11,28,48,0.75)');
+  bottom.addColorStop(1, INK);
+  ctx.fillStyle = bottom;
+  ctx.fillRect(0, PHOTO_H - 320, CARD_W, 320);
+
   ctx.restore();
 }
 
@@ -250,81 +287,132 @@ export async function renderQrCard(content: QrCardContent): Promise<HTMLCanvasEl
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser cannot generate the QR card.');
 
-  // ── Background ────────────────────────────────────────────────────────
-  ctx.fillStyle = PAPER;
+  ctx.fillStyle = INK;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
-  const header = ctx.createLinearGradient(0, 0, CARD_W, 520);
-  header.addColorStop(0, '#eff4ff');
-  header.addColorStop(1, '#ffffff');
-  ctx.fillStyle = header;
-  ctx.fillRect(0, 0, CARD_W, 520);
 
-  // ── Brand line ────────────────────────────────────────────────────────
-  ctx.fillStyle = BRAND;
-  ctx.beginPath();
-  ctx.arc(90, 92, 26, 0, Math.PI * 2);
-  ctx.fill();
+  drawPhoto(ctx, await loadImage(content.imageUrl));
+
+  // ── Wordmark, over the photo ──────────────────────────────────────────
   ctx.fillStyle = PAPER;
-  ctx.font = '700 30px system-ui, sans-serif';
+  ctx.beginPath();
+  ctx.arc(M + 26, 96, 26, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = BRAND;
+  ctx.font = '800 30px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('C', 90, 94);
+  ctx.fillText('C', M + 26, 98);
 
   ctx.textAlign = 'left';
-  ctx.fillStyle = INK;
-  ctx.font = '700 34px system-ui, sans-serif';
-  ctx.fillText('CampusMarket', 130, 94);
+  ctx.fillStyle = PAPER;
+  ctx.font = '700 36px system-ui, sans-serif';
+  ctx.fillText('CampusMarket', M + 68, 97);
 
-  // ── Photo ─────────────────────────────────────────────────────────────
-  const photo = await loadImage(content.imageUrl);
-  drawPhoto(ctx, photo, 80, 150, CARD_W - 160, 420);
-
-  // ── Title, price, detail ──────────────────────────────────────────────
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = INK;
-  ctx.font = '700 58px system-ui, sans-serif';
-  const afterTitle = drawWrapped(ctx, content.title, 80, 660, CARD_W - 160, 70, 2);
-
-  ctx.fillStyle = BRAND;
-  ctx.font = '800 64px system-ui, sans-serif';
-  ctx.fillText(content.price, 80, afterTitle + 42);
-
-  if (content.detail) {
-    ctx.fillStyle = MUTED;
-    ctx.font = '400 32px system-ui, sans-serif';
-    ctx.fillText(content.detail, 80, afterTitle + 96);
+  // ── Sale flash ────────────────────────────────────────────────────────
+  if (content.discountPercent && content.discountPercent > 0) {
+    const label = `${content.discountPercent}% OFF`;
+    ctx.font = '800 30px system-ui, sans-serif';
+    const w = ctx.measureText(label).width + 52;
+    ctx.fillStyle = SALE;
+    roundRect(ctx, CARD_W - M - w, 96 - 27, w, 54, 27);
+    ctx.fill();
+    ctx.fillStyle = PAPER;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, CARD_W - M - w / 2, 98);
+    ctx.textAlign = 'left';
   }
 
-  // ── The code, on its own panel ────────────────────────────────────────
-  const panelY = 900;
-  const panelH = 360;
-  ctx.fillStyle = '#f8f9ff';
-  roundRect(ctx, 80, panelY, CARD_W - 160, panelH, 48);
+  // ── Chips, sitting on the photo's scrim ───────────────────────────────
+  let chipX = M;
+  for (const text of (content.chips ?? []).slice(0, 3)) {
+    chipX += chip(ctx, text, chipX, PHOTO_H - 60, 'rgba(255,255,255,0.18)', PAPER,
+      '600 28px system-ui, sans-serif') + 14;
+  }
+
+  // ── Title, anchored upward from the price ─────────────────────────────
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = PAPER;
+  ctx.font = '700 66px system-ui, sans-serif';
+  const titleLines = wrap(ctx, content.title, CARD_W - M * 2, 2);
+  const titleLead = 80;
+  const lastTitleBaseline = PRICE_BASELINE - 116;
+  const firstTitleBaseline = lastTitleBaseline - (titleLines.length - 1) * titleLead;
+  titleLines.forEach((line, i) => {
+    ctx.fillText(line, M, firstTitleBaseline + i * titleLead);
+  });
+
+  /* An eyebrow over the title. Half of its job is the category; the other half
+     is filling the band between the photograph and the headline, which without
+     it reads as a mistake rather than as space. */
+  if (content.eyebrow) {
+    ctx.fillStyle = '#8ab0ff';
+    ctx.font = '700 26px system-ui, sans-serif';
+    ctx.fillText(content.eyebrow.toUpperCase(), M, firstTitleBaseline - 62);
+  }
+
+  // ── Price, the loudest thing on the card ──────────────────────────────
+  ctx.fillStyle = PAPER;
+  ctx.font = '800 92px system-ui, sans-serif';
+  ctx.fillText(content.price, M, PRICE_BASELINE);
+
+  if (content.compareAtPrice) {
+    const priceWidth = ctx.measureText(content.price).width;
+    ctx.font = '500 40px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    const wasX = M + priceWidth + 24;
+    ctx.fillText(content.compareAtPrice, wasX, PRICE_BASELINE - 6);
+    // Struck through by hand: canvas has no text-decoration.
+    const wasWidth = ctx.measureText(content.compareAtPrice).width;
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(wasX, PRICE_BASELINE - 20);
+    ctx.lineTo(wasX + wasWidth, PRICE_BASELINE - 20);
+    ctx.stroke();
+  }
+
+  // ── The ticket ────────────────────────────────────────────────────────
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 12;
+  ctx.fillStyle = PAPER;
+  roundRect(ctx, M, TICKET_TOP, CARD_W - M * 2, TICKET_H, 48);
   ctx.fill();
-  ctx.strokeStyle = '#e5eeff';
-  ctx.lineWidth = 3;
-  ctx.stroke();
+  ctx.restore();
 
-  /* The box includes the quiet zone, so the code inside it is smaller than
-     this number - sized up accordingly rather than shrinking the code. */
-  const qrSize = 300;
-  drawQr(ctx, content.url, 120, panelY + (panelH - qrSize) / 2, qrSize);
+  const qrBox = 300;
+  const qrX = M + 28;
+  const qrY = TICKET_TOP + (TICKET_H - qrBox) / 2;
+  drawQr(ctx, content.url, qrX, qrY, qrBox);
 
-  const textX = 120 + qrSize + 40;
+  /* The text column starts where the code ends, and the whole block is
+     centred on the code's own middle - which is what stops this half of the
+     ticket reading as an afterthought stuck beside a square. */
+  const textX = qrX + qrBox + 36;
+  const textW = CARD_W - M - 40 - textX;
+  const middle = TICKET_TOP + TICKET_H / 2;
+
   ctx.textAlign = 'left';
   ctx.fillStyle = INK;
-  ctx.font = '700 40px system-ui, sans-serif';
-  ctx.fillText('Scan to view', textX, panelY + 150);
+  ctx.font = '700 46px system-ui, sans-serif';
+  ctx.fillText('Scan to view', textX, middle - 34);
+
   ctx.fillStyle = MUTED;
   ctx.font = '400 28px system-ui, sans-serif';
-  ctx.fillText('Point a camera at the code', textX, panelY + 196);
-  drawWrapped(ctx, content.prettyUrl, textX, panelY + 244, CARD_W - textX - 130, 34, 2);
+  ctx.fillText('Point any camera at the code', textX, middle + 16);
+
+  ctx.fillStyle = BRAND;
+  ctx.font = '600 28px system-ui, sans-serif';
+  wrap(ctx, content.prettyUrl, textW, 2)
+    .forEach((line, i) => ctx.fillText(line, textX, middle + 72 + i * 36));
 
   // ── Footer ────────────────────────────────────────────────────────────
-  ctx.fillStyle = MUTED;
-  ctx.font = '400 26px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '500 26px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Buy, sell and trade with students you can actually meet.', CARD_W / 2, CARD_H - 48);
+  ctx.fillText('Buy, sell and trade with students you can actually meet.', CARD_W / 2, 1322);
 
   return canvas;
 }

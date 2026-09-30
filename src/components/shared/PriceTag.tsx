@@ -70,9 +70,20 @@ export const PriceTag: React.FC<PriceTagProps> = ({ listing, size = 'md', classN
 
       {reduced && (
         <>
-          {/* Announced to screen readers as what it is. A bare <s> reads as
-              the number itself, which would say the item costs the old price. */}
-          <span className={`${s.was} font-semibold text-[#a0a3b1] line-through`}>
+          {/*
+            Announced to screen readers as what it is. A bare <s> reads as
+            the number itself, which would say the item costs the old price.
+
+            `relative` is load-bearing. sr-only is position:absolute, and an
+            absolutely positioned element is only clipped by an ancestor's
+            overflow if that ancestor is in its containing-block chain. With
+            every ancestor static, the containing block was the document: the
+            label stayed at its static position inside a horizontally scrolled
+            shelf, escaped the row's clipping, and stretched the page to the
+            width of the whole shelf - 400px of sideways scroll on the browse
+            feed, from a 1px label nobody can see.
+          */}
+          <span className={`relative ${s.was} font-semibold text-[#a0a3b1] line-through`}>
             <span className="sr-only">Was </span>
             {formatPrice(listing.compareAtPrice!)}
           </span>

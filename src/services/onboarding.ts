@@ -256,6 +256,19 @@ const detailPage = pageFlow(
       body: 'Still available? Will you meet at Upschool? Chat first - it is the same seller you will be handing money to.',
       target: 'detail-chat',
       placement: 'top',
+    },
+    /*
+     * Last, and pointed at the button rather than explained in the abstract.
+     * Nobody goes looking for a QR code on a marketplace, so this feature
+     * exists or does not exist entirely on whether someone is shown it once -
+     * and the people who share listings are the platform's cheapest growth.
+     */
+    {
+      id: 'detail-qr',
+      title: 'Send it to a group chat',
+      body: 'This makes a card with the photo, the price and a code that opens the listing. Post it to WhatsApp, or print it for a noticeboard.',
+      target: 'detail-qr',
+      placement: 'bottom',
       cta: 'Got it',
     },
   ],
