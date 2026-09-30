@@ -58,7 +58,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryDto create(Principal principal, String name, String icon, UUID parentId, Integer sortOrder) {
+    public CategoryDto create(Principal principal, String name, String icon, String imageUrl,
+                              UUID parentId, Integer sortOrder) {
         accessGuard.requireAdmin(principal);
 
         String cleanName = trimToNull(name);
@@ -80,6 +81,7 @@ public class CategoryService {
         category.setName(cleanName);
         category.setSlug(slug);
         category.setIcon(trimToNull(icon));
+        category.setImageUrl(trimToNull(imageUrl));
         category.setParent(parentId == null ? null : findCategory(parentId, "That parent category does not exist."));
         category.setSortOrder(sortOrder == null ? 0 : sortOrder);
 
@@ -92,7 +94,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryDto update(Principal principal, UUID id, String name, String icon, UUID parentId, Integer sortOrder) {
+    public CategoryDto update(Principal principal, UUID id, String name, String icon, String imageUrl,
+                              UUID parentId, Integer sortOrder) {
         accessGuard.requireAdmin(principal);
 
         Category category = findCategory(id, "That category no longer exists.");
@@ -117,6 +120,8 @@ public class CategoryService {
         String previousName = category.getName();
         category.setName(cleanName);
         category.setIcon(trimToNull(icon));
+        // PUT replaces the record, so clearing the picture in the form clears it here.
+        category.setImageUrl(trimToNull(imageUrl));
         if (sortOrder != null) {
             category.setSortOrder(sortOrder);
         }

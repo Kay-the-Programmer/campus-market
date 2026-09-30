@@ -167,6 +167,8 @@ interface CategoryOption {
   name: string;
   slug: string;
   listingCount: number;
+  /** Admin-chosen picture; absent on most, which the strip handles. */
+  imageUrl?: string;
 }
 
 /** Read the opening filter state out of the URL so a shared link reproduces it. */

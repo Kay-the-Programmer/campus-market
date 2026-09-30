@@ -1,19 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
-import { categoryIcon } from '../shared/categoryIcon';
+import { categoryEmoji } from '../shared/categoryEmoji';
 
 export interface CategoryStripItem {
   id: string;
   name: string;
   listingCount: number;
-  /**
-   * A picture for the circle.
-   *
-   * <p>Nothing sets this yet - a category has a name and an icon hint, and no
-   * image anywhere in the model. It is here because the shape of this row is
-   * built around a photograph, and the day categories get one the only change
-   * needed is to pass it.
-   */
+  /** Admin-chosen picture. Absent for most categories - see categoryEmoji. */
   imageUrl?: string;
 }
 
@@ -145,7 +138,12 @@ export const CategoryStrip: React.FC<CategoryStripProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  categoryIcon(c.name, 'w-8 h-8 sm:w-9 sm:h-9')
+                  /* aria-hidden: the name underneath already says what this is,
+                     and a screen reader announcing "books emoji Textbooks" is
+                     the label read twice, once badly. */
+                  <span aria-hidden="true" className="text-[30px] sm:text-[34px] leading-none select-none">
+                    {categoryEmoji(c.name)}
+                  </span>
                 )}
               </span>
               <span

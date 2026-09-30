@@ -13,6 +13,8 @@ import { SpecialOffersEditor } from './admin/SpecialOffersEditor';
 import { CampaignComposer } from './admin/CampaignComposer';
 import { ListingManager } from './admin/ListingManager';
 import { formatPrice } from '../utils/currency';
+import { uploadImageFile } from '../utils/images';
+import { categoryEmoji } from './shared/categoryEmoji';
 
 type Tab =
   | 'dashboard' | 'reports' | 'sellers' | 'heldOrders' | 'chats'
@@ -99,6 +101,7 @@ interface CategoryRow {
   name: string;
   slug: string;
   icon?: string;
+  imageUrl?: string;
   parentId?: string;
   parentName?: string;
   sortOrder: number;
@@ -401,6 +404,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [durationDays, setDurationDays] = useState('7');
   const [catName, setCatName] = useState('');
   const [catIcon, setCatIcon] = useState('');
+  /** The picture for the category being edited. Empty string means none. */
+  const [catImage, setCatImage] = useState('');
+  const [catImageBusy, setCatImageBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
@@ -742,16 +748,37 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     else setError(res.error || 'Could not update verification.');
   };
 
+  /**
+   * Renders and uploads the category picture.
+   *
+   * <p>Square-ish and small: it is drawn at 84px in a circle, so the 1600px
+   * default would ship a listing-sized photo to every visitor of the home page
+   * for a tile the size of a thumbnail.
+   */
+  const pickCategoryImage = async (file?: File) => {
+    if (!file) return;
+    setCatImageBusy(true);
+    setError(null);
+    try {
+      setCatImage(await uploadImageFile(file, { maxEdge: 320, quality: 0.8, filename: 'category.webp' }));
+    } catch (e: any) {
+      setError(e?.message || 'Could not process that image.');
+    }
+    setCatImageBusy(false);
+  };
+
   const saveCategory = async () => {
     if (!catName.trim()) { setError('Name is required.'); return; }
     setBusy(true);
     const res = catEdit
-      ? await api.admin.updateCategory(catEdit.id, { name: catName.trim(), icon: catIcon.trim() || undefined })
-      : await api.admin.createCategory({ name: catName.trim(), icon: catIcon.trim() || undefined });
+      ? await api.admin.updateCategory(catEdit.id, {
+        name: catName.trim(), icon: catIcon.trim() || undefined, imageUrl: catImage || null })
+      : await api.admin.createCategory({
+        name: catName.trim(), icon: catIcon.trim() || undefined, imageUrl: catImage || undefined });
     setBusy(false);
     if (res.success) {
       succeed(catEdit ? 'Category updated.' : 'Category created.');
-      setCatEdit(null); setCatCreate(false); setCatName(''); setCatIcon('');
+      setCatEdit(null); setCatCreate(false); setCatName(''); setCatIcon(''); setCatImage('');
       loadAll(true);
     } else setError(res.error || 'Could not save the category.');
   };
@@ -1386,7 +1413,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     </div>
                     <div className="space-x-1.5">
                       <button
-                        onClick={() => { setCatEdit(c); setCatName(c.name); setCatIcon(c.icon || ''); }}
+                        onClick={() => { setCatEdit(c); setCatName(c.name); setCatIcon(c.icon || ''); setCatImage(c.imageUrl || ''); }}
                         className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs inline-flex items-center gap-1"
                       >
                         <Pencil className="w-3 h-3" /> Edit
@@ -1926,7 +1953,58 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         }
       >
         <Field label="Name"><input value={catName} onChange={(e) => setCatName(e.target.value)} className="input-base text-sm" /></Field>
-        <Field label="Icon (optional)" hint="A lucide icon name, e.g. book-open."><input value={catIcon} onChange={(e) => setCatIcon(e.target.value)} className="input-base text-sm" /></Field>
+
+        {/*
+          The picture, and what happens without one.
+
+          Shown as the round tile the browse strip actually draws, rather than
+          as a file path, so the choice is made against the thing being
+          decided. The preview doubles as the answer to "what if I skip this":
+          it shows the emoji that will stand in, which is a real design and not
+          a gap.
+        */}
+        <Field
+          label="Picture (optional)"
+          hint="Shown as a circle on the browse strip. Without one, the emoji below stands in."
+        >
+          <div className="flex items-center gap-4">
+            <span className="shrink-0 w-[72px] h-[72px] rounded-full bg-[#f1f2f6] overflow-hidden flex items-center justify-center">
+              {catImage ? (
+                <img src={catImage} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span aria-hidden="true" className="text-[30px] leading-none select-none">
+                  {categoryEmoji(catName)}
+                </span>
+              )}
+            </span>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+                {catImageBusy ? 'Uploading…' : catImage ? 'Replace' : 'Choose image'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={catImageBusy}
+                  onChange={(e) => {
+                    pickCategoryImage(e.target.files?.[0]);
+                    // Cleared so choosing the same file twice still fires.
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              {catImage && (
+                <button
+                  type="button"
+                  onClick={() => setCatImage('')}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </Field>
       </Modal>
 
       <Modal

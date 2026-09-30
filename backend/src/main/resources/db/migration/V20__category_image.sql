@@ -1,0 +1,13 @@
+-- A picture per category, chosen by an admin.
+--
+-- The browse strip draws categories as round tiles, and a tile is only worth
+-- pressing if it shows the kind of thing behind it. Until now there was
+-- nothing to show: a category carries a name, a slug and a lucide icon hint,
+-- so every tile in the row was the same grey disc with a guessed glyph.
+--
+-- Nullable, with no backfill and no default. Most categories will never have a
+-- picture - an admin sets them one at a time, if at all - so "no picture" is
+-- the ordinary state and the client falls back to an emoji chosen from the
+-- name. Backfilling anything here would be inventing an editorial decision
+-- nobody made.
+ALTER TABLE categories ADD COLUMN image_url VARCHAR(512);

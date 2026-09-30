@@ -31,11 +31,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CategoryController {
 
-    private static final CategoryRequest EMPTY = new CategoryRequest(null, null, null, null);
+    private static final CategoryRequest EMPTY = new CategoryRequest(null, null, null, null, null);
 
     private final CategoryService categoryService;
 
-    public record CategoryRequest(String name, String icon, UUID parentId, Integer sortOrder) {}
+    public record CategoryRequest(String name, String icon, String imageUrl, UUID parentId,
+                                  Integer sortOrder) {}
 
     /** Public: guests filter the browse page before they have an account. */
     @GetMapping("/categories")
@@ -48,7 +49,8 @@ public class CategoryController {
     public CategoryDto create(@AuthPrincipal Principal principal,
                               @RequestBody(required = false) CategoryRequest request) {
         CategoryRequest body = request == null ? EMPTY : request;
-        return categoryService.create(principal, body.name(), body.icon(), body.parentId(), body.sortOrder());
+        return categoryService.create(principal, body.name(), body.icon(), body.imageUrl(),
+                body.parentId(), body.sortOrder());
     }
 
     @PutMapping("/admin/categories/{id}")
@@ -56,7 +58,8 @@ public class CategoryController {
                               @PathVariable UUID id,
                               @RequestBody(required = false) CategoryRequest request) {
         CategoryRequest body = request == null ? EMPTY : request;
-        return categoryService.update(principal, id, body.name(), body.icon(), body.parentId(), body.sortOrder());
+        return categoryService.update(principal, id, body.name(), body.icon(), body.imageUrl(),
+                body.parentId(), body.sortOrder());
     }
 
     /** {@code ?reassignTo=} moves the listings across instead of blocking the delete. */

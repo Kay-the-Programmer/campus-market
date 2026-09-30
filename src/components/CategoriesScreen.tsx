@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { ErrorBanner } from './shared/Modal';
-import { categoryIcon } from './shared/categoryIcon';
+import { categoryEmoji } from './shared/categoryEmoji';
 
 interface CategoryRow {
   id: string;
@@ -12,6 +12,7 @@ interface CategoryRow {
   slug: string;
   listingCount: number;
   icon?: string;
+  imageUrl?: string;
 }
 
 interface CategoriesScreenProps {
@@ -191,8 +192,12 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
                 onClick={() => onSelectCategory(c.id, c.name)}
                 className="group flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-[#e5eeff]/80 shadow-card hover:shadow-card-hover hover:border-[#b4c5ff]/60 hover:-translate-y-0.5 transition-all duration-200 text-left"
               >
-                <span className="shrink-0 w-10 h-10 rounded-xl bg-[#eff4ff] text-[#2563eb] flex items-center justify-center group-hover:bg-[#2563eb] group-hover:text-white transition-colors">
-                  {categoryIcon(c.name)}
+                <span className="shrink-0 w-10 h-10 rounded-xl bg-[#eff4ff] overflow-hidden flex items-center justify-center">
+                  {c.imageUrl ? (
+                    <img src={c.imageUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  ) : (
+                    <span aria-hidden="true" className="text-xl leading-none select-none">{categoryEmoji(c.name)}</span>
+                  )}
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-[#0b1c30] truncate group-hover:text-[#2563eb] transition-colors">

@@ -94,6 +94,7 @@ public class DtoMapper {
                 category.getName(),
                 category.getSlug(),
                 category.getIcon(),
+                category.getImageUrl(),
                 parent == null ? null : parent.getId(),
                 parent == null ? null : parent.getName(),
                 category.getSortOrder(),

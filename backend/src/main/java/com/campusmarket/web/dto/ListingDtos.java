@@ -14,6 +14,8 @@ public final class ListingDtos {
             String name,
             String slug,
             String icon,
+            /** Admin-chosen picture, or null - see Category.imageUrl. */
+            String imageUrl,
             UUID parentId,
             String parentName,
             int sortOrder,

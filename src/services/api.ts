@@ -1379,7 +1379,9 @@ export const api = {
       return { success: res.ok, error: res.error, code: res.code, status: res.status };
     },
 
-    async createCategory(payload: { name: string; icon?: string; parentId?: string; sortOrder?: number }) {
+    async createCategory(payload: {
+      name: string; icon?: string; imageUrl?: string; parentId?: string; sortOrder?: number;
+    }) {
       const res = await post('/api/admin/categories', payload);
       return { success: res.ok, error: res.error, code: res.code, status: res.status };
     },
