@@ -1463,7 +1463,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             </div>
 
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
-              {trending.map((item, i) => {
+              {trending.map((item) => {
                 const unavailable = item.badgeText === 'Sold' || item.badgeText === 'Reserved';
                 return (
                   <article
@@ -1486,11 +1486,12 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      {/* Rank, because "third most looked at" is a different
-                          and more useful claim than "popular". */}
-                      <span className="absolute top-2 left-2 w-5 h-5 rounded-full bg-[#0b1c30]/80 backdrop-blur-sm text-white text-[10px] font-extrabold flex items-center justify-center">
-                        {i + 1}
-                      </span>
+                      {/* No rank badge. The shelf is "what is popular this
+                          week", and numbering it turned that into a published
+                          league table of one seller's item against another's -
+                          a claim about who is losing, on a page both of them
+                          are trying to sell on. The order still carries it for
+                          anyone who cares; it just is not scored. */}
                       <div className="absolute top-2 right-2">
                         <DiscountFlag percent={unavailable ? undefined : item.discountPercent} />
                       </div>
