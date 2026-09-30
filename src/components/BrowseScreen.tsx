@@ -18,7 +18,7 @@ import { formatListingPrice, formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
 import {
-  CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER, FALLBACK_CTA_BANNERS,
+  CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
@@ -110,57 +110,19 @@ const HOME_PROMO: { id: string; title: string; body: string } | null = {
 };
 
 /*
- * Carousel slides and "Special offers" tiles are admin-editable and come from
- * GET /api/promos. These constants are the fallback used only when that call
- * fails - the home page is the first thing a visitor sees, and rendering it
- * empty because one request timed out would be worse than showing last known
- * good copy. They mirror what the V5 migration seeds.
+ * Carousel slides, "Special offers" tiles and the marketing banners are
+ * admin-editable and come from GET /api/promos. There is deliberately no
+ * built-in copy standing in for them.
+ *
+ * There used to be: a set of hard-coded slides seeded the state so the page
+ * was never bare. What it actually did was show three panels nobody had
+ * published - on every single load, for the moment before the request landed -
+ * and then swap them for the real ones, so the first thing a visitor read was
+ * marketing the admins had either edited or taken down. Taking a panel down in
+ * the editor did not remove it from the page; it just shortened how long it
+ * was up. An empty strip until the server answers is the honest version, and
+ * the sections below draw nothing at all when there is nothing to draw.
  */
-const FALLBACK_PROMOS: PromoSlot[] = [
-  {
-    id: 'fallback-welcome', placement: 'CAROUSEL', theme: 'BLUE', wide: false,
-    active: true, sortOrder: 0, imageOverlay: 40,
-    title: 'Welcome to Campus Market',
-    subtitle: 'Buy, sell & trade with students you can actually meet.',
-    ctaLabel: 'Explore listings', ctaLink: '/browse',
-  },
-  {
-    id: 'fallback-fees', placement: 'CAROUSEL', theme: 'GREEN', wide: false,
-    active: true, sortOrder: 1, imageOverlay: 40,
-    title: 'Zero platform fees',
-    subtitle: 'Keep 100% of your sale. We only connect you — you trade in person.',
-    ctaLabel: 'Start selling', ctaLink: '/sell',
-  },
-  {
-    id: 'fallback-services', placement: 'CAROUSEL', theme: 'DARK', wide: false,
-    active: true, sortOrder: 2, imageOverlay: 40,
-    title: 'Need a tutor or a ride?',
-    subtitle: 'Services from students, for students. No awkward Venmo guessing.',
-    ctaLabel: 'Find services', ctaLink: '/browse?type=Service',
-  },
-  {
-    id: 'fallback-new', placement: 'BENTO', theme: 'GREEN', wide: false,
-    active: true, sortOrder: 0, imageOverlay: 40,
-    title: 'Just Listed', subtitle: 'Fresh drops in the last 24h.',
-    badge: 'New', ctaLink: '/browse',
-  },
-  {
-    id: 'fallback-tutors', placement: 'BENTO', theme: 'PURPLE', wide: false,
-    active: true, sortOrder: 1, imageOverlay: 40,
-    title: 'Student Services', subtitle: 'Tutors, movers, designers.',
-    ctaLink: '/browse?type=Service',
-  },
-  {
-    id: 'fallback-food', placement: 'BENTO', theme: 'AMBER', wide: true,
-    active: true, sortOrder: 2, imageOverlay: 40,
-    title: 'Meal Deals', subtitle: 'Home-cooked & campus food near you.',
-    badge: 'Hot', ctaLink: '/browse?type=Food',
-  },
-  // The browse banners' fallback lives with the component that draws them, so
-  // the search page - which has no carousel and no tiles - gets the same copy
-  // from one place rather than a second copy of it.
-  ...FALLBACK_CTA_BANNERS,
-];
 
 /** Tile icon, chosen from the link so admins never have to pick one. */
 const iconForLink = (link?: string): React.ReactNode => {
@@ -425,12 +387,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   );
 
   /* ── Admin-editable home-page panels ──────────────────────────────────── */
-  const [promos, setPromos] = useState<PromoSlot[]>(FALLBACK_PROMOS);
+  /* Starts empty: the page shows what an admin published, or nothing. */
+  const [promos, setPromos] = useState<PromoSlot[]>([]);
 
   useEffect(() => {
     api.promos.getActive().then((res) => {
-      // Only replace the fallback on a real answer. An empty array is a real
-      // answer - an admin who hid every panel meant to hide every panel.
+      // An empty array is a real answer - an admin who hid every panel meant
+      // to hide every panel - and a failed request leaves the state empty too,
+      // so a panel is on the page only because the server said it was.
       if (!res.error && Array.isArray(res.promos)) {
         setPromos(res.promos);
       }
@@ -1248,7 +1212,12 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         )}
 
         {/* ═══════════════════════ HERO CAROUSEL ═══════════════════════ */}
-        {!searchQuery.trim() && coreType === 'All' && !categoryId && (
+        {/* The length check is load-bearing, not defensive: the viewport below
+            carries a rounded border and a drop shadow, so with no slides it
+            drew an empty grey plate at the top of the feed - which is what an
+            unguarded section looks like before the promos arrive, and for good
+            if an admin has published none. */}
+        {!searchQuery.trim() && coreType === 'All' && !categoryId && carouselSlides.length > 0 && (
           <section
             className="mb-6 relative"
             onMouseEnter={() => setCarouselPaused(true)}

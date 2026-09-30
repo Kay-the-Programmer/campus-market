@@ -45,30 +45,6 @@ export const CTA_MIN_TAIL_CARDS = 4;
 /** At most this many banners are rendered, however many an admin has written. */
 const CTA_MAX_BANNERS = 2;
 
-/**
- * Last known good copy, used only when GET /api/promos fails.
- *
- * <p>Mirrors what V17 seeds, on the same reasoning as the carousel's fallback:
- * a browse page is what a visitor sees first, and one timed-out request should
- * not silently strip the page of everything that invites them to do anything.
- */
-export const FALLBACK_CTA_BANNERS: PromoSlot[] = [
-  {
-    id: 'fallback-cta-sell', placement: 'CTA_BANNER', theme: 'PURPLE', wide: false,
-    active: true, sortOrder: 0, imageOverlay: 40,
-    title: "Sell what you're not using.",
-    subtitle: 'List it in under a minute. Zero platform fees — you keep every kwacha.',
-    ctaLabel: 'Start selling', ctaLink: '/sell',
-  },
-  {
-    id: 'fallback-cta-deals', placement: 'CTA_BANNER', theme: 'BLUE', wide: false,
-    active: true, sortOrder: 1, imageOverlay: 40,
-    title: 'Deals from students near you.',
-    subtitle: 'Textbooks, gadgets and home-cooked meals, marked down every day.',
-    ctaLabel: 'See the deals', ctaLink: '/browse?deals=1',
-  },
-];
-
 /** The banners an admin has published, in their order, capped at what fits. */
 export function ctaBannersFrom(promos: PromoSlot[]): PromoSlot[] {
   return promos
@@ -113,13 +89,16 @@ export function placeCtaBanners(banners: PromoSlot[], resultCount: number): CtaP
  * its own promos to {@link ctaBannersFrom} instead of calling this.
  */
 export function useCtaBanners(): PromoSlot[] {
-  const [banners, setBanners] = useState<PromoSlot[]>(() => ctaBannersFrom(FALLBACK_CTA_BANNERS));
+  /* Empty until the server answers, and empty if it never does. Standing in
+     with built-in copy meant every page opened by showing a banner nobody had
+     published, including ones an admin had deliberately taken down. */
+  const [banners, setBanners] = useState<PromoSlot[]>([]);
 
   useEffect(() => {
     let alive = true;
     api.promos.getActive().then((res) => {
       // An empty array is a real answer - an admin who took every banner down
-      // meant to take every banner down - so only an error keeps the fallback.
+      // meant to take every banner down.
       if (alive && !res.error && Array.isArray(res.promos)) {
         setBanners(ctaBannersFrom(res.promos));
       }

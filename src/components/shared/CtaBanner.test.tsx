@@ -1,9 +1,21 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER, CTA_MIN_TAIL_CARDS,
+  CtaBanner, ctaBannersFrom, placeCtaBanners, useCtaBanners,
+  CTA_INLINE_AFTER, CTA_MIN_TAIL_CARDS,
 } from './CtaBanner';
 import { PromoSlot } from '../../types';
+
+const getActive = vi.fn();
+
+vi.mock('../../services/api', () => ({
+  api: { promos: { getActive: () => getActive() } },
+}));
+
+beforeEach(() => {
+  getActive.mockReset();
+  getActive.mockResolvedValue({ promos: [] });
+});
 
 const banner = (over: Partial<PromoSlot> = {}): PromoSlot => ({
   id: 'b1', placement: 'CTA_BANNER', theme: 'PURPLE', wide: false,
@@ -63,6 +75,40 @@ describe('placeCtaBanners', () => {
 
   it('draws nothing when an admin has published nothing', () => {
     expect(placeCtaBanners([], 200)).toEqual({ inline: null, tail: null });
+  });
+});
+
+/*
+ * The page shows what an admin published, or nothing.
+ *
+ * This used to seed itself with built-in banners, so every load opened with
+ * copy nobody had published - including banners an admin had taken down, which
+ * were removed from the editor and stayed on the page until the request
+ * landed. These pin the replacement: empty until the server answers, and empty
+ * if it never does.
+ */
+describe('useCtaBanners', () => {
+  const Probe = () => <span data-testid="ids">{useCtaBanners().map((b) => b.id).join(',')}</span>;
+  const ids = () => screen.getByTestId('ids').textContent;
+
+  it('shows nothing before the server has answered', () => {
+    getActive.mockReturnValue(new Promise(() => {}));
+    render(<Probe />);
+    expect(ids()).toBe('');
+  });
+
+  it('shows exactly what the server published', async () => {
+    getActive.mockResolvedValue({ promos: [banner({ id: 'published' })] });
+    render(<Probe />);
+    await waitFor(() => expect(ids()).toBe('published'));
+  });
+
+  it('shows nothing when the request fails', async () => {
+    getActive.mockResolvedValue({ error: 'offline' });
+    render(<Probe />);
+    // Long enough for a resolved promise to have been applied had it been.
+    await waitFor(() => expect(getActive).toHaveBeenCalled());
+    expect(ids()).toBe('');
   });
 });
 
