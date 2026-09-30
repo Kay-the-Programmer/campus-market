@@ -1508,10 +1508,9 @@ export default function App() {
                 onSearchChange={setFeedQuery}
                 onFeedTypeChange={setFeedType}
                 onCategoryChange={setFeedCategoryId}
-                onSubmitSearch={handleSubmitSearch}
-                onOpenListingById={handleOpenListingById}
-                onSearchCategory={handleSearchCategory}
-                onShowDeals={handleShowDeals}
+                /* Searching is the overlay's job at every width now, and it is
+                   wired to the same handlers directly - see SearchOverlay
+                   below - so the nav only has to open it. */
                 onOpenSearchOverlay={() => setIsSearchOverlayOpen(true)}
               />
             )}

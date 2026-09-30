@@ -9,6 +9,7 @@ import { InstallApp } from './shared/InstallApp';
 import { ReportModal } from './shared/ReportModal';
 import { Modal, ErrorBanner, SuccessBanner, Field } from './shared/Modal';
 import { ProfileEditor } from './shared/ProfileEditor';
+import { Avatar } from './shared/Avatar';
 import { formatListingPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 
@@ -278,7 +279,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         <div className="flex flex-col items-center text-center">
           <div className="relative">
-            <img src={profile.avatar} alt={profile.name} className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover ring-4 ring-white shadow-[0_4px_20px_0_rgba(37,99,235,0.15)] bg-[#e5eeff]" />
+            <Avatar
+              src={profile.avatar}
+              name={profile.name}
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-white shadow-[0_4px_20px_0_rgba(37,99,235,0.15)]"
+              textClassName="text-3xl"
+            />
             {profile.verified && (
               <div className="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-[#2563eb] text-white flex items-center justify-center ring-2 ring-white">
                 <ShieldCheck className="w-4 h-4" />
@@ -406,7 +412,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <div key={r.id} className="bg-white rounded-2xl border border-[#e5eeff] p-4 shadow-card">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <img src={r.reviewer.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover bg-[#e5eeff]" />
+                      <Avatar
+                        src={r.reviewer.avatarUrl}
+                        name={r.reviewer.name}
+                        alt=""
+                        className="w-9 h-9 rounded-full"
+                        textClassName="text-xs"
+                      />
                       <div>
                         <p className="font-bold text-sm text-[#0b1c30]">{r.reviewer.name}</p>
                         <div className="flex items-center gap-0.5">

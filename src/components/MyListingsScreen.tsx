@@ -3,7 +3,7 @@ import {
   Plus, Eye, Heart, MessageCircle, MoreVertical,
   Pencil, Trash2, Loader2, AlertTriangle, CheckCircle2,
   Clock, Package, ArrowLeft, ChevronDown,
-  ShoppingBag, Briefcase, Utensils, FileEdit, Tag } from 'lucide-react';
+  ShoppingBag, Briefcase, Utensils, FileEdit, Tag, RotateCcw } from 'lucide-react';
 import { Listing } from '../types';
 import { api } from '../services/api';
 import { MarkSoldModal } from './shared/MarkSoldModal';
@@ -63,6 +63,8 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [soldTarget, setSoldTarget] = useState<Listing | null>(null);
+  /** Sold listing awaiting confirmation that it should go back on sale. */
+  const [relistTarget, setRelistTarget] = useState<Listing | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null);
   const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -106,6 +108,32 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
       refresh();
     } else {
       setError(res.error || 'Could not update the status.');
+    }
+  };
+
+  /**
+   * Puts a sold listing back on sale.
+   *
+   * <p>Marking sold was a one-way door: the menu offered it from Available and
+   * from Reserved, and then offered nothing but Edit and Delete afterwards.
+   * Sales fall through - the buyer never turns up, the money never arrives, or
+   * the wrong item was confirmed in a chat with three of them open - and the
+   * only way back was to delete the listing and post it again, which throws
+   * away its conversations, its saves and its age.
+   *
+   * <p>The server already allowed the move; nothing but the menu was stopping
+   * it. What it does NOT do is unpick the deal that marking sold recorded -
+   * see the note in the confirmation dialog.
+   */
+  const relist = async (listing: Listing) => {
+    setOpenMenuId(null);
+    setRelistTarget(null);
+    const res = await api.listings.changeStatus(listing.id, 'ACTIVE');
+    if (res.success) {
+      setNotice(`"${listing.title}" is back on sale.`);
+      refresh();
+    } else {
+      setError(res.error || 'Could not put this listing back on sale.');
     }
   };
 
@@ -320,6 +348,7 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
     const isActive = item.badgeText === 'Available';
     const isReserved = item.badgeText === 'Reserved';
     const canMarkSold = isActive || isReserved;
+    const isSold = item.badgeText === 'Sold';
 
     return (
       <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-[#e5eeff] shadow-modal z-40 py-1 animate-fade-in">
@@ -353,6 +382,16 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Mark as sold
           </button>
         )}
+        {/* The way back out of sold. Without it this menu was a dead end for
+            every sale that fell through. */}
+        {isSold && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); setRelistTarget(item); }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#0b1c30] hover:bg-[#eff4ff] transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-[#2563eb]" /> Put back on sale
+          </button>
+        )}
         <div className="border-t border-[#e5eeff] my-1" />
         <button
           onClick={(e) => { e.stopPropagation(); requestDelete(item); }}
@@ -372,6 +411,7 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
     const isReserved = item.badgeText === 'Reserved';
     const canMarkSold = isActive || isReserved;
     const isItemDraft = item.badgeText === 'Draft';
+    const isItemSold = item.badgeText === 'Sold';
 
     return (
       <div
@@ -480,6 +520,14 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
                   className="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
                 >
                   Mark sold
+                </button>
+              )}
+              {isItemSold && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setRelistTarget(item); }}
+                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-[#2563eb] hover:bg-[#eff4ff] transition-colors"
+                >
+                  Put back on sale
                 </button>
               )}
               <button
@@ -633,6 +681,44 @@ export const MyListingsScreen: React.FC<MyListingsScreenProps> = ({
           onSold={refresh}
         />
       )}
+
+      {/* Put back on sale confirmation */}
+      <Modal
+        isOpen={!!relistTarget}
+        onClose={() => setRelistTarget(null)}
+        title="Put this back on sale?"
+        subtitle={relistTarget?.title}
+        footer={
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setRelistTarget(null)} className="btn-ghost !rounded-xl !text-sm">
+              Leave it sold
+            </button>
+            <button
+              onClick={() => relistTarget && relist(relistTarget)}
+              className="px-4 py-3 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] text-white font-semibold text-sm flex items-center justify-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Put back on sale
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-[#434655]">
+          It goes back to Active and buyers can find and order it again.
+        </p>
+        {/*
+          Said plainly rather than left to be discovered. Marking sold wrote a
+          completed deal against a named buyer, and putting the item back on
+          sale does not erase it - the sale is still counted, and the buyer may
+          already have been asked to leave a review. Somebody undoing a mistake
+          needs to know the mistake left a trace.
+        */}
+        <p className="mt-3 text-xs text-[#737686]">
+          The sale that was already recorded stays on your history. If it was
+          logged against the wrong person, message them so they know not to
+          leave a review for it.
+        </p>
+      </Modal>
 
       {/* Delete confirmation modal */}
       <Modal

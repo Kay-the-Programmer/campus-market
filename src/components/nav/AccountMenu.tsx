@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AuthSession, ViewType } from '../../types';
 import { canSell, isSellerState } from './navShared';
+import { Avatar } from '../shared/Avatar';
 
 interface AccountMenuProps {
   currentUser: AuthSession;
@@ -66,13 +67,13 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ currentUser, onNavigat
         className="flex items-center gap-2 rounded-full transition-all duration-150 lg:pl-1.5 lg:pr-2 lg:py-1 lg:border lg:border-[#c3c6d7]/80 lg:hover:bg-[#eff4ff] lg:hover:border-[#2563eb]/40"
         style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        {currentUser.avatar ? (
-          <img src={currentUser.avatar} alt="" className="w-8 h-8 lg:w-7 lg:h-7 rounded-full object-cover ring-2 ring-[#2563eb]/30" />
-        ) : (
-          <div className="w-8 h-8 lg:w-7 lg:h-7 rounded-full bg-[#dbe1ff] flex items-center justify-center ring-2 ring-[#2563eb]/20">
-            <UserIcon className="w-4 h-4 text-[#2563eb]" />
-          </div>
-        )}
+        <Avatar
+          src={currentUser.avatar}
+          name={currentUser.name}
+          alt=""
+          className="w-8 h-8 lg:w-7 lg:h-7 rounded-full ring-2 ring-[#2563eb]/30"
+          textClassName="text-[10px]"
+        />
         <span className="text-xs font-semibold text-[#0b1c30] hidden xl:inline max-w-[90px] truncate">
           {currentUser.name.split(' ')[0]}
         </span>

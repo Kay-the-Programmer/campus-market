@@ -322,8 +322,10 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     </button>
   );
 
+  /* Three across once there is room. Two full-width cards on a laptop is a
+     pair of billboards where a glanceable row was wanted. */
   const cardGrid = (children: React.ReactNode) => (
-    <div className="grid grid-cols-2 gap-3 px-4 pt-1 pb-2">{children}</div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pt-1 pb-2">{children}</div>
   );
 
   let index = -1;

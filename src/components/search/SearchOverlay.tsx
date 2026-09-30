@@ -103,8 +103,15 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
       style={{ height: '100dvh' }}
     >
       {/* ── Search bar: the only thing pinned, everything else scrolls ──── */}
-      <div className="shrink-0 border-b border-[#e5eeff] bg-white px-3 py-2.5">
-        <form onSubmit={submit} className="flex items-center gap-1.5">
+      {/*
+        The inner max-width is what makes this a desktop screen rather than a
+        phone screen that happens to be 1600px wide: full-bleed, the box ran
+        the width of the monitor and the suggestion rows became a line of text
+        with an acre of white to its right. Centred and capped, the whole list
+        sits under the box where the eye already is.
+      */}
+      <div className="shrink-0 border-b border-[#e5eeff] bg-white px-3 py-2.5 sm:py-3">
+        <form onSubmit={submit} className="mx-auto w-full max-w-3xl flex items-center gap-1.5">
           <button
             type="button"
             onClick={onClose}
@@ -168,7 +175,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
       </div>
 
       {/* ── Suggestions: the same rows as the desktop dropdown ──────────── */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 overflow-y-auto overscroll-contain mx-auto w-full max-w-3xl">
         <SearchSuggestions
           variant="page"
           query={query}

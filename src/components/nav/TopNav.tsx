@@ -3,8 +3,6 @@ import {
   Search, Plus, MessageSquare, ShoppingBag, Heart, Bell, X, Package } from 'lucide-react';
 import { AuthSession, ViewType } from '../../types';
 import { AccountMenu } from './AccountMenu';
-import { SearchSuggestions } from '../search/SearchSuggestions';
-import { recordSearch } from '../../services/recentSearches';
 import { badgeText, canSell, GUEST_ALLOWED, isSellerState } from './navShared';
 
 export type FeedType = 'All' | 'Product' | 'Service' | 'Food';
@@ -34,19 +32,15 @@ interface TopNavProps {
   onFeedTypeChange: (type: FeedType) => void;
   onCategoryChange: (id: string) => void;
 
-  /** Run a full search - lands on the results page. */
-  onSubmitSearch: (term: string) => void;
-  /** Jump straight to a listing picked from the suggestions dropdown. */
-  onOpenListingById: (listingId: string) => void;
-  /** Browse one category, from a category suggestion. */
-  onSearchCategory: (categoryId: string) => void;
-  /** Show the reduced listings, from the suggestions panel's deals row. */
-  onShowDeals: () => void;
   /**
-   * Hand searching to the full-screen overlay.
+   * Hand searching to the full-screen overlay, which owns it at every width.
    *
-   * Used below lg, where the compact bar has no room for a dropdown worth
-   * reading. Desktop keeps the inline box and its panel.
+   * The nav used to run searches itself on desktop - submitting its own box
+   * and driving an inline suggestions panel - which is why this interface no
+   * longer carries onSubmitSearch, onOpenListingById, onSearchCategory or
+   * onShowDeals. Every one of those is now the overlay's business, wired
+   * straight to App, so there is one code path for a search instead of two
+   * that had to be kept in step.
    */
   onOpenSearchOverlay: () => void;
 }
@@ -79,10 +73,6 @@ export const TopNav: React.FC<TopNavProps> = ({
   onSearchChange,
   onFeedTypeChange,
   onCategoryChange,
-  onSubmitSearch,
-  onOpenListingById,
-  onSearchCategory,
-  onShowDeals,
   onOpenSearchOverlay }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
@@ -101,32 +91,6 @@ export const TopNav: React.FC<TopNavProps> = ({
   const lastScrollY = useRef(0);
   const [cartBump, setCartBump] = useState(false);
   const prevCart = useRef(cartCount);
-
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const searchWrapRef = useRef<HTMLDivElement>(null);
-
-  /* Close the dropdown on any click outside the search area. */
-  useEffect(() => {
-    if (!suggestOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
-        setSuggestOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [suggestOpen]);
-
-  /** Every path that ends in a search funnels through here, so the term is
-   *  recorded once and the dropdown always closes. */
-  const runSearch = (term: string) => {
-    const clean = term.trim();
-    if (!clean) return;
-    recordSearch(currentUser.id, clean);
-    onSearchChange(clean);
-    setSuggestOpen(false);
-    onSubmitSearch(clean);
-  };
 
   /* Rotating placeholder signals all three listing types without extra copy. */
   useEffect(() => {
@@ -162,13 +126,6 @@ export const TopNav: React.FC<TopNavProps> = ({
       return;
     }
     onNavigate(view);
-  };
-
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Plain Enter searches for exactly what was typed. A highlighted
-    // suggestion intercepts Enter before this, inside SearchSuggestions.
-    runSearch(searchQuery);
   };
 
   const iconBtn =
@@ -221,21 +178,28 @@ export const TopNav: React.FC<TopNavProps> = ({
           </button>
 
           {/* Search - the dominant element of the row */}
-          <div ref={searchWrapRef} data-onboarding="nav-search" className="flex-1 min-w-0 relative">
+          <div data-onboarding="nav-search" className="flex-1 min-w-0 relative">
             {/*
-              Mobile: a button wearing the search box's clothes.
+              A button wearing the search box's clothes, at every width.
 
-              Tapping it opens the full-screen search rather than focusing a
-              field here. A real input in this bar meant the suggestions had to
-              be a dropdown, and a dropdown on a phone is a short list squeezed
-              between a sticky header and the soft keyboard. It looks identical
-              until it is pressed, so nothing about the bar has to be relearnt.
+              Pressing it opens the full-screen search rather than focusing a
+              field here. That was the phone's arrangement first - a dropdown
+              squeezed between a sticky header and the soft keyboard fits about
+              three suggestions - and desktop has now joined it: the inline
+              panel had the same problem in a milder form, drawn over the page
+              it was meant to help you leave, while the overlay gives the
+              results, the categories and the recent searches room to be read.
+              One search, one behaviour, nothing to relearn between devices.
+
+              A button rather than an input that opens the overlay on focus:
+              a text field you can never type into is a trap for anyone
+              arriving by keyboard or screen reader.
             */}
             <button
               type="button"
               onClick={onOpenSearchOverlay}
               aria-label="Search listings"
-              className={`lg:hidden w-full flex items-center gap-2.5 pl-4 pr-3 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-left transition-all duration-200 active:bg-white active:border-[#2563eb] ${compact ? 'py-2' : 'py-2.5'
+              className={`w-full flex items-center gap-2.5 pl-4 pr-3 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-left transition-all duration-200 hover:bg-white hover:border-[#c3c6d7] active:bg-white active:border-[#2563eb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/30 focus-visible:border-[#2563eb] ${compact ? 'py-2' : 'py-2.5'
                 }`}
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
@@ -261,49 +225,6 @@ export const TopNav: React.FC<TopNavProps> = ({
               )}
             </button>
 
-            {/* Desktop: the real box, with its dropdown. */}
-            <form onSubmit={submitSearch} className="hidden lg:block">
-              <div className="relative">
-                <Search className="w-4 h-4 text-[#737686] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => { onSearchChange(e.target.value); setSuggestOpen(true); }}
-                  onFocus={() => setSuggestOpen(true)}
-                  placeholder={PLACEHOLDERS[placeholderIndex]}
-                  aria-label="Search listings"
-                  role="combobox"
-                  aria-expanded={suggestOpen}
-                  aria-autocomplete="list"
-                  autoComplete="off"
-                  className={`no-zoom-field w-full pl-11 pr-9 bg-[#f8f9ff] border border-[#e5eeff] rounded-full text-sm font-medium text-[#0b1c30] placeholder:text-[#a0a3b1] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 focus:border-[#2563eb] focus:bg-white transition-all duration-200 ${compact ? 'py-2' : 'py-2.5'
-                    }`}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => onSearchChange('')}
-                    aria-label="Clear search"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-[#a0a3b1] hover:text-[#434655]"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </form>
-
-            <div className="hidden lg:block">
-              <SearchSuggestions
-                query={searchQuery}
-                userId={currentUser.id}
-                open={suggestOpen}
-                onClose={() => setSuggestOpen(false)}
-                onSearch={runSearch}
-                onSelectListing={(id) => { setSuggestOpen(false); onOpenListingById(id); }}
-                onSelectCategory={(id) => { setSuggestOpen(false); onSearchCategory(id); }}
-                onShowDeals={() => { setSuggestOpen(false); onShowDeals(); }}
-              />
-            </div>
           </div>
 
           {/* Sell - a labelled call to action on desktop, never buried */}

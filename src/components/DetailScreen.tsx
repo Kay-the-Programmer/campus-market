@@ -15,6 +15,7 @@ import { PRICE_ON_REQUEST, formatListingPrice, formatPrice } from '../utils/curr
 import { ListingImage } from './shared/ListingImage';
 import { ImageLightbox } from './shared/ImageLightbox';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
+import { Avatar } from './shared/Avatar';
 import { RichText } from './shared/RichText';
 import { plainText } from '../utils/richText';
 
@@ -848,10 +849,11 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     onClick={() => onViewSellerProfile(listing.seller.id)}
                     className="relative shrink-0 cursor-pointer group"
                   >
-                    <img
+                    <Avatar
                       src={listing.seller.avatar}
-                      alt={listing.seller.name}
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-slate-100 group-hover:ring-blue-200 transition-all"
+                      name={listing.seller.name}
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl ring-2 ring-slate-100 group-hover:ring-blue-200 transition-all"
+                      textClassName="text-xl"
                     />
                     {listing.seller.verified && (
                       <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center ring-2 ring-white shadow-sm">

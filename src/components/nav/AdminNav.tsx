@@ -1,9 +1,10 @@
 import React from 'react';
 import {
-  LayoutDashboard, Flag, Users, Grid3x3, ShieldCheck, LogOut, User as UserIcon,
+  LayoutDashboard, Flag, Users, Grid3x3, ShieldCheck, LogOut,
   Store, PackageCheck, Megaphone, Tag, Package, MessageSquare, Mail,
 } from 'lucide-react';
 import { AuthSession } from '../../types';
+import { Avatar } from '../shared/Avatar';
 
 export type AdminTab =
   | 'dashboard' | 'reports' | 'sellers' | 'heldOrders' | 'chats'
@@ -155,13 +156,15 @@ export const AdminHeader: React.FC<AdminNavProps> = ({
 
       <div className="flex items-center gap-2 ml-auto">
         <div className="flex items-center gap-2">
-          {currentUser.avatar ? (
-            <img src={currentUser.avatar} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-              <UserIcon className="w-4 h-4 text-slate-500" />
-            </div>
-          )}
+          {/* Shared with every other avatar in the app. This one already had a
+              fallback for a missing photo, but not for one that fails to
+              load - and a Google photo URL failing is the common case. */}
+          <Avatar
+            src={currentUser.avatar}
+            name={currentUser.name}
+            alt=""
+            className="w-8 h-8 rounded-full ring-2 ring-slate-200"
+          />
           <span className="hidden sm:block text-xs font-semibold text-slate-700 max-w-[120px] truncate">
             {currentUser.name}
           </span>

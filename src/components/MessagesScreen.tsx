@@ -10,6 +10,7 @@ import { ReviewModal } from './shared/ReviewModal';
 import { ErrorBanner } from './shared/Modal';
 import { formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
+import { Avatar } from './shared/Avatar';
 
 interface MessagesScreenProps {
   initialTab?: 'history' | 'chat';
@@ -790,7 +791,13 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                         }`}
                     >
                       <div className="relative shrink-0">
-                        <img src={t.peer.avatarUrl} alt="" className="w-11 h-11 rounded-full object-cover ring-2 ring-[#e5eeff] bg-[#e5eeff]" />
+                        <Avatar
+                          src={t.peer.avatarUrl}
+                          name={t.peer.name}
+                          alt=""
+                          className="w-11 h-11 rounded-full ring-2 ring-[#e5eeff]"
+                          textClassName="text-sm"
+                        />
                         {t.unreadCount > 0 && (
                           <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#2563eb] rounded-full border-2 border-white" />
                         )}
@@ -853,10 +860,12 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <img
+                    <Avatar
                       src={thread.peer.avatarUrl}
+                      name={thread.peer.name}
                       alt=""
-                      className="w-9 h-9 rounded-full object-cover bg-[#e5eeff] shrink-0"
+                      className="w-9 h-9 rounded-full"
+                      textClassName="text-xs"
                     />
                     <div className="min-w-0 flex-1">
                       <h3 className="text-sm font-bold text-[#0b1c30] truncate leading-tight">
@@ -970,10 +979,12 @@ export const MessagesScreen: React.FC<MessagesScreenProps> = ({
                                     the run stays aligned. */}
                                 {!m.mine && (
                                   m.lastOfRun ? (
-                                    <img
+                                    <Avatar
                                       src={thread.peer.avatarUrl}
+                                      name={thread.peer.name}
                                       alt=""
-                                      className="w-7 h-7 rounded-full object-cover bg-[#e5eeff] shrink-0"
+                                      className="w-7 h-7 rounded-full"
+                                      textClassName="text-[10px]"
                                     />
                                   ) : (
                                     <span className="w-7 shrink-0" aria-hidden="true" />
