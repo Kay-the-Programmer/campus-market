@@ -28,6 +28,14 @@ interface AuthModalProps {
   pendingGoogleToken?: string | null;
   /** Called once the pending token has been used, so App can drop it. */
   onPendingGoogleTokenConsumed?: () => void;
+  /**
+   * The browser is on its way back from Google but the token has not arrived
+   * yet, so there is nothing to exchange and nothing to show - which is
+   * exactly the moment this is for. App sets it from the marker left behind
+   * before the redirect, and the modal shows progress instead of a sign-in
+   * button the person has already pressed.
+   */
+  googleRedirectPending?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -37,7 +45,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   resetToken,
   pendingGoogleToken,
-  onPendingGoogleTokenConsumed }) => {
+  onPendingGoogleTokenConsumed,
+  googleRedirectPending = false }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +62,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [googleToken, setGoogleToken] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
+  /**
+   * Which leg of the Google handshake is in flight, and so what to say about
+   * it. `busy` alone only ever disabled the button, which is why the wait
+   * between the account picker closing and the "Finish setting up" step read
+   * as the site having done nothing at all.
+   *
+   *   popup       - their account picker is open, ours is idle
+   *   redirecting - we are handing the whole page to Google
+   *   exchange    - Google is done; the server is minting the session
+   */
+  const [googlePhase, setGooglePhase] =
+    useState<'idle' | 'popup' | 'redirecting' | 'exchange'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -93,9 +114,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const token = pendingGoogleToken;
     onPendingGoogleTokenConsumed?.();
     setBusy(true);
+    setGooglePhase('exchange');
     resetFeedback();
     exchangeGoogleToken(token).catch((err: any) => {
       setBusy(false);
+      setGooglePhase('idle');
       setError(err?.message || 'Could not sign in with Google.');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,6 +145,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
    * They keep the safe BUYER default and get asked for a zone when it matters.
    */
   function handleDismiss() {
+    setGooglePhase('idle');
     if (mode === 'profile') {
       setGoogleToken(null);
       onLoginSuccess?.(email.trim());
@@ -152,6 +176,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
    */
   async function handleGoogle() {
     setBusy(true);
+    setGooglePhase('popup');
     resetFeedback();
     try {
       const idToken = await signInWithGoogle();
@@ -163,12 +188,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
          * When the browser comes back, App hands the result in through
          * `pendingGoogleToken` and the effect below finishes the sign-in.
          */
-        setNotice('Taking you to Google to sign in…');
+        setGooglePhase('redirecting');
         return;
       }
+      /* Picker closed, token in hand - the wait from here is ours, not
+         Google's, and it is the one that used to be silent. */
+      setGooglePhase('exchange');
       await exchangeGoogleToken(idToken);
     } catch (err: any) {
       setBusy(false);
+      setGooglePhase('idle');
       // The user closing the popup themselves isn't an error worth reporting.
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
         return;
@@ -185,6 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   async function exchangeGoogleToken(idToken: string) {
     const res = await api.auth.google(idToken);
     setBusy(false);
+    setGooglePhase('idle');
 
     if (!res.ok) {
       setError(res.error || 'Could not sign in with Google.');
@@ -295,6 +325,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   }
 
+  /*
+   * A page coming back from Google has a wait of its own before any token
+   * exists to exchange, and it is the longest one in the whole flow. Folding
+   * it in here means the progress panel is on screen from the first paint of
+   * the return leg rather than only once the token lands.
+   */
+  const googleProgress = googleRedirectPending && googlePhase === 'idle' ? 'exchange' : googlePhase;
+
   const titles: Record<AuthMode, string> = {
     login: 'Log In',
     signup: 'Sign Up',
@@ -399,7 +437,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Campus illustration, shown only on the two entry modes. The deeper
             flows (verify, reset, finish setup) are tasks to complete rather
             than a front door, and the artwork would only push them down. */}
-        {(mode === 'login' || mode === 'signup') && (
+        {(mode === 'login' || mode === 'signup') && googleProgress === 'idle' && (
           <div className="-mx-6 sm:-mx-8 -mt-6 sm:-mt-8 mb-2 h-48 bg-gradient-to-b from-[#eff4ff] to-white flex items-center justify-center overflow-hidden">
             {/*
               Sized by HEIGHT so the whole square illustration fits the band
@@ -431,7 +469,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <h3 className="text-base font-bold text-[#0b1c30] mb-4 text-center">{titles[mode]}</h3>
         )}
 
-        {(mode === 'login' || mode === 'signup') && (
+        {/*
+          The sign-in button is not a place to wait. Once it has been pressed
+          the person has nothing left to do here, and leaving the front door on
+          screen - greyed out, no movement - was read as the click not having
+          landed. Progress takes the whole panel instead, and says which of the
+          three waits this is.
+        */}
+        {(mode === 'login' || mode === 'signup') && googleProgress !== 'idle' && (
+          <GoogleProgress phase={googleProgress} />
+        )}
+
+        {(mode === 'login' || mode === 'signup') && googleProgress === 'idle' && (
           <>
             <h3 className="text-base font-bold text-[#0b1c30] mb-1 text-center">
               Continue to CampusMarket
@@ -661,6 +710,43 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
     {children}
   </div>
 );
+
+/**
+ * The waiting state of Google sign-in.
+ *
+ * aria-live so it is announced rather than only seen - the person who most
+ * needs to be told the site is working is the one who cannot watch a spinner.
+ */
+const GoogleProgress: React.FC<{ phase: 'popup' | 'redirecting' | 'exchange' }> = ({ phase }) => {
+  const copy = {
+    popup: {
+      title: 'Waiting for Google…',
+      detail: 'Choose your account in the Google window. We pick things up from there.' },
+    redirecting: {
+      title: 'Taking you to Google…',
+      detail: 'Your browser is opening the Google sign-in page.' },
+    /* Deliberately vague about which of the two it is. The server answers
+       "existing account" and "brand-new account" through the same call, so
+       promising a setup step we might not show would be worse than this. */
+    exchange: {
+      title: 'Signing you in…',
+      detail: 'Setting up your CampusMarket account. This only takes a moment.' },
+  }[phase];
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-col items-center text-center gap-3 py-10"
+    >
+      <Loader2 className="w-8 h-8 text-[#2563eb] animate-spin" aria-hidden="true" />
+      <div>
+        <p className="text-sm font-bold text-[#0b1c30]">{copy.title}</p>
+        <p className="mt-1 text-xs text-[#737686] max-w-[16rem]">{copy.detail}</p>
+      </div>
+    </div>
+  );
+};
 
 const SubmitButton: React.FC<{ busy: boolean; label: string }> = ({ busy, label }) => (
   <button type="submit" disabled={busy} className="btn-primary w-full !rounded-lg mt-2">

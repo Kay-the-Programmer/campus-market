@@ -68,7 +68,7 @@ import { useToast } from './components/shared/ToastProvider';
 import { useOrderToasts } from './hooks/useOrderToasts';
 import { useLiveCounts } from './hooks/useLiveCounts';
 import { api } from './services/api';
-import { completeGoogleRedirect } from './firebase';
+import { completeGoogleRedirect, isGoogleRedirectPending } from './firebase';
 import { onForegroundPush, onNotificationClick, refreshToken } from './services/push';
 import { recordRecentlyViewed, mergeGuestHistory } from './services/recentlyViewed';
 import { recordSearch } from './services/recentSearches';
@@ -307,6 +307,14 @@ export default function App() {
    */
   const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
 
+  /**
+   * This load is the browser coming back from Google, and the result has not
+   * been collected yet. Read from the marker left behind before the redirect,
+   * so it is true on the very first render rather than a tick later - the
+   * whole point is that this stretch stops being silent.
+   */
+  const [googleRedirectPending, setGoogleRedirectPending] = useState(() => isGoogleRedirectPending());
+
   /*
    * Is this page load the browser coming back from Google?
    *
@@ -317,14 +325,31 @@ export default function App() {
    * that from local state without a request.
    */
   useEffect(() => {
+    /* Open the modal before the answer arrives, not after. The modal is where
+       this sign-in started and where its progress belongs; waiting for the
+       token first would leave the return leg looking like an ordinary,
+       signed-out page load for as long as Firebase takes. */
+    if (googleRedirectPending) {
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+    }
+
     completeGoogleRedirect()
       .then((token) => {
-        if (!token) return;
+        if (!token) {
+          /* Came back without a result - Back out of the account picker, say.
+             Drop the waiting state and let them see the sign-in button again
+             rather than a spinner with nothing behind it. */
+          setGoogleRedirectPending(false);
+          return;
+        }
         setPendingGoogleToken(token);
+        setGoogleRedirectPending(false);
         setAuthModalMode('login');
         setIsAuthModalOpen(true);
       })
       .catch((err: any) => {
+        setGoogleRedirectPending(false);
         // A failed return leg is a real sign-in failure the person would
         // otherwise never see - they clicked, left, and came back to nothing.
         toast.error(err?.message || 'Could not complete Google sign-in.');
@@ -1860,9 +1885,11 @@ export default function App() {
           resetToken={resetToken}
           pendingGoogleToken={pendingGoogleToken}
           onPendingGoogleTokenConsumed={() => setPendingGoogleToken(null)}
+          googleRedirectPending={googleRedirectPending}
           onClose={() => {
             setIsAuthModalOpen(false);
             setAuthModalMode('login');
+            setGoogleRedirectPending(false);
             setResetToken(undefined);
             // If user dismissed without logging in, clear the pending route
             setPendingRoute(null);

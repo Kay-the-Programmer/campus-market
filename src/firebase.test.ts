@@ -1,5 +1,52 @@
-import { describe, expect, it } from 'vitest';
-import { authDomainWarning } from './firebase';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authDomainWarning, completeGoogleRedirect, isGoogleRedirectPending } from './firebase';
+
+/*
+ * The redirect flow unloads the page, so "a sign-in is in progress" has to be
+ * remembered in session storage rather than in React state. Firebase itself is
+ * mocked here: what is being checked is the marker's lifecycle, which is what
+ * decides whether the return leg shows progress or a silent, signed-out page.
+ */
+vi.mock('firebase/auth', async () => ({
+  getAuth: vi.fn(() => ({})),
+  getRedirectResult: vi.fn(async () => null),
+  GoogleAuthProvider: class { setCustomParameters() {} },
+  signInWithPopup: vi.fn(),
+  signInWithRedirect: vi.fn(),
+}));
+
+const MARKER = 'cm.google-redirect-pending';
+
+describe('the Google redirect marker', () => {
+  afterEach(() => {
+    window.sessionStorage.removeItem(MARKER);
+  });
+
+  it('is absent on an ordinary page load', () => {
+    expect(isGoogleRedirectPending()).toBe(false);
+  });
+
+  it('reports a sign-in that left this tab for Google', () => {
+    window.sessionStorage.setItem(MARKER, '1');
+    expect(isGoogleRedirectPending()).toBe(true);
+  });
+
+  it('is cleared by the return leg even when it brings nothing back', async () => {
+    /*
+     * The empty-result case is the one that matters: someone who pressed Back
+     * at Google's account picker returns with no credential at all. Left
+     * behind, the marker would put every later load of this tab into
+     * "finishing sign-in" - a spinner with nothing coming.
+     *
+     * Note this asserts the behaviour of the unconfigured build too, where
+     * completeGoogleRedirect returns early - a build with no Firebase config
+     * can never have set the marker in the first place.
+     */
+    window.sessionStorage.setItem(MARKER, '1');
+    await completeGoogleRedirect();
+    expect(isGoogleRedirectPending()).toBe(false);
+  });
+});
 
 /*
  * This check exists because of a live failure that was invisible to the person

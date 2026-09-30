@@ -89,6 +89,48 @@ export function getFirebaseApp() {
 const app = isGoogleSignInConfigured ? getFirebaseApp() : null;
 
 /**
+ * Marker for "this browser is away at Google right now".
+ *
+ * The redirect flow unloads the page, so the fact that a sign-in is in
+ * progress cannot live in React state - it has to survive the trip. Session
+ * storage is the right scope: per-tab, and gone when the tab is, so an
+ * abandoned sign-in cannot leave a spinner waiting in a tab opened tomorrow.
+ *
+ * Without it the return leg looks like nothing happened: the page loads as a
+ * guest, getRedirectResult takes a moment, and the modal only appears
+ * afterwards. The marker lets that load say "finishing sign-in" from the
+ * first paint.
+ */
+const REDIRECT_PENDING_KEY = 'cm.google-redirect-pending';
+
+function markGoogleRedirectPending() {
+  // Storage can throw outright in a locked-down browser. A missing marker
+  // costs a spinner, not the sign-in, so failing quietly is right here.
+  try {
+    window.sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
+  } catch {
+    /* no-op */
+  }
+}
+
+/** True on the load that returns from Google, so the UI can say so at once. */
+export function isGoogleRedirectPending(): boolean {
+  try {
+    return window.sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function clearGoogleRedirectPending() {
+  try {
+    window.sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+  } catch {
+    /* no-op */
+  }
+}
+
+/**
  * Error codes that mean the popup cannot be used here at all, as opposed to
  * the user having closed it. Every one of these calls for the redirect flow
  * instead: a blocked window blocks again on retry, and an environment that
@@ -140,6 +182,7 @@ export async function signInWithGoogle(): Promise<string | null> {
    * whole flow inside the installed app.
    */
   if (isStandalone()) {
+    markGoogleRedirectPending();
     await signInWithRedirect(auth, provider);
     return null;
   }
@@ -153,6 +196,7 @@ export async function signInWithGoogle(): Promise<string | null> {
     }
     // Navigates away. If it throws instead (unauthorized domain, say) the
     // caller reports that - it is a configuration problem, not a popup one.
+    markGoogleRedirectPending();
     await signInWithRedirect(auth, provider);
     return null;
   }
@@ -166,9 +210,16 @@ export async function signInWithGoogle(): Promise<string | null> {
  * case - Firebase answers from local state without a network call.
  */
 export async function completeGoogleRedirect(): Promise<string | null> {
-  if (!app) {
-    return null;
+  try {
+    if (!app) {
+      return null;
+    }
+    const result = await getRedirectResult(getAuth(app));
+    return result ? result.user.getIdToken() : null;
+  } finally {
+    // Cleared however this ends, including the empty result you get from
+    // someone who pressed Back at Google's account picker. A marker left
+    // behind would put every later load of this tab into "finishing sign-in".
+    clearGoogleRedirectPending();
   }
-  const result = await getRedirectResult(getAuth(app));
-  return result ? result.user.getIdToken() : null;
 }
