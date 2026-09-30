@@ -3,7 +3,7 @@ import {
   ArrowLeft, Heart, MapPin, Star, ChevronRight, Bookmark,
   MessageSquare, ShieldCheck, ShoppingBag, Trash2, 
   Briefcase, Utensils, Flag, CalendarClock, Clock, ChevronDown, ChevronUp,
-  Share2, Eye,  DoorOpen, Layers, ChevronLeft, Minus, Plus, Maximize2 } from 'lucide-react';
+  Share2, Eye,  DoorOpen, Layers, ChevronLeft, Minus, Plus, Maximize2, QrCode } from 'lucide-react';
 import { AddToCart, Listing, AuthSession } from '../types';
 import { api } from '../services/api';
 import { ReportModal } from './shared/ReportModal';
@@ -14,6 +14,7 @@ import { useToast } from './shared/ToastProvider';
 import { PRICE_ON_REQUEST, formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
 import { ImageLightbox } from './shared/ImageLightbox';
+import { ListingQrModal } from './shared/ListingQrModal';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { Avatar } from './shared/Avatar';
 import { RichText } from './shared/RichText';
@@ -92,6 +93,8 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   /** Whether the full-size viewer is open over the page. */
   const [viewerOpen, setViewerOpen] = useState(false);
+  /** Whether the scannable share card is open. */
+  const [qrOpen, setQrOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [descExpanded, setDescExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -466,6 +469,18 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                   <Heart className={`w-5 h-5 ${listing.isSaved ? 'fill-red-500' : ''}`} />
                 </button>
               )}
+              {/* Beside Share rather than inside it: the two answer different
+                  questions. Share sends a link to someone who is already in a
+                  chat; the code is for someone standing in front of you, or
+                  for a card going onto a noticeboard. */}
+              <button
+                onClick={() => setQrOpen(true)}
+                aria-label="Show a QR code for this listing"
+                title="QR code"
+                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
               <button
                 onClick={handleShare}
                 aria-label="Share this listing"
@@ -482,6 +497,12 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-32 lg:pb-12">
         {/* Not in the Sell preview: it is a rehearsal of the page, and its
             crumbs would lead out of the form the seller is still filling in. */}
+        <ListingQrModal
+          isOpen={qrOpen}
+          onClose={() => setQrOpen(false)}
+          listing={listing}
+        />
+
         {viewerOpen && (
           <ImageLightbox
             images={images}
