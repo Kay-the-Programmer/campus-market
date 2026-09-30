@@ -43,7 +43,15 @@ public final class ListingDtos {
             Set<String> dietaryTags,
             List<String> images,
             UserDtos.PublicUserDto seller,
-            int viewsCount,
+            /**
+             * Lifetime views, for the seller's own listing management.
+             *
+             * <p>Null for everybody else - see DtoMapper.canSeeViewCounts. A
+             * boxed Integer precisely so it can be absent: as a primitive the
+             * only way to hide it was to send 0, which is a different claim
+             * ("nobody has looked") rather than no claim at all.
+             */
+            Integer viewsCount,
             boolean saved,
             boolean available,
             /** On the admin-curated Special Offers shelf. */
@@ -55,14 +63,14 @@ public final class ListingDtos {
             /** Whole-percent saving, or null when there is nothing to compare. */
             Integer discountPercent,
             /**
-             * Views in the trending window, for the "N people looked at this
-             * this week" note on a card.
+             * Views inside the trending window.
              *
-             * <p>Null when the caller did not ask for it, which is most of
-             * them - it costs a grouped query over the view events and only
-             * the browse grid and the trending shelf show it. Null means "not
-             * measured here", NOT "nobody looked", and the client must render
-             * nothing rather than a zero.
+             * <p>Null when the caller did not measure it, and null for any
+             * viewer who is not the seller or an admin. It used to feed a
+             * "seen N times this week" note on browse cards; that note is gone,
+             * because it published one member's traffic to everyone else.
+             *
+             * <p>Null means "not available here", NOT "nobody looked".
              */
             Long recentViews,
             Instant createdAt

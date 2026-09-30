@@ -41,6 +41,26 @@ public class DtoMapper {
                 && (viewer.owns(target.getId()) || viewer.isAdmin());
     }
 
+    /**
+     * How many people have looked at a listing is the seller's information.
+     *
+     * <p>Same reasoning as contact details above, and the same rule: it is
+     * omitted from the payload rather than sent and left for the UI to hide,
+     * because a number in the response is a number anyone can read.
+     *
+     * <p>A shopper does not need it, and it was not neutral to show them: on a
+     * card it reads as "hurry, others are looking", which is the seller's
+     * interest talking, not the buyer's. Admins keep it - they field the
+     * disputes and the "why is nobody seeing my listing" questions.
+     */
+    private boolean canSeeViewCounts(Listing listing, Principal viewer) {
+        User seller = listing.getSeller();
+        return viewer != null
+                && viewer.isAuthenticated()
+                && seller != null
+                && (viewer.owns(seller.getId()) || viewer.isAdmin());
+    }
+
     public PublicUserDto user(User user, Principal viewer) {
         if (user == null) {
             return null;
@@ -97,6 +117,8 @@ public class DtoMapper {
                 .map(ListingImage::getUrl)
                 .toList();
 
+        boolean showViews = canSeeViewCounts(listing, viewer);
+
         return new ListingDto(
                 listing.getId(),
                 listing.getType().name(),
@@ -118,7 +140,7 @@ public class DtoMapper {
                 Set.copyOf(listing.getDietaryTags()),
                 imageUrls,
                 user(listing.getSeller(), viewer),
-                listing.getViewsCount(),
+                showViews ? listing.getViewsCount() : null,
                 savedListingIds != null && savedListingIds.contains(listing.getId()),
                 isPurchasable(listing),
                 listing.isSpecialOffer(),
@@ -128,7 +150,10 @@ public class DtoMapper {
                 // Absent from the map means nobody viewed it in the window, which
                 // is a real zero; a null map means the caller did not ask, which
                 // has to stay distinguishable so the client can render nothing.
-                recentViews == null ? null : recentViews.getOrDefault(listing.getId(), 0L),
+                // Withheld outright from anyone but the seller and an admin.
+                !showViews || recentViews == null
+                        ? null
+                        : recentViews.getOrDefault(listing.getId(), 0L),
                 listing.getCreatedAt());
     }
 

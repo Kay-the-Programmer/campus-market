@@ -23,7 +23,7 @@ import {
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
-import { PriceTag, DiscountFlag, ViewsNote } from './shared/PriceTag';
+import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 interface BrowseScreenProps {
   listings: Listing[];
@@ -1507,7 +1507,6 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         {item.title}
                       </h3>
                       <PriceTag listing={item} size="sm" className="mt-0.5" />
-                      <ViewsNote count={item.recentViews} className="mt-1.5" />
                     </div>
                   </article>
                 );
@@ -2131,12 +2130,6 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         {/* Price - the loudest text on the card, carrying the
                             saving beside it when the seller has marked it down */}
                         <PriceTag listing={item} size="md" className="mt-0.5" />
-
-                        {/* Renders nothing unless enough people have actually
-                            looked - see ViewsNote. Above the location rather
-                            than below it so the interest reads as part of the
-                            item, not part of the pickup arrangements. */}
-                        <ViewsNote count={item.recentViews} className="mt-1.5" />
 
                         <div className="mt-auto pt-2.5 flex items-center gap-1.5 text-[11px] text-[#737686] font-medium min-w-0">
                           <MapPin className="w-3.5 h-3.5 text-[#b4c5ff] shrink-0" />

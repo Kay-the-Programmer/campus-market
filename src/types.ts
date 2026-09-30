@@ -185,6 +185,11 @@ export interface Listing {
   serviceMode?: 'BOOKING' | 'WALK_IN';
   campusZone?: CampusZone; // Coarse zone used for filtering; `location` stays the exact spot
   status?: string; // raw server status: ACTIVE | RESERVED | SOLD | DRAFT
+  /**
+   * Lifetime views. Sent only to the seller who owns the listing (and to
+   * admins), so it is undefined on every card in a public feed - see
+   * DtoMapper.canSeeViewCounts. My Listings is where it is read.
+   */
   viewsCount?: number;
   likesCount?: number;
   messagesCount?: number;
@@ -198,11 +203,12 @@ export interface Listing {
   /** Whole-percent saving. Server-computed, so every surface agrees. */
   discountPercent?: number;
   /**
-   * Views in the last week.
+   * Views in the last week. Seller-and-admin only, like viewsCount above.
    *
-   * <p>Undefined means the endpoint did not measure it, which is not the same
-   * as zero and must render as nothing rather than "0 views" - see
-   * ListingDto.recentViews. Only the browse grid and the trending shelf ask.
+   * <p>Undefined means it was not measured or not ours to see, which is not
+   * the same as zero and must never render as "0 views". Nothing displays it
+   * today: the browse cards that did are gone, because one member's traffic is
+   * not the rest of the campus's business.
    */
   recentViews?: number;
 }
