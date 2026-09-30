@@ -17,6 +17,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { formatListingPrice, formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
+import { CategoryStrip } from './browse/CategoryStrip';
 import {
   CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
@@ -903,6 +904,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setCategoryId('');
   };
 
+  /** The category filtering the feed right now, for the sticky bar’s chip. */
+  const activeCategory = categories.find((c) => c.id === categoryId) ?? null;
+
   const pickCategory = (id: string) => {
     setCategoryId(id === categoryId ? '' : id);
     setCoreType('All');
@@ -1083,54 +1087,30 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 );
               })}
 
-              {/* Divider */}
-              {categories.length > 0 && (
-                <div className="snap-start shrink-0 w-px h-6 bg-[#c3c6d7]/50 mx-0.5" />
-              )}
-
-              {/* Subcategory pills — lighter, smaller, with count badges */}
-              {categories.map((c) => {
-                const active = categoryId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setCategoryId(c.id === categoryId ? '' : c.id);
-                      setCoreType('All');
-                    }}
-                    className={`snap-start shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${active
-                      ? 'bg-[#434655] text-white border-[#434655] shadow-sm scale-[1.02]'
-                      : 'bg-white text-[#737686] border-[#c3c6d7] hover:border-[#737686] hover:text-[#434655] active:scale-95'
-                      }`}
-                  >
-                    <span className="truncate max-w-[120px]">{c.name}</span>
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : 'bg-[#eff4ff] text-[#2563eb]'
-                        }`}
-                    >
-                      {c.listingCount}
-                    </span>
-                  </button>
-                );
-              })}
-
               {/*
-                The way out of the strip.
+                The categories themselves are no longer repeated here.
 
-                A horizontally-scrolling row can only ever show three or four
-                categories at a time, so "what else is on this site" was a
-                question you answered by swiping and hoping. This is the last
-                thing in the scroller for a reason: someone who has reached the
-                end of the visible chips is exactly the person still looking.
+                They used to be a second row of pills in this bar AND a row of
+                text links on desktop, which put the same forty names in two
+                places that looked nothing like each other. They now live in
+                one place - the tile strip at the top of the feed - and this
+                bar keeps the job it is actually good at while sticky: the
+                three type filters, in a row short enough to stay one line.
+
+                The active category still shows, because a filter you cannot
+                see is a filter you cannot undo without scrolling back up.
               */}
-              {categories.length > 0 && onBrowseCategories && (
-                <button
-                  onClick={onBrowseCategories}
-                  className="snap-start shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-dashed border-[#b4c5ff] bg-[#f8f9ff] text-[#2563eb] hover:bg-[#eff4ff] hover:border-[#2563eb] transition-all duration-200 active:scale-95"
-                >
-                  <LayoutGrid className="w-3 h-3" />
-                  All categories
-                </button>
+              {activeCategory && (
+                <>
+                  <div className="snap-start shrink-0 w-px h-6 bg-[#c3c6d7]/50 mx-0.5" />
+                  <button
+                    onClick={() => pickCategory(activeCategory.id)}
+                    className="snap-start shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border bg-[#434655] text-white border-[#434655] shadow-sm"
+                  >
+                    <span className="truncate max-w-[120px]">{activeCategory.name}</span>
+                    <X className="w-3 h-3 shrink-0" />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -1153,21 +1133,16 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               );
             })}
 
-            {categories.map((c) => {
-              const active = categoryId === c.id;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    pickCategory(c.id);
-                  }}
-                  className={`text-[13px] transition-colors ${active ? 'font-bold text-[#0b1c30]' : 'text-[#434655] hover:text-[#2563eb] hover:underline underline-offset-4'
-                    }`}
-                >
-                  {c.name}
-                </button>
-              );
-            })}
+            {/* Categories are the tile strip below, not a second list here. */}
+            {activeCategory && (
+              <button
+                onClick={() => pickCategory(activeCategory.id)}
+                className="flex items-center gap-1.5 text-[13px] font-bold text-[#0b1c30] shrink-0"
+              >
+                {activeCategory.name}
+                <X className="w-3.5 h-3.5 text-[#737686]" />
+              </button>
+            )}
 
             {onBrowseCategories && (
               <button
@@ -1192,6 +1167,22 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
+        {/*
+          Browsing, not filtering - which is why it sits in the page rather
+          than in the sticky bar above with the type tabs. Hidden while a
+          search is running: someone who typed a term has already said what
+          they want, and a row of departments is then just something else to
+          scroll past to reach their results.
+        */}
+        {!searchQuery.trim() && (
+          <CategoryStrip
+            categories={categories}
+            activeId={categoryId}
+            onSelect={pickCategory}
+            onBrowseAll={onBrowseCategories}
+          />
+        )}
+
         {HOME_PROMO && !promoDismissed && (
           <div className="relative mb-5 rounded-2xl bg-gradient-to-r from-[#eff4ff] to-[#e9ddff]/40 border border-[#dbe1ff] p-4 pr-11 flex items-start gap-3 animate-fade-in">
             <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-card">

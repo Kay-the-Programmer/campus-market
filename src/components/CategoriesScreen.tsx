@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Search, Loader2, ShoppingBag, Briefcase, Utensils, Layers,
-  BookOpen, Sofa, Bike, Shirt, Laptop, Dumbbell, Music, Wrench,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { ErrorBanner } from './shared/Modal';
+import { categoryIcon } from './shared/categoryIcon';
 
 interface CategoryRow {
   id: string;
@@ -22,29 +22,6 @@ interface CategoriesScreenProps {
   onSelectType: (type: 'Product' | 'Service' | 'Food') => void;
 }
 
-/**
- * Icon for a category, guessed from its name.
- *
- * <p>Categories are admin-created and carry no icon in practice, so the
- * alternative to guessing is the same grey square forty times - which makes a
- * grid people are supposed to scan impossible to scan. A wrong-but-plausible
- * icon costs nothing here because the name is right next to it; the icon is
- * doing wayfinding, not identification.
- */
-function iconFor(name: string): React.ReactNode {
-  const n = name.toLowerCase();
-  const cls = 'w-5 h-5';
-  if (/book|text|stud|note/.test(n)) return <BookOpen className={cls} />;
-  if (/furni|sofa|desk|chair|bed/.test(n)) return <Sofa className={cls} />;
-  if (/bike|cycle|scoot/.test(n)) return <Bike className={cls} />;
-  if (/cloth|shirt|wear|fashion|shoe/.test(n)) return <Shirt className={cls} />;
-  if (/laptop|comput|phone|electr|tech/.test(n)) return <Laptop className={cls} />;
-  if (/sport|gym|fit/.test(n)) return <Dumbbell className={cls} />;
-  if (/music|instrum|audio/.test(n)) return <Music className={cls} />;
-  if (/food|meal|snack|drink|cook/.test(n)) return <Utensils className={cls} />;
-  if (/tutor|service|repair|clean|ride/.test(n)) return <Wrench className={cls} />;
-  return <ShoppingBag className={cls} />;
-}
 
 const CORE_TYPES = [
   {
@@ -215,7 +192,7 @@ export const CategoriesScreen: React.FC<CategoriesScreenProps> = ({
                 className="group flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-[#e5eeff]/80 shadow-card hover:shadow-card-hover hover:border-[#b4c5ff]/60 hover:-translate-y-0.5 transition-all duration-200 text-left"
               >
                 <span className="shrink-0 w-10 h-10 rounded-xl bg-[#eff4ff] text-[#2563eb] flex items-center justify-center group-hover:bg-[#2563eb] group-hover:text-white transition-colors">
-                  {iconFor(c.name)}
+                  {categoryIcon(c.name)}
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold text-[#0b1c30] truncate group-hover:text-[#2563eb] transition-colors">
