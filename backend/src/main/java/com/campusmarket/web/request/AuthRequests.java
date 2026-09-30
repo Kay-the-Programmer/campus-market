@@ -29,7 +29,14 @@ public final class AuthRequests {
 
             String phone,
             String department,
-            String year
+            String year,
+
+            /**
+             * The seller terms version the client displayed and the applicant
+             * accepted. Required when accountType is SELLER, ignored otherwise
+             * - a buyer is never shown them.
+             */
+            String acceptedTermsVersion
     ) {}
 
     public record GoogleSignInRequest(
@@ -44,13 +51,23 @@ public final class AuthRequests {
              */
             String accountType,
             String campusZone,
-            String phone
+            String phone,
+
+            /** As above: required only when accountType is SELLER. */
+            String acceptedTermsVersion
     ) {}
 
     /** Upgrading a BUYER account in place so they can start listing. */
     public record BecomeSellerRequest(
             /** Optional - lets someone correct their zone while upgrading. */
-            String campusZone
+            String campusZone,
+
+            /**
+             * The seller terms version shown and accepted. Required: this
+             * request IS the application, so there is no version of it that
+             * does not need one.
+             */
+            String acceptedTermsVersion
     ) {}
 
     public record LoginRequest(

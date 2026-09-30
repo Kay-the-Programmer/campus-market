@@ -4,6 +4,8 @@ import { AuthSession, CampusZone, CAMPUS_ZONES } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner } from './Modal';
 import { ApplicationThread } from './ApplicationThread';
+import { SellerTermsConsent } from './SellerTermsConsent';
+import { SELLER_TERMS_VERSION } from '../../data/sellerTerms';
 
 interface BecomeSellerModalProps {
   isOpen: boolean;
@@ -31,6 +33,13 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
   onUpgraded,
 }) => {
   const [zone, setZone] = useState<CampusZone | ''>(currentUser.campusZone ?? '');
+  /**
+   * Never pre-ticked, and never remembered from a previous attempt - an
+   * acceptance is only worth recording if it was an act taken in front of the
+   * text. Someone re-applying after a refusal accepts again, because they are
+   * filing a new application against whatever the terms say today.
+   */
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +49,7 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setZone(currentUser.campusZone ?? '');
+    setAcceptedTerms(false);
     setError(null);
     // Seeded on open only; see ProfileEditor for why currentUser is not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,10 +82,21 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
       setError('Choose your campus location so buyers know where to meet you.');
       return;
     }
+    /*
+     * Checked here rather than by disabling the button. A dead button gives no
+     * reason for being dead, and the reason is the whole point - so the press
+     * is allowed to land and is answered with what is missing.
+     */
+    if (!acceptedTerms) {
+      setError('Read and accept the seller terms to apply.');
+      return;
+    }
     setBusy(true);
     setError(null);
 
-    const res = await api.auth.becomeSeller(zone || undefined);
+    const res = await api.auth.becomeSeller({
+      campusZone: zone || undefined,
+      acceptedTermsVersion: SELLER_TERMS_VERSION });
     setBusy(false);
 
     if (res.success && res.user) {
@@ -214,6 +235,17 @@ export const BecomeSellerModal: React.FC<BecomeSellerModalProps> = ({
           . You can change this per listing.
         </p>
       )}
+
+      {/* Last in the body, so it sits directly above the Apply button rather
+          than above a zone picker someone still has to scroll past. */}
+      <div className="mt-4">
+        <SellerTermsConsent
+          accepted={acceptedTerms}
+          onChange={setAcceptedTerms}
+          disabled={busy}
+          invalid={!!error && !acceptedTerms}
+        />
+      </div>
     </Modal>
   );
 };

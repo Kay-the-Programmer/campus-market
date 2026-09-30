@@ -77,6 +77,24 @@ public class User {
     @Column(name = "seller_reviewed_at")
     private Instant sellerReviewedAt;
 
+    /**
+     * Which version of the seller terms this account accepted when it last
+     * applied, and when.
+     *
+     * <p>Kept per application rather than once per account: re-applying after
+     * a refusal means accepting whatever the terms say that day, and the
+     * answer to "what did they agree to?" has to be the text in force at the
+     * moment they agreed - which a single lifetime flag could not tell you.
+     *
+     * <p>Null for every account that applied before terms existed, and for
+     * buyers, who are never asked.
+     */
+    @Column(name = "seller_terms_version", length = 32)
+    private String sellerTermsVersion;
+
+    @Column(name = "seller_terms_accepted_at")
+    private Instant sellerTermsAcceptedAt;
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 

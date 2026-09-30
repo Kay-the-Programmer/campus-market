@@ -5,6 +5,8 @@ import {
 import { api } from '../services/api';
 import { isGoogleSignInConfigured, signInWithGoogle } from '../firebase';
 import { AccountType, CampusZone, CAMPUS_ZONES } from '../types';
+import { SellerTermsConsent } from './shared/SellerTermsConsent';
+import { SELLER_TERMS_VERSION } from '../data/sellerTerms';
 
 /**
  * `profile` is the second leg of Google sign-in: the popup proves who someone
@@ -57,6 +59,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // lower-privilege option - nobody gets selling rights by rushing the form.
   const [accountType, setAccountType] = useState<AccountType>('BUYER');
   const [campusZone, setCampusZone] = useState<CampusZone | ''>('');
+  /**
+   * Picking Seller here files a seller application, the same one the upgrade
+   * modal files - so it asks for the same acceptance. Without this, "accept
+   * the terms first" would be a rule that only applied to people who happened
+   * to sign up as a buyer and change their mind later.
+   */
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   /** Held between the two legs of Google sign-in so the second can replay it. */
   const [googleToken, setGoogleToken] = useState<string | null>(null);
@@ -98,6 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
        */
       setPassword('');
       setConfirmPassword('');
+      setAcceptedTerms(false);
     }
   }, [isOpen, initialMode]);
 
@@ -238,6 +248,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Choose your campus location.');
       return;
     }
+    if (accountType === 'SELLER' && !acceptedTerms) {
+      setError('Read and accept the seller terms to apply.');
+      return;
+    }
     if (!googleToken) {
       // The held token is gone (a reopened modal, say) - restart cleanly rather
       // than half-finishing a signup.
@@ -253,7 +267,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       campusZone,
       // Was being dropped here: the request has always carried a phone, and
       // the form now asks for one.
-      phone: phone.trim() || undefined });
+      phone: phone.trim() || undefined,
+      // Only meaningful for a seller; the server ignores it for a buyer.
+      acceptedTermsVersion: accountType === 'SELLER' ? SELLER_TERMS_VERSION : undefined });
     setBusy(false);
 
     if (res.ok) {
@@ -563,6 +579,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
             {accountTypePicker}
             {zonePicker}
+
+            {/* Appears with the choice it belongs to. A buyer is not asked to
+                accept seller terms, and a seller cannot miss them. */}
+            {accountType === 'SELLER' && (
+              <SellerTermsConsent
+                accepted={acceptedTerms}
+                onChange={setAcceptedTerms}
+                disabled={busy}
+                invalid={!!error && !acceptedTerms}
+              />
+            )}
 
             {/* Optional, and said so plainly. Nothing here is payment or
                 delivery - the number exists so the two of you can find each

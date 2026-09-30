@@ -489,13 +489,24 @@ export const api = {
      */
     async google(
       idToken: string,
-      profile?: { accountType?: AccountType; campusZone?: CampusZone; phone?: string },
+      profile?: {
+        accountType?: AccountType;
+        campusZone?: CampusZone;
+        phone?: string;
+        /**
+         * Required when accountType is SELLER: choosing to sell at signup
+         * files a seller application exactly as the upgrade modal does, and
+         * the server refuses to file one without an accepted version.
+         */
+        acceptedTermsVersion?: string;
+      },
     ) {
       const res = await post('/api/auth/google', {
         idToken,
         accountType: profile?.accountType,
         campusZone: profile?.campusZone,
         phone: profile?.phone,
+        acceptedTermsVersion: profile?.acceptedTermsVersion,
       });
       if (res.ok && res.data?.token) {
         setToken(res.data.token);
@@ -532,8 +543,13 @@ export const api = {
         status: res.status,
       };
     },
-    async becomeSeller(campusZone?: CampusZone) {
-      const res = await post('/api/auth/become-seller', { campusZone });
+    async becomeSeller(
+      application: { campusZone?: CampusZone; acceptedTermsVersion: string },
+    ) {
+      const res = await post('/api/auth/become-seller', {
+        campusZone: application.campusZone,
+        acceptedTermsVersion: application.acceptedTermsVersion,
+      });
       return {
         success: res.ok,
         user: res.ok ? toSession(res.data?.user) : undefined,

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, ArrowLeft,  FileText } from 'lucide-react';
+import { ShieldCheck, ArrowLeft,  FileText, Store } from 'lucide-react';
+import { SELLER_TERMS, SELLER_TERMS_VERSION } from '../data/sellerTerms';
 
 interface LegalScreenProps {
   onBack: () => void;
@@ -60,6 +61,36 @@ export const LegalScreen: React.FC<LegalScreenProps> = ({ onBack }) => {
                 In compliance with student privacy standards, sensitive contact information (email, phone number, dorm address) is automatically hidden from unauthenticated guests and is only shared with verified peers during active transactions.
               </p>
             </section>
+          </div>
+
+          {/*
+            Rendered from the same source the application modal shows, so the
+            public page and the thing sellers actually accept cannot drift
+            apart - which is the only way a terms page is worth publishing.
+          */}
+          <div className="border-t border-slate-100 pt-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Seller Terms</h2>
+                <p className="text-xs text-slate-500">
+                  Accepted by every seller when they apply · version {SELLER_TERMS_VERSION}
+                </p>
+              </div>
+            </div>
+
+            <ol className="space-y-4 text-slate-700 text-sm leading-relaxed">
+              {SELLER_TERMS.map((clause, i) => (
+                <li key={clause.title} className="space-y-1">
+                  <h3 className="font-bold text-slate-900">
+                    {i + 1}. {clause.title}
+                  </h3>
+                  <p>{clause.body}</p>
+                </li>
+              ))}
+            </ol>
           </div>
 
           <div className="border-t border-slate-100 pt-6 flex items-center justify-between text-xs text-slate-400">

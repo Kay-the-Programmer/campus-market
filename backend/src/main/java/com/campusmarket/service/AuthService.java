@@ -80,6 +80,7 @@ public class AuthService {
         // Registering as a seller only files the application - an admin still
         // has to approve it before anything can be listed.
         if (accountType == AccountType.SELLER) {
+            acceptSellerTerms(user, request.acceptedTermsVersion());
             user.setSellerApprovalStatus(SellerApprovalStatus.PENDING);
             user.setSellerRequestedAt(Instant.now());
         }
@@ -200,6 +201,7 @@ public class AuthService {
             user.setAccountType(googleType);
             user.setCampusZone(parseCampusZone(request.campusZone()));
             if (googleType == AccountType.SELLER) {
+                acceptSellerTerms(user, request.acceptedTermsVersion());
                 user.setSellerApprovalStatus(SellerApprovalStatus.PENDING);
                 user.setSellerRequestedAt(Instant.now());
             }
@@ -251,6 +253,7 @@ public class AuthService {
                     user.setAccountType(chosen);
                     if (chosen == AccountType.SELLER
                             && user.getSellerApprovalStatus() == SellerApprovalStatus.NOT_REQUESTED) {
+                        acceptSellerTerms(user, request.acceptedTermsVersion());
                         user.setSellerApprovalStatus(SellerApprovalStatus.PENDING);
                         user.setSellerRequestedAt(Instant.now());
                     }
@@ -345,6 +348,13 @@ public class AuthService {
 
         user.setAccountType(AccountType.SELLER);
         if (!alreadyApproved && !alreadyPending) {
+            /*
+             * Only a real application asks for an acceptance. Calling this
+             * endpoint while already approved or already pending is a no-op
+             * that answers "you're already set up" - demanding terms for it
+             * would turn a harmless repeat into an error.
+             */
+            acceptSellerTerms(user, request == null ? null : request.acceptedTermsVersion());
             // Covers first-time applicants and anyone reapplying after a refusal.
             user.setSellerApprovalStatus(SellerApprovalStatus.PENDING);
             user.setSellerRequestedAt(Instant.now());
@@ -701,6 +711,36 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    /**
+     * Records the acceptance a new seller application requires, or refuses the
+     * application.
+     *
+     * <p>Enforced here rather than trusted to the checkbox because the
+     * checkbox is client-side: the endpoint is reachable without it, and an
+     * application filed around the form would be indistinguishable from one
+     * filed through it once it reached the approval queue.
+     *
+     * <p>The version has to be the current one. A client running a cached
+     * bundle would otherwise show last month's clauses and have the acceptance
+     * recorded against today's - the one way this record could end up saying
+     * something untrue, and the reason the version is sent at all rather than
+     * a bare "true".
+     */
+    private void acceptSellerTerms(User user, String acceptedVersion) {
+        String version = blankToNull(acceptedVersion);
+        if (version == null) {
+            throw ApiException.badRequest("SELLER_TERMS_REQUIRED",
+                    "Read and accept the seller terms to apply.");
+        }
+        if (!SellerTerms.CURRENT_VERSION.equals(version)) {
+            throw ApiException.badRequest("SELLER_TERMS_OUTDATED",
+                    "The seller terms have changed since this page was opened. "
+                            + "Reload the page and read them before applying.");
+        }
+        user.setSellerTermsVersion(version);
+        user.setSellerTermsAcceptedAt(Instant.now());
     }
 
     /** Signup: the choice is mandatory, so a bad or missing value is an error. */

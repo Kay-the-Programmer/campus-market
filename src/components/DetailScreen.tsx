@@ -3,7 +3,7 @@ import {
   ArrowLeft, Heart, MapPin, Star, ChevronRight, Bookmark,
   MessageSquare, ShieldCheck, ShoppingBag, Trash2, 
   Briefcase, Utensils, Flag, CalendarClock, Clock, ChevronDown, ChevronUp,
-  Share2, Eye,  DoorOpen, Layers, ChevronLeft, Minus, Plus } from 'lucide-react';
+  Share2, Eye,  DoorOpen, Layers, ChevronLeft, Minus, Plus, Maximize2 } from 'lucide-react';
 import { AddToCart, Listing, AuthSession } from '../types';
 import { api } from '../services/api';
 import { ReportModal } from './shared/ReportModal';
@@ -13,6 +13,7 @@ import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { useToast } from './shared/ToastProvider';
 import { PRICE_ON_REQUEST, formatListingPrice, formatPrice } from '../utils/currency';
 import { ListingImage } from './shared/ListingImage';
+import { ImageLightbox } from './shared/ImageLightbox';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { RichText } from './shared/RichText';
 import { plainText } from '../utils/richText';
@@ -88,6 +89,8 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
   onGoHome,
   embedded }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  /** Whether the full-size viewer is open over the page. */
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [descExpanded, setDescExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -126,6 +129,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
    */
   useEffect(() => {
     setActiveImageIndex(0);
+    setViewerOpen(false);
     setQuantity(1);
     setDescExpanded(false);
     if (!embedded) window.scrollTo({ top: 0, behavior: 'auto' });
@@ -276,7 +280,9 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
      bound when there is more than one photo, and never while the person is
      typing into something. */
   useEffect(() => {
-    if (images.length < 2 || embedded) return;
+    // The viewer binds its own arrows while it is open; both firing would
+    // advance the gallery two photos at a time.
+    if (images.length < 2 || embedded || viewerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
@@ -285,7 +291,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [images.length, activeImageIndex, embedded]);
+  }, [images.length, activeImageIndex, embedded, viewerOpen]);
   const isGuest = currentUser.role === 'guest';
   const isAdmin = currentUser.role === 'admin';
   const isOwner = !isGuest && currentUser.id === listing.seller.id;
@@ -475,6 +481,16 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-32 lg:pb-12">
         {/* Not in the Sell preview: it is a rehearsal of the page, and its
             crumbs would lead out of the form the seller is still filling in. */}
+        {viewerOpen && (
+          <ImageLightbox
+            images={images}
+            index={activeImageIndex}
+            onIndexChange={setActiveImageIndex}
+            onClose={() => setViewerOpen(false)}
+            alt={listing.title}
+          />
+        )}
+
         {!embedded && <Breadcrumbs items={crumbs} className="mb-4" />}
 
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
@@ -498,6 +514,20 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                   className="w-full h-full object-cover"
                 />
 
+                {/*
+                  Tapping the photo opens it full size - the gesture everyone
+                  already tries. A real button rather than an onClick on the
+                  image, so it is reachable by keyboard and announces itself;
+                  it sits before the overlay controls in the DOM, so the back
+                  and step arrows stay clickable on top of it.
+                */}
+                <button
+                  type="button"
+                  onClick={() => setViewerOpen(true)}
+                  aria-label="View photo full size"
+                  className="absolute inset-0 w-full h-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-white/70"
+                />
+
                 {/* Status Overlay */}
                 {unavailable && (
                   <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center">
@@ -518,6 +548,18 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                 )}
+
+                {/* Says the photo can be opened. The click target is the whole
+                    image above; this is what tells you so - a detail page whose
+                    photo silently happens to be tappable teaches nobody. */}
+                <button
+                  type="button"
+                  onClick={() => setViewerOpen(true)}
+                  className="absolute bottom-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-900/80 backdrop-blur-sm text-[11px] font-bold text-white transition-colors active:scale-95"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  View full size
+                </button>
 
                 {/* Step through the photos from the photo itself. The thumbnail
                     strip is a jump-to, not a next - and on a phone the strip is
