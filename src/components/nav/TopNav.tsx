@@ -140,7 +140,10 @@ export const TopNav: React.FC<TopNavProps> = ({
 
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#c3c6d7]/60 shadow-[0_1px_8px_0_rgba(0,0,0,0.04)]">
+    /* safe-area-pt: with viewport-fit=cover the status bar is drawn over
+       the page, and a Home Screen app would otherwise put the search box
+       under the clock. Zero everywhere that has no inset to report. */
+    <header className="safe-area-pt sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#c3c6d7]/60 shadow-[0_1px_8px_0_rgba(0,0,0,0.04)]">
       {/* ─────────────────────── Row 1: always visible ─────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className={`flex items-center gap-3 transition-all duration-200 ${compact ? 'h-14' : 'h-16'}`}>

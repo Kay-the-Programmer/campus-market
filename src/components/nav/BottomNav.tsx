@@ -292,7 +292,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={() => (touchState.current = null)}
         style={{
-          paddingBottom: 'env(safe-area-inset-bottom, 8px)',
+          // max(), not the env() fallback: the fallback applies when the
+          // function is unsupported, never when it returns 0 - so on a phone
+          // with no home indicator this was padding the bar by nothing.
+          paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
           // Prevent iOS rubber-band scroll and pull-to-refresh from
           // leaking through the bar during a swipe gesture.
           overscrollBehavior: 'contain',

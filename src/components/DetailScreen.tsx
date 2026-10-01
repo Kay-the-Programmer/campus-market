@@ -1158,7 +1158,12 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
            with the bottom nav, which is later in the DOM and therefore wins.
            Sits above it instead. */
         <div
-          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 safe-area-pb"
+          /* No safe-area padding here, deliberately: this bar is anchored
+             above the bottom nav, and the nav is what the home indicator
+             actually sits on - it carries the inset for both of them. Adding
+             it here too would open a second gap the width of the indicator
+             between this bar and the one below it. */
+          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80"
           style={{ bottom: 'var(--bottom-nav-h, 72px)' }}
         >
           <div className="max-w-3xl mx-auto px-4 py-3">

@@ -80,6 +80,32 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /*
+     Bottom padding that clears the iPhone home indicator.
+
+     Used by every bar pinned to the bottom edge - the detail page's buy bar,
+     the sell page's publish bar. It was being applied as a class name by both
+     of them and had never been defined anywhere, so it did nothing at all: in
+     a Home Screen app the indicator sat directly on top of their buttons.
+
+     max(), not a bare env(): the inset is 0 on a phone without an indicator
+     and on every desktop browser, and a bar with no bottom padding at all is
+     cramped rather than flush. The env() fallback argument does not cover
+     this - it applies when the function is unsupported, not when it returns
+     zero.
+
+     Only meaningful because index.html sets viewport-fit=cover; without it
+     iOS reports every inset as 0 and this quietly becomes a plain 0.75rem. */
+  .safe-area-pb {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  /* The same idea at the top, for the sticky header. Edge-to-edge painting
+     puts the status bar over the page, so the header grows by its height. */
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* ============================================================
