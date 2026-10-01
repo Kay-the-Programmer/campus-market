@@ -124,16 +124,37 @@ function arg(name) {
 }
 const DRY_RUN = process.argv.includes('--dry-run');
 
+const TOKEN_HELP = `An admin that signs in with Google has no password, so --password can never
+work for it. Use a session token instead: sign in to the site as the admin,
+then in the browser console run
+
+  localStorage.getItem('cm_session_token')
+
+and pass the value as --token.`;
+
 // ------------------------------------------------------------------- client
 async function call(path, { method = 'GET', body, token } = {}) {
-  const res = await fetch(`${API}${path}`, {
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, {
     method,
     headers: {
       'content-type': 'application/json',
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (cause) {
+    /* Nothing is listening. Worth naming the base URL: the default is the local
+       dev port, which docker-compose.override.yml publishes and the production
+       compose deliberately does not - so on a server this is the first thing
+       that goes wrong. */
+    throw new Error(
+      `Cannot reach ${API} (${cause.message}). `
+      + 'Set API= to the base URL of the running API, e.g. '
+      + 'API=https://campusmarket.example node scripts/seed-categories.mjs ...',
+    );
+  }
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
@@ -153,20 +174,40 @@ async function signIn() {
   if (!email || !password) {
     throw new Error(
       'Need credentials: pass --token <t>, or --email and --password '
-      + '(or set TOKEN / ADMIN_EMAIL / ADMIN_PASSWORD).',
+      + '(or set TOKEN / ADMIN_EMAIL / ADMIN_PASSWORD).\n\n'
+      + TOKEN_HELP,
     );
   }
 
-  const res = await call('/api/auth/login', { method: 'POST', body: { email, password } });
-  if (!res?.token) throw new Error('Signed in but no token came back.');
-  return res.token;
+  try {
+    const res = await call('/api/auth/login', { method: 'POST', body: { email, password } });
+    if (!res?.token) throw new Error('Signed in but no token came back.');
+    return res.token;
+  } catch (err) {
+    /* An admin seeded with a blank CAMPUSMARKET_ADMIN_PASSWORD has no password
+       hash at all, and AuthService answers those exactly like a wrong password
+       so that Google accounts cannot be enumerated. Password login can
+       therefore never succeed for such an admin, and the generic 401 gives no
+       hint why - hence this. */
+    if (err.message.includes('401')) {
+      throw new Error(`${err.message}
+
+${TOKEN_HELP}`);
+    }
+    throw err;
+  }
 }
 
 // --------------------------------------------------------------------- main
 async function main() {
-  const token = DRY_RUN && !arg('token') && !arg('email') ? null : await signIn();
+  const credentials = arg('token') ?? arg('email') ?? process.env.TOKEN ?? process.env.ADMIN_EMAIL;
+  /* Creating needs an admin; listing does not - /api/categories is public so
+     that guests can filter the browse page before signing up. So a dry run can
+     report a truthful plan with no credentials at all, rather than claiming it
+     would create a tree that is already there. */
+  const token = DRY_RUN && !credentials ? null : await signIn();
 
-  const existing = token ? await call('/api/categories', { token }) : [];
+  const existing = await call('/api/categories', { token: token ?? undefined });
   /* Matched on slug rather than name: the slug is what the server derives and
      what the public URLs use, so it is the only identity that cannot drift. */
   const bySlug = new Map(existing.map((c) => [c.slug, c]));
