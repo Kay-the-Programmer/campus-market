@@ -168,6 +168,8 @@ interface CategoryOption {
   name: string;
   slug: string;
   listingCount: number;
+  /** Set on a subcategory. Absent on the top-level ones the strip draws. */
+  parentId?: string;
   /** Admin-chosen picture; absent on most, which the strip handles. */
   imageUrl?: string;
 }
@@ -443,7 +445,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     api.categories.getAll().then((res) => {
       const list = (res.categories as CategoryOption[]) || [];
       // Only surface categories that actually have something in them - an empty
-      // chip is a dead end.
+      // chip is a dead end. A parent counts its children's listings too (see
+      // ListingSpecifications.inCategory), so a department whose stock is all
+      // filed under subcategories still shows.
       setCategories(list.filter((c) => c.listingCount > 0));
     });
   }, []);
@@ -1206,7 +1210,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         */}
         {!searchQuery.trim() && (
           <CategoryStrip
-            categories={categories}
+            /*
+             * Top level only. The tree exists so a seller can file a charger
+             * under "USB-C Cable", not so a shopper has to walk past thirty
+             * tiles to reach Electronics - and tapping the parent now returns
+             * everything underneath it anyway. The full tree is one tap away
+             * through All categories.
+             */
+            categories={categories.filter((c) => !c.parentId)}
             activeId={categoryId}
             onSelect={pickCategory}
             onBrowseAll={onBrowseCategories}

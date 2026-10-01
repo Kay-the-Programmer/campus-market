@@ -4,6 +4,7 @@ import com.campusmarket.domain.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -227,11 +228,35 @@ public final class ListingSpecifications {
         return (root, query, cb) -> cb.equal(root.get("type"), parsed);
     }
 
+    /**
+     * Listings in this category, or in any category filed under it.
+     *
+     * <p>Categories became a two-level tree, and an exact match stopped being
+     * the right question the moment they did: a charger filed under
+     * "Electronics > Cables" is what somebody means when they tap
+     * "Electronics", and matching only the id itself would answer that tap
+     * with an empty shelf while the parent's own count read zero.
+     *
+     * <p>Written as a subquery over categories with a LEFT join to the parent,
+     * rather than the shorter {@code root.get("category").get("parent")}. That
+     * path builds an INNER join, which drops every listing whose category has
+     * no parent - which is most of them - and would have quietly broken the
+     * plain top-level case this has always served.
+     */
     public static Specification<Listing> inCategory(UUID categoryId) {
         if (categoryId == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId);
+        return (root, query, cb) -> {
+            Subquery<UUID> wanted = query.subquery(UUID.class);
+            Root<Category> category = wanted.from(Category.class);
+            Join<Category, Category> parent = category.join("parent", JoinType.LEFT);
+            wanted.select(category.get("id"));
+            wanted.where(cb.or(
+                    cb.equal(category.get("id"), categoryId),
+                    cb.equal(parent.get("id"), categoryId)));
+            return root.get("category").get("id").in(wanted);
+        };
     }
 
     /**
