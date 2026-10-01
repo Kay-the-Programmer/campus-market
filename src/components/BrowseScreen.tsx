@@ -18,6 +18,7 @@ import { formatListingPrice, formatPrice } from '../utils/currency';
 import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
 import { CategoryStrip } from './browse/CategoryStrip';
+import { NoResultsSuggestions, FeedPatch } from './browse/NoResultsSuggestions';
 import {
   CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
@@ -812,6 +813,23 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
   /* Every filter, including the price band, which "Clear" used to leave
      applied - so clearing appeared to do nothing on a feed narrowed by price. */
+  /**
+   * Applies one of the empty-feed suggestions.
+   *
+   * <p>Deliberately changes only what the suggestion names and keeps the rest
+   * of the query, including the search term: the whole proposition is "the
+   * thing you asked for, over here", and quietly dropping the other filters
+   * would answer a different question and land them somewhere they would have
+   * to narrow all over again.
+   */
+  const applySuggestion = (patch: FeedPatch) => {
+    if (patch.campusZone !== undefined) setZone(patch.campusZone);
+    if (patch.categoryId !== undefined) setCategoryId(patch.categoryId);
+    if (patch.type !== undefined) setCoreType(patch.type);
+    if (patch.price) setPrice(patch.price[0], patch.price[1]);
+    if (patch.search !== undefined) onSearchChange(patch.search);
+  };
+
   const resetToHome = () => {
     onSearchChange('');
     setCoreType('All');
@@ -877,6 +895,16 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
 
   /** Anything narrowing the feed right now - what "Clear" would undo. */
   const hasActiveFilters = hasNonDealFilters || dealsOnly;
+
+  /** How many pills the bar below will draw - the label says it out loud. */
+  const activeFilterCount = [
+    searchQuery.trim(),
+    coreType !== 'All',
+    categoryId,
+    dealsOnly,
+    zone,
+    minPrice || maxPrice,
+  ].filter(Boolean).length;
 
   const activeSortLabel = useMemo(
     () => SORTS.find((s) => s.value === effectiveSort)?.label ?? 'Newest',
@@ -1805,6 +1833,18 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         */}
         {hasActiveFilters && (
           <div className="flex items-center gap-1.5 mb-3 overflow-x-auto no-scrollbar">
+            {/*
+              Labelled, and the label counts.
+
+              The pills alone were easy to read past: a row of small rounded
+              things above a feed looks like more navigation, and someone who
+              did not notice them read "0 listings" as the catalogue being
+              empty rather than as their own three filters agreeing. Saying
+              how many are on is what makes the row register as the reason.
+            */}
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-[#a0a3b1] pr-0.5">
+              {activeFilterCount === 1 ? '1 filter' : `${activeFilterCount} filters`}
+            </span>
             {searchQuery.trim() && (
               <FilterPill label={`“${searchQuery.trim()}”`} onRemove={() => onSearchChange('')} />
             )}
@@ -2013,6 +2053,25 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
               </button>
             )}
 
+            {/*
+              Before the generic category list, because it keeps what they
+              asked for: their search one filter along beats a list of other
+              departments, for anyone who came looking for a particular thing.
+            */}
+            <NoResultsSuggestions
+              query={{
+                search: searchQuery,
+                type: TYPE_PARAM[coreType],
+                categoryId,
+                campusZone: zone,
+                minPrice,
+                maxPrice,
+                dealsOnly,
+              }}
+              categoryName={categories.find((c) => c.id === categoryId)?.name}
+              onApply={applySuggestion}
+            />
+
             {/* An empty feed is where people leave. On a catalogue this small
                 the thing they filtered for often genuinely is not here, so the
                 useful move is to show what IS - by category, with counts, so
@@ -2193,6 +2252,31 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                 )}
               </div>
             )}
+            {/*
+              A thin page is a near miss, not an answer.
+
+              Three results for "clothes in Across" looks like the whole
+              catalogue unless somebody says otherwise - and the person least
+              likely to go back and widen a filter is the one who already got
+              something. Only shown on a short page, only about zones, and only
+              when a zone was actually chosen.
+            */}
+            {!hasMore && zone && results.length > 0 && results.length < 4 && (
+              <NoResultsSuggestions
+                variant="inline"
+                query={{
+                  search: searchQuery,
+                  type: TYPE_PARAM[coreType],
+                  categoryId,
+                  campusZone: zone,
+                  minPrice,
+                  maxPrice,
+                  dealsOnly,
+                }}
+                onApply={applySuggestion}
+              />
+            )}
+
             {!hasMore && results.length >= PAGE_SIZE && (
               <p className="text-center text-xs text-[#737686] py-8">That's everything for now.</p>
             )}
