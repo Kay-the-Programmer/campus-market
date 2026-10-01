@@ -1831,8 +1831,117 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           the whole catalogue. Undoing one of them meant "Clear", which threw
           away the other two as well.
         */}
-        {hasActiveFilters && (
-          <div className="flex items-center gap-1.5 mb-3 overflow-x-auto no-scrollbar">
+
+        {/* ─────────────────────────── Result count ───────────────────────── */}
+        {/* The marker the scroll-to-results and the pinned-state watcher both
+            measure from. Zero height, so it changes nothing about the layout. */}
+        <div ref={resultsRef} aria-hidden="true" />
+
+        {/*
+          The results bar stays put.
+
+          The feed loads forever, so after three pages someone is thousands of
+          pixels from the controls that produced what they are looking at:
+          changing their mind about the sort, or turning Deals off, meant
+          scrolling all the way back up to find the row. Pinning it directly
+          under the category header keeps the count, the deals toggle and the
+          sort within reach however far down the grid they are, and carries a
+          way back to the full filter row for the rest.
+        */}
+        <div
+          className={`sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 mb-4 transition-all duration-200 ${barStuck
+            ? 'bg-[#f8f9ff]/95 backdrop-blur-md border-b border-[#c3c6d7]/40 shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]'
+            : 'bg-transparent'
+            }`}
+          style={{ top: headerHeight }}
+        >
+          {/* Line one: what came back, and how it is ordered. */}
+          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-[#434655] truncate">
+              {loading ? 'Searching…'
+                // Counting "deals" rather than "listings" while the filter is on,
+                // so the number visibly answers the question that was asked.
+                : dealsOnly ? `${total} deal${total !== 1 ? 's' : ''}`
+                  : `${total} listing${total !== 1 ? 's' : ''}`}
+            </span>
+
+            {/*
+              Only once pinned. Unpinned, the real Deals pill and the filter
+              chips are a few pixels above this row, and a second copy of both
+              would just be clutter; pinned, they are the only way to change
+              anything without a long scroll back.
+            */}
+            {barStuck && (
+              <>
+                <button
+                  onClick={() => setDealsOnly(!dealsOnly)}
+                  aria-pressed={dealsOnly}
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-150 ${dealsOnly
+                    ? 'bg-[#b3123c] text-white border-[#b3123c]'
+                    : 'bg-[#ffe8ec] text-[#b3123c] border-[#ffd0da] hover:border-[#b3123c]'
+                    }`}
+                >
+                  <Tag className="w-3 h-3" />
+                  Deals
+                </button>
+
+                {/*
+                  Takes them to the controls they have NOT used: the applied
+                  ones are on the line below with their own remove buttons, so
+                  this is only about adding. Always offered while pinned, since
+                  narrowing an unfiltered feed is the commoner wish of the two.
+                */}
+                <button
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border border-[#c3c6d7] bg-white text-[#434655] hover:border-[#2563eb] hover:text-[#2563eb] transition-colors"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  Add filter
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Sort - small and unobtrusive, sitting at the top of the grid */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setSortOpen((o) => !o)}
+              aria-label={`Sort: ${activeSortLabel}`}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-[#c3c6d7] bg-white hover:bg-[#eff4ff] text-[#434655] text-xs font-semibold shadow-card transition-colors"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{activeSortLabel}</span>
+            </button>
+            {sortOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
+                <div className="cm-dropdown-in absolute right-0 mt-1.5 z-20 w-52 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1">
+                  {visibleSorts.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => { setSort(s.value); setSortTouched(true); setSortOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors ${effectiveSort === s.value ? 'bg-[#eff4ff] text-[#2563eb]' : 'text-[#434655] hover:bg-[#f8f9ff]'
+                        }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          </div>
+
+          {/*
+            Second line of the same pinned bar, so the filters travel with the
+            feed. They used to sit in the page above it: three pages down, the
+            bar still said "12 listings" while the reason there were only
+            twelve had scrolled out of sight, and undoing one meant a trip to
+            the top. Now the count and its causes are never apart.
+          */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-1.5 pt-2 overflow-x-auto no-scrollbar">
             {/*
               Labelled, and the label counts.
 
@@ -1871,107 +1980,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
             >
               Clear all
             </button>
-          </div>
-        )}
-
-        {/* ─────────────────────────── Result count ───────────────────────── */}
-        {/* The marker the scroll-to-results and the pinned-state watcher both
-            measure from. Zero height, so it changes nothing about the layout. */}
-        <div ref={resultsRef} aria-hidden="true" />
-
-        {/*
-          The results bar stays put.
-
-          The feed loads forever, so after three pages someone is thousands of
-          pixels from the controls that produced what they are looking at:
-          changing their mind about the sort, or turning Deals off, meant
-          scrolling all the way back up to find the row. Pinning it directly
-          under the category header keeps the count, the deals toggle and the
-          sort within reach however far down the grid they are, and carries a
-          way back to the full filter row for the rest.
-        */}
-        <div
-          className={`sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 mb-4 flex items-center justify-between gap-3 transition-all duration-200 ${barStuck
-            ? 'bg-[#f8f9ff]/95 backdrop-blur-md border-b border-[#c3c6d7]/40 shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]'
-            : 'bg-transparent'
-            }`}
-          style={{ top: headerHeight }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold text-[#434655] truncate">
-              {loading ? 'Searching…'
-                // Counting "deals" rather than "listings" while the filter is on,
-                // so the number visibly answers the question that was asked.
-                : dealsOnly ? `${total} deal${total !== 1 ? 's' : ''}`
-                  : `${total} listing${total !== 1 ? 's' : ''}`}
-            </span>
-
-            {/*
-              Only once pinned. Unpinned, the real Deals pill and the filter
-              chips are a few pixels above this row, and a second copy of both
-              would just be clutter; pinned, they are the only way to change
-              anything without a long scroll back.
-            */}
-            {barStuck && (
-              <>
-                <button
-                  onClick={() => setDealsOnly(!dealsOnly)}
-                  aria-pressed={dealsOnly}
-                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-150 ${dealsOnly
-                    ? 'bg-[#b3123c] text-white border-[#b3123c]'
-                    : 'bg-[#ffe8ec] text-[#b3123c] border-[#ffd0da] hover:border-[#b3123c]'
-                    }`}
-                >
-                  <Tag className="w-3 h-3" />
-                  Deals
-                </button>
-
-                {/* Back to the controls rather than a duplicate of them: the
-                    zone, price and category filters are too many to repeat in
-                    a bar this size, and one tap to reach them all beats five
-                    squeezed in. Counts what is applied so the trip is only
-                    offered when there is something to undo. */}
-                {hasActiveFilters && (
-                  <button
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border border-[#c3c6d7] bg-white text-[#434655] hover:border-[#2563eb] hover:text-[#2563eb] transition-colors"
-                  >
-                    <SlidersHorizontal className="w-3 h-3" />
-                    Filters
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Sort - small and unobtrusive, sitting at the top of the grid */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setSortOpen((o) => !o)}
-              aria-label={`Sort: ${activeSortLabel}`}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-[#c3c6d7] bg-white hover:bg-[#eff4ff] text-[#434655] text-xs font-semibold shadow-card transition-colors"
-            >
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{activeSortLabel}</span>
-            </button>
-            {sortOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
-                <div className="cm-dropdown-in absolute right-0 mt-1.5 z-20 w-52 bg-white rounded-2xl border border-[#e5eeff] shadow-modal overflow-hidden py-1">
-                  {visibleSorts.map((s) => (
-                    <button
-                      key={s.value}
-                      onClick={() => { setSort(s.value); setSortTouched(true); setSortOpen(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors ${effectiveSort === s.value ? 'bg-[#eff4ff] text-[#2563eb]' : 'text-[#434655] hover:bg-[#f8f9ff]'
-                        }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {error && (
