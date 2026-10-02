@@ -19,6 +19,7 @@ import { DetailScreen } from './DetailScreen';
 import { Modal } from './shared/Modal';
 import { FormattedTextarea } from './shared/FormattedTextarea';
 import { uploadImageFile } from '../utils/images';
+import { sortedByName } from '../utils/compareByName';
 
 interface SellScreenProps {
   onBack: () => void;
@@ -171,7 +172,14 @@ export const SellScreen: React.FC<SellScreenProps> = ({
         setCategoriesLoading(false);
         return;
       }
-      const list = (res.categories as CategoryOption[]) || [];
+      /*
+       * Sorted here rather than at render, so the list and the default pick
+       * below agree. The server orders by sortOrder first, which is about what
+       * shoppers meet on the browse strip; a seller is hunting for a name in a
+       * list that is now dozens long, and alphabetical is the only order they
+       * can predict.
+       */
+      const list = sortedByName((res.categories as CategoryOption[]) || []);
       setCategories(list);
       if (list.length && !categoryId) setCategoryId(list[0].id);
       setCategoriesLoading(false);

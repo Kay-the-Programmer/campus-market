@@ -16,6 +16,7 @@ import { ListingManager } from './admin/ListingManager';
 import { formatPrice } from '../utils/currency';
 import { uploadImageFile } from '../utils/images';
 import { categoryEmoji } from './shared/categoryEmoji';
+import { sortedByName } from '../utils/compareByName';
 
 type Tab =
   | 'dashboard' | 'reports' | 'sellers' | 'heldOrders' | 'chats'
@@ -840,24 +841,34 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
    * The flat category list, ordered as a tree: each top-level category
    * followed by its children.
    *
-   * <p>The server returns them flat and sorted by name, which put "C-C
-   * Cables" between "Accessories" and "Chargers" with nothing to say they
+   * <p>The server returns them flat, ordered by sortOrder then name, which put
+   * "C-C Cables" between "Accessories" and "Chargers" with nothing to say they
    * belong to different parts of the shop. Two levels only - anything deeper
    * is rendered at depth 1, because the editor does not offer it and a
    * surprise third level should look wrong rather than quietly indent.
+   *
+   * <p>Alphabetical within each level, rather than in the server's order. That
+   * order is sortOrder first, which is a merchandising decision about what
+   * shoppers meet on the browse strip - and a seed script's numbering as far as
+   * this screen is concerned. An admin here is looking for a name they already
+   * have in mind, so the only useful order is the one they would look it up in.
+   * The public strip keeps sortOrder; this does not.
    */
   const categoryTree = (() => {
-    const tops = categories.filter((c) => !c.parentId);
-    const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
+    const tops = sortedByName(categories.filter((c) => !c.parentId));
+    const childrenOf = (id: string) => sortedByName(categories.filter((c) => c.parentId === id));
     const rows: { row: CategoryRow; depth: number }[] = [];
     for (const top of tops) {
       rows.push({ row: top, depth: 0 });
       for (const child of childrenOf(top.id)) rows.push({ row: child, depth: 1 });
     }
-    // Orphans - a child whose parent was deleted - would otherwise vanish from
-    // the admin entirely while still filtering the public feed.
-    for (const c of categories) {
-      if (!rows.some((r) => r.row.id === c.id)) rows.push({ row: c, depth: 1 });
+    /* Orphans - a child whose parent was deleted - would otherwise vanish from
+       the admin entirely while still filtering the public feed. Sorted among
+       themselves and appended, not merged into the tree above: they belong
+       under a parent that is gone, and should look out of place. */
+    const placed = new Set(rows.map((r) => r.row.id));
+    for (const c of sortedByName(categories)) {
+      if (!placed.has(c.id)) rows.push({ row: c, depth: 1 });
     }
     return rows;
   })();
@@ -2260,8 +2271,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             className="input-base text-sm bg-white"
           >
             <option value="">— Top level —</option>
-            {categories
-              .filter((c) => !c.parentId && c.id !== catEdit?.id)
+            {sortedByName(categories.filter((c) => !c.parentId && c.id !== catEdit?.id))
               .map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -2340,7 +2350,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           <Field label="Move its listings to" hint="A category in use cannot be deleted until its listings have somewhere to go.">
             <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)} className="input-base text-sm bg-white">
               <option value="">Select a category…</option>
-              {categories.filter((c) => c.id !== catDelete.id).map((c) => (
+              {sortedByName(categories.filter((c) => c.id !== catDelete.id)).map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
