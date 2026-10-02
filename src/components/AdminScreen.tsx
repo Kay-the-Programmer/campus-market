@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
         Loader2, Trash2,
   Plus, Pencil, AlertTriangle, CheckCircle2, Ban, RotateCcw, BadgeCheck,
-  Store, PackageCheck, Eye, Mail, Phone, MapPin, User as UserIcon, MessageSquare, CornerDownRight } from 'lucide-react';
+  Store, PackageCheck, Eye, Mail, Phone, MapPin, User as UserIcon, MessageSquare, CornerDownRight,
+  Search, X } from 'lucide-react';
 import { AuthSession, AuditLogEntry, Listing, Order, zoneLabel } from '../types';
 import { api } from '../services/api';
 import { useLiveCounts } from '../hooks/useLiveCounts';
@@ -409,6 +410,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   /** Parent category id, or '' for a top-level one. */
   const [catParent, setCatParent] = useState('');
   const [catImageBusy, setCatImageBusy] = useState(false);
+  /** Filters the category list in place. Local only - the whole tree is already loaded. */
+  const [catQuery, setCatQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
@@ -793,6 +796,35 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       if (!rows.some((r) => r.row.id === c.id)) rows.push({ row: c, depth: 1 });
     }
     return rows;
+  })();
+
+  /**
+   * The tree narrowed by the search box.
+   *
+   * <p>A hit on a child keeps its parent, and a hit on a parent keeps all of
+   * its children. Returning only the rows that matched would be easier and
+   * would read as nonsense: an indented "USB-C to USB-C Cable" sitting under
+   * nothing looks like an orphan, and "Phone Accessories" shown with none of
+   * its children looks like an empty department somebody should go and fix.
+   *
+   * <p>Matching covers the slug as well as the name, because the slug is what
+   * appears in the public URLs - so an admin chasing a link can paste the part
+   * they have rather than guessing the display name it came from.
+   */
+  const catQueryTrimmed = catQuery.trim().toLowerCase();
+  const categoryMatches = catQueryTrimmed
+    ? categories.filter((c) => c.name.toLowerCase().includes(catQueryTrimmed)
+      || c.slug.toLowerCase().includes(catQueryTrimmed))
+    : [];
+  const visibleCategoryTree = (() => {
+    if (!catQueryTrimmed) return categoryTree;
+    const matched = new Set(categoryMatches.map((c) => c.id));
+    const parentsOfMatches = new Set(
+      categoryMatches.map((c) => c.parentId).filter(Boolean) as string[],
+    );
+    return categoryTree.filter(({ row }) => matched.has(row.id)
+      || parentsOfMatches.has(row.id)
+      || (!!row.parentId && matched.has(row.parentId)));
   })();
 
   const saveCategory = async () => {
@@ -1428,17 +1460,67 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           {/* CATEGORIES */}
           {tab === 'categories' && (
             <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories</h1>
-                <button
-                  onClick={() => { setCatCreate(true); setCatName(''); setCatIcon(''); setCatImage(''); setCatParent(''); }}
-                  className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" /> New category
-                </button>
+              {/*
+                Stays put while the list scrolls under it. The seeded tree runs
+                to several dozen rows, so a search box that scrolled away with
+                them would be off screen exactly when it is wanted.
+
+                It holds still because the list below owns its own scrollbar,
+                not because this is sticky: `main` is overflow-y-auto but never
+                actually scrolls - it has no constrained height, so it grows to
+                fit and the document scrolls instead. That still makes it the
+                scrollport for anything sticky inside it, so a sticky header
+                here would sit in a container that never scrolls and would be
+                carried off the top of the page with everything else.
+              */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-900">Categories</h1>
+                  <button
+                    onClick={() => { setCatCreate(true); setCatName(''); setCatIcon(''); setCatImage(''); setCatParent(''); }}
+                    className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> New category
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      value={catQuery}
+                      onChange={(e) => setCatQuery(e.target.value)}
+                      /* Escape clears rather than blurs: with the box floating
+                         above the list, an admin who has filtered down to one
+                         row wants the rest back without reaching for the
+                         mouse. */
+                      onKeyDown={(e) => { if (e.key === 'Escape') setCatQuery(''); }}
+                      placeholder="Search categories…"
+                      aria-label="Search categories"
+                      className="input-base text-sm !py-2 !pl-9 !pr-9"
+                    />
+                    {catQuery && (
+                      <button
+                        onClick={() => setCatQuery('')}
+                        aria-label="Clear search"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {catQueryTrimmed && (
+                    <p className="text-xs font-semibold text-slate-500 shrink-0 tabular-nums">
+                      {categoryMatches.length} of {categories.length}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="divide-y divide-slate-100">
-                {categoryTree.map(({ row: c, depth }) => (
+              {/* Viewport-relative rather than a fixed rem height: this list is
+                  the whole point of the screen, so it should use the space a
+                  large monitor has. max-h, so a filtered-down list of two rows
+                  still shrinks to two rows. */}
+              <div className="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+                {visibleCategoryTree.map(({ row: c, depth }) => (
                   <div
                     key={c.id}
                     className="flex items-center justify-between py-3"
@@ -1473,6 +1555,25 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </div>
                 ))}
                 {categories.length === 0 && <p className="text-xs text-slate-500 py-4">No categories yet.</p>}
+                {categories.length > 0 && categoryMatches.length === 0 && catQueryTrimmed && (
+                  <div className="py-10 text-center space-y-3">
+                    <p className="text-sm text-slate-500">
+                      Nothing matches “<span className="font-semibold text-slate-700">{catQuery.trim()}</span>”.
+                    </p>
+                    {/* Offered here because an admin who searched for a category
+                        that does not exist is usually about to create it. */}
+                    <button
+                      onClick={() => {
+                        setCatCreate(true);
+                        setCatName(catQuery.trim());
+                        setCatIcon(''); setCatImage(''); setCatParent('');
+                      }}
+                      className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Create “{catQuery.trim()}”
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
