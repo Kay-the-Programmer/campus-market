@@ -3,6 +3,7 @@ import { Loader2, Download, Link2, QrCode } from 'lucide-react';
 import { Listing } from '../../types';
 import { formatListingPrice } from '../../utils/currency';
 import { listingUrl, shareCaption, shareFiles, whatsappUrl } from '../../utils/share';
+import { isStaleChunkError, reloadForNewBuild } from '../../utils/lazyChunk';
 import { Modal, ErrorBanner } from './Modal';
 import { useToast } from './ToastProvider';
 
@@ -42,6 +43,8 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The page is older than the build on the server - see the catch below. */
+  const [stale, setStale] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   const url = listingUrl(listing.id);
@@ -56,6 +59,7 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
     if (!isOpen) return;
     let alive = true;
     setError(null);
+    setStale(false);
     setPreview(null);
     setFile(null);
 
@@ -97,7 +101,27 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
         const asFile = await canvasToFile(canvas, `${slug(listing.title)}-campusmarket.png`);
         if (alive) setFile(asFile);
       } catch (err: any) {
-        if (alive) setError(err?.message || 'Could not generate the code for this listing.');
+        if (!alive) return;
+        /*
+         * A chunk this page was built to ask for is no longer on the server,
+         * because a release happened while the tab was open. Nothing is broken
+         * and there is nothing to retry - the page just needs loading again.
+         * Offered rather than taken: the modal opens over whatever they were
+         * looking at, and reloading out from under them to fix a share button
+         * is a worse surprise than the message.
+         */
+        if (isStaleChunkError(err)) {
+          setStale(true);
+          return;
+        }
+        /*
+         * Anything else gets a sentence meant for a person. The raw message
+         * was being shown here, which is how a browser's internal complaint
+         * about MIME types ended up in front of someone trying to share a
+         * listing.
+         */
+        console.error('[CampusMarket] QR card failed', err);
+        setError('Could not generate the code for this listing.');
       }
     })();
 
@@ -178,6 +202,28 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
     >
       <ErrorBanner message={error} />
 
+      {/* Not an error, and worded as what it is: this page has been open since
+          before the last release, so the part that draws the card is no longer
+          where it was told to look. Reloading is the whole fix. */}
+      {stale && (
+        <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-3 py-3 space-y-2.5">
+          <p className="text-xs text-amber-900 font-medium">
+            CampusMarket was updated while this page was open, so sharing needs a fresh copy.
+          </p>
+          <button
+            onClick={() => {
+              if (!reloadForNewBuild()) {
+                setStale(false);
+                setError('Could not generate the code for this listing.');
+              }
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors"
+          >
+            Reload the page
+          </button>
+        </div>
+      )}
+
       {/* The card at a fraction of its real size. It is generated at 1080px
           wide so it survives being sent, saved and printed; nobody needs to
           see that here. */}
@@ -194,9 +240,11 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
             role="status"
             aria-live="polite"
           >
-            {error ? <QrCode className="w-8 h-8" /> : <Loader2 className="w-6 h-6 animate-spin" />}
+            {error || stale
+              ? <QrCode className="w-8 h-8" />
+              : <Loader2 className="w-6 h-6 animate-spin" />}
             <span className="text-xs font-semibold">
-              {error ? 'No card to show' : 'Drawing your code…'}
+              {error || stale ? 'No card to show' : 'Drawing your code…'}
             </span>
           </div>
         )}

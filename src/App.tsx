@@ -7,6 +7,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Listing, ViewType,  AuthSession, AddToCartOptions,
   SearchFilters, EMPTY_SEARCH_FILTERS, CAMPUS_ZONES, CampusZone, SavedSearchRow } from './types';
+import { importChunk } from './utils/lazyChunk';
 import { TopNav, FeedType } from './components/nav/TopNav';
 import { BottomNav } from './components/nav/BottomNav';
 import { SiteFooter } from './components/nav/SiteFooter';
@@ -44,10 +45,16 @@ import { canSell } from './components/nav/navShared';
  * session actually moves between, and a spinner between the feed and a listing
  * would be a worse trade than the bytes.
  */
-const AdminScreen = lazy(() =>
-  import('./components/AdminScreen').then((m) => ({ default: m.AdminScreen })));
-const LegalScreen = lazy(() =>
-  import('./components/LegalScreen').then((m) => ({ default: m.LegalScreen })));
+/*
+ * Wrapped so a release that happened while the tab was open reloads instead of
+ * throwing. Unlike the share modal, which asks first, these take the reload:
+ * the chunk failing here means the screen never rendered, so there is nothing
+ * on it to lose and nothing to go back to but an error boundary.
+ */
+const AdminScreen = lazy(() => importChunk(
+  () => import('./components/AdminScreen').then((m) => ({ default: m.AdminScreen }))));
+const LegalScreen = lazy(() => importChunk(
+  () => import('./components/LegalScreen').then((m) => ({ default: m.LegalScreen }))));
 
 /**
  * Shown while a split screen's chunk is in flight.
