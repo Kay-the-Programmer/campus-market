@@ -97,6 +97,59 @@ interface AdminUserRow {
   activeListings: number;
 }
 
+/**
+ * What to call an account in the Role column.
+ *
+ * <p>The raw `role` is the wrong thing to print: every non-admin is
+ * `CUSTOMER`, so an approved seller with thirty live listings appeared as
+ * "customer" alongside somebody who has only ever bought. Selling is carried
+ * by two other fields - `accountType` is the intent and `sellerApprovalStatus`
+ * is the admin's decision - and it takes both to be a seller, which is exactly
+ * what User.canCreateListings() checks on the server.
+ *
+ * <p>Pending and rejected are shown rather than folded into "Customer",
+ * because the difference is the whole content of the seller queue: somebody
+ * waiting on a decision and somebody who was refused are not the same person
+ * to an admin looking down this list.
+ */
+function roleLabel(u: AdminUserRow): { text: string; className: string } {
+  if (u.role.toUpperCase() === 'ADMIN') {
+    return { text: 'Admin', className: 'bg-purple-100 text-purple-700' };
+  }
+  if (u.accountType?.toUpperCase() === 'SELLER') {
+    switch (u.sellerApprovalStatus?.toUpperCase()) {
+      case 'APPROVED':
+        return { text: 'Seller', className: 'bg-emerald-100 text-emerald-700' };
+      case 'PENDING':
+        return { text: 'Seller · pending', className: 'bg-amber-100 text-amber-700' };
+      case 'REJECTED':
+        return { text: 'Seller · refused', className: 'bg-red-100 text-red-700' };
+      default:
+        break;
+    }
+  }
+  return { text: 'Customer', className: 'bg-blue-100 text-blue-700' };
+}
+
+/** Approved to sell right now - the only state "Revoke seller" applies to. */
+function isApprovedSeller(u: AdminUserRow): boolean {
+  return u.role.toUpperCase() !== 'ADMIN'
+    && u.accountType?.toUpperCase() === 'SELLER'
+    && u.sellerApprovalStatus?.toUpperCase() === 'APPROVED';
+}
+
+/**
+ * Can an admin approve this member from here?
+ *
+ * <p>Anyone waiting or refused. The server takes it from either state and
+ * sets accountType itself, so this does not need to care which; it refuses
+ * only an already-approved account, which is the one case excluded here.
+ */
+function canApproveSeller(u: AdminUserRow): boolean {
+  const status = u.sellerApprovalStatus?.toUpperCase();
+  return u.role.toUpperCase() !== 'ADMIN' && (status === 'PENDING' || status === 'REJECTED');
+}
+
 interface CategoryRow {
   id: string;
   name: string;
@@ -396,7 +449,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   // modal state
   const [resolveTarget, setResolveTarget] = useState<ReportRow | null>(null);
   const [resolveAction, setResolveAction] = useState<'DISMISS' | 'REMOVE_LISTING' | 'BAN_USER'>('DISMISS');
-  const [userAction, setUserAction] = useState<{ user: AdminUserRow; kind: 'suspend' | 'ban' | 'reinstate' } | null>(null);
+  const [userAction, setUserAction] = useState<
+    { user: AdminUserRow; kind: 'suspend' | 'ban' | 'reinstate' | 'revokeSeller' | 'approveSeller' } | null>(null);
   const [catEdit, setCatEdit] = useState<CategoryRow | null>(null);
   const [catCreate, setCatCreate] = useState(false);
   const [catDelete, setCatDelete] = useState<CategoryRow | null>(null);
@@ -671,7 +725,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
   const submitUserAction = async () => {
     if (!userAction) return;
-    if (userAction.kind !== 'reinstate' && !reason.trim()) {
+    // Approving and reinstating are the two that do not need justifying.
+    if (!['reinstate', 'approveSeller'].includes(userAction.kind) && !reason.trim()) {
       setError('A reason is required for the audit log.');
       return;
     }
@@ -680,10 +735,19 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     const res =
       kind === 'suspend' ? await api.admin.suspendUser(user.id, reason.trim(), parseInt(durationDays, 10) || 7)
       : kind === 'ban' ? await api.admin.banUser(user.id, reason.trim())
+      /* Revoking is the same server call as refusing an application:
+         POST /sellers/{id}/reject takes any member, not just a pending one,
+         and moves them to REJECTED with the reason attached. Worth not
+         inventing a second endpoint for it - this one already writes the
+         audit entry and notifies the seller, which a new one would have to
+         reimplement to be correct. */
+      : kind === 'revokeSeller' ? await api.admin.rejectSeller(user.id, reason.trim())
+      : kind === 'approveSeller' ? await api.admin.approveSeller(user.id, reason.trim() || undefined)
       : await api.admin.reinstateUser(user.id, reason.trim() || undefined);
     setBusy(false);
     if (res.success) {
-      succeed(res.message || 'Done.');
+      // Not every one of these endpoints returns a message; reject/revoke does not.
+      succeed(('message' in res && res.message) || 'Done.');
       setUserAction(null);
       setReason('');
       loadAll(true);
@@ -1401,9 +1465,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         </td>
                         <td className="py-3 px-3 text-slate-600">{u.email}</td>
                         <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                            u.role === 'ADMIN' || u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                          }`}>{u.role}</span>
+                          {/* Not uppercased any more: "SELLER · PENDING" shouts,
+                              and the column is read down the page rather than
+                              glanced at one row at a time. */}
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap ${roleLabel(u).className}`}
+                            title={u.sellerApprovalReason || undefined}
+                          >
+                            {roleLabel(u).text}
+                          </span>
                         </td>
                         <td className="py-3 px-3">
                           {u.status === 'BANNED' ? (
@@ -1431,6 +1501,31 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           <button onClick={() => toggleVerify(u)} className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg text-xs">
                             {u.verified ? 'Unverify' : 'Verify'}
                           </button>
+                          {/* Only for someone who is actually approved: offering
+                              it on a buyer would be a button that returns 400,
+                              and on a refused seller it would do nothing. */}
+                          {isApprovedSeller(u) && (
+                            <button
+                              onClick={() => { setUserAction({ user: u, kind: 'revokeSeller' }); setReason(''); setError(null); }}
+                              className="px-2 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold rounded-lg text-xs inline-flex items-center gap-1"
+                            >
+                              <Store className="w-3 h-3" /> Revoke seller
+                            </button>
+                          )}
+                          {/* The way back. Without it, revoking is a one-way
+                              door an admin cannot undo: a refused member is
+                              not in the approvals queue - that lists pending
+                              only - so nothing else on any screen can approve
+                              them again, and only they can reopen it by
+                              applying. */}
+                          {canApproveSeller(u) && (
+                            <button
+                              onClick={() => { setUserAction({ user: u, kind: 'approveSeller' }); setReason(''); setError(null); }}
+                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg text-xs inline-flex items-center gap-1"
+                            >
+                              <Store className="w-3 h-3" /> Approve seller
+                            </button>
+                          )}
                           {/* Admins are never offered Suspend/Ban - the API refuses it. */}
                           {u.role.toUpperCase() !== 'ADMIN' && (
                             u.status === 'ACTIVE' ? (
@@ -1668,7 +1763,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         isOpen={!!memberRow}
         onClose={() => setMemberRow(null)}
         title={memberRow ? memberRow.name : ''}
-        subtitle={memberRow ? `${memberRow.email} · ${memberRow.role}` : undefined}
+        /* Same label as the table behind it - this opens from that row, and
+           seeing "CUSTOMER" here after reading "Seller" there reads as two
+           different people. */
+        subtitle={memberRow ? `${memberRow.email} · ${roleLabel(memberRow).text}` : undefined}
         footer={
           <div className="flex items-center justify-between gap-3">
             <button onClick={() => setMemberRow(null)} className="btn-ghost !rounded-xl !text-sm">
@@ -2048,6 +2146,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         title={
           userAction?.kind === 'suspend' ? `Suspend ${userAction.user.name}`
           : userAction?.kind === 'ban' ? `Ban ${userAction.user.name}?`
+          : userAction?.kind === 'revokeSeller' ? `Revoke ${userAction.user.name}'s seller access?`
+          : userAction?.kind === 'approveSeller' ? `Approve ${userAction.user.name} to sell?`
           : `Reinstate ${userAction?.user.name}`
         }
         footer={
@@ -2059,10 +2159,16 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               className={`px-4 py-3 rounded-xl text-white font-semibold text-sm ${
                 userAction?.kind === 'ban' ? 'bg-red-600 hover:bg-red-700'
                 : userAction?.kind === 'suspend' ? 'bg-amber-500 hover:bg-amber-600'
+                : userAction?.kind === 'revokeSeller' ? 'bg-orange-600 hover:bg-orange-700'
                 : 'bg-emerald-600 hover:bg-emerald-700'
               }`}
             >
-              {busy ? 'Working…' : userAction?.kind === 'ban' ? 'Ban permanently' : userAction?.kind === 'suspend' ? 'Suspend' : 'Reinstate'}
+              {busy ? 'Working…'
+                : userAction?.kind === 'ban' ? 'Ban permanently'
+                : userAction?.kind === 'suspend' ? 'Suspend'
+                : userAction?.kind === 'revokeSeller' ? 'Revoke seller access'
+                : userAction?.kind === 'approveSeller' ? 'Approve to sell'
+                : 'Reinstate'}
             </button>
           </div>
         }
@@ -2075,7 +2181,43 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </p>
           </div>
         )}
-        <Field label={userAction?.kind === 'reinstate' ? 'Reason (optional)' : 'Reason (recorded in the audit log)'}>
+        {userAction?.kind === 'revokeSeller' && (
+          <div className="flex items-start gap-2 rounded-xl bg-orange-50 border border-orange-200 px-3 py-2.5 mb-4">
+            <Store className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+            <div className="text-xs text-orange-800 font-medium space-y-1">
+              {/* Specifically NOT "moved back into the queue": the queue lists
+                  PENDING only, and this writes REJECTED, so they will not
+                  reappear there on their own. Either they re-apply, which
+                  puts them back in it, or you approve them again from this
+                  table. */}
+              <p>They can no longer create listings. Your reason is shown to them, and they can apply again — or you can approve them again from this table.</p>
+              {/* Stated because it is the opposite of what "revoke" suggests,
+                  and an admin doing this to stop something being sold needs to
+                  know this alone will not do it: approval gates creating a
+                  listing, nothing else, and the public feed filters on account
+                  status rather than on approval. */}
+              <p>
+                Their {userAction.user.activeListings} live listing{userAction.user.activeListings === 1 ? '' : 's'} stay
+                {userAction.user.activeListings === 1 ? 's' : ''} visible and can still be edited. Suspend or ban the
+                account instead if the listings should come down.
+              </p>
+            </div>
+          </div>
+        )}
+        {userAction?.kind === 'approveSeller' && (
+          <div className="flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 mb-4">
+            <Store className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-emerald-800 font-medium">
+              They can post listings straight away and are told so.
+              {!userAction.user.verified && ' Until the account is verified, their orders are held for review.'}
+            </p>
+          </div>
+        )}
+        <Field label={
+          userAction?.kind === 'reinstate' || userAction?.kind === 'approveSeller' ? 'Reason (optional)'
+          : userAction?.kind === 'revokeSeller' ? 'Reason (shown to them, and recorded in the audit log)'
+          : 'Reason (recorded in the audit log)'
+        }>
           <input value={reason} onChange={(e) => setReason(e.target.value)} className="input-base text-sm" />
         </Field>
         {userAction?.kind === 'suspend' && (
