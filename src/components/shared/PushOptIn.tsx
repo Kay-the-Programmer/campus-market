@@ -270,6 +270,59 @@ export const NotificationSettings: React.FC = () => {
   const [permission, setPermission] = useState<PushPermission>(() => getPushPermission());
   const [enabledHere, setEnabledHere] = useState(() => isPushEnabledHere());
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  /**
+   * Asks the server to send a real notification to this account's devices and
+   * reports what came back.
+   *
+   * <p>The wording of each outcome matters more than usual: this exists to be
+   * read by whoever is trying to work out why nothing arrives, so it names the
+   * thing to go and look at rather than saying "failed".
+   */
+  const runTestPush = async () => {
+    setTesting(true);
+    setTestResult(null);
+    const res = await api.notifications.sendTestPush();
+    setTesting(false);
+
+    if (res.error) {
+      setTestResult({ ok: false, message: res.error });
+      return;
+    }
+    if (res.reason) {
+      setTestResult({ ok: false, message: res.reason });
+      return;
+    }
+    if (res.sent > 0 && res.failures.length === 0) {
+      setTestResult({
+        ok: true,
+        message: `Sent to ${res.sent} device${res.sent === 1 ? '' : 's'}. `
+          + 'If nothing appears, the browser or system is suppressing it — check that '
+          + 'notifications are allowed for this site and that Do Not Disturb is off.',
+      });
+      return;
+    }
+    if (res.sent > 0) {
+      setTestResult({
+        ok: true,
+        message: `Sent to ${res.sent} of ${res.devices} devices. The rest were refused: `
+          + `${res.failures.join(', ')}.`,
+      });
+      return;
+    }
+    setTestResult({
+      ok: false,
+      /* The error code is the diagnosis, so it is shown rather than
+         translated. SENDER_ID_MISMATCH in particular means the server and the
+         browser are talking to two different Firebase projects, which no
+         amount of retrying fixes. */
+      message: `Firebase refused all ${res.devices} device${res.devices === 1 ? '' : 's'}: `
+        + `${res.failures.join(', ')}. The server's Firebase credentials and this site's `
+        + 'VITE_FIREBASE_* config have to belong to the same project.',
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -414,6 +467,41 @@ export const NotificationSettings: React.FC = () => {
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {enabledHere ? 'Turn off' : 'Turn on'}
           </button>
+        </div>
+      )}
+
+      {/*
+        Proving it end to end.
+        ----------------------
+        Turning the switch on only proves the browser issued a token. Whether
+        anything can actually be delivered depends on the server holding
+        credentials for the same Firebase project - and the ordinary send path
+        is asynchronous and swallows its failures, so a server that silently
+        delivers nothing looks exactly like one that works. This is the only
+        thing in the app that waits for Google's answer and shows it.
+      */}
+      {preferences.pushConfigured && preferences.deviceCount > 0 && (
+        <div className="mb-5 -mt-2">
+          <button
+            onClick={runTestPush}
+            disabled={testing}
+            className="text-xs font-bold text-[#2563eb] hover:text-[#004ac6] disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {testing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {testing ? 'Sending…' : 'Send a test notification'}
+          </button>
+          {testResult && (
+            <p
+              className={`mt-2 text-xs leading-relaxed rounded-xl px-3 py-2 border ${
+                testResult.ok
+                  ? 'text-[#007d55] bg-[#e6faf1] border-[#b9f0d8]'
+                  : 'text-amber-900 bg-amber-50 border-amber-200'
+              }`}
+              role="status"
+            >
+              {testResult.message}
+            </p>
+          )}
         </div>
       )}
 

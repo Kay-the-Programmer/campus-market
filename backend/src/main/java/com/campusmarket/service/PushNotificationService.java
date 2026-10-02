@@ -60,6 +60,80 @@ public class PushNotificationService {
     }
 
     /**
+     * What a delivery attempt actually did.
+     *
+     * <p>Exists because {@link #send} cannot report anything: it is fire-and-
+     * forget by design, returns before FCM has answered, and swallows every
+     * failure so that a notification nobody receives can never roll back the
+     * thing that produced it. That is right for ordinary sends and useless when
+     * the question is "why is nothing arriving?", which is what this answers.
+     *
+     * @param reason why nothing was sent, when {@code devices} is 0 or sending
+     *               was not attempted at all. Null when a send was made.
+     * @param failures one line per device FCM refused, carrying its error code -
+     *                 the code is the diagnosis. SENDER_ID_MISMATCH or
+     *                 THIRD_PARTY_AUTH_ERROR means the server holds credentials
+     *                 for a different Firebase project than the one that issued
+     *                 the browser's token; UNREGISTERED means the device really
+     *                 is gone and the row has just been removed.
+     */
+    public record SendOutcome(boolean configured, int devices, int sent,
+                              List<String> failures, String reason) {}
+
+    /**
+     * Sends a notification to one user's own devices and reports what happened.
+     *
+     * <p>Synchronous, unlike {@link #send}: the entire point is that the caller
+     * waits for FCM's answer and is told it.
+     */
+    @Transactional
+    public SendOutcome sendTest(UUID userId, String title, String body) {
+        FirebaseMessaging messaging = messagingProvider.getIfAvailable();
+        if (messaging == null) {
+            return new SendOutcome(false, 0, 0, List.of(),
+                    "The server has no Firebase credentials, so it cannot send push at all. "
+                            + "Check CAMPUSMARKET_FIREBASE_CREDENTIALS_JSON.");
+        }
+
+        List<PushDevice> devices = pushDeviceRepository.findByUserId(userId);
+        if (devices.isEmpty()) {
+            return new SendOutcome(true, 0, 0, List.of(),
+                    "No device is registered for this account. Turn notifications on in this "
+                            + "browser first - on an iPhone, the site has to be on the Home Screen.");
+        }
+
+        Map<String, String> data = payload(NotificationType.SYSTEM, title, body, "/notifications", null);
+        List<Message> messages = devices.stream()
+                .map(device -> buildMessage(device, data, title, body))
+                .toList();
+
+        try {
+            BatchResponse response = messaging.sendEach(messages);
+            List<String> failures = new ArrayList<>();
+            for (int i = 0; i < response.getResponses().size() && i < devices.size(); i++) {
+                SendResponse each = response.getResponses().get(i);
+                if (each.isSuccessful()) {
+                    continue;
+                }
+                MessagingErrorCode code = each.getException() == null
+                        ? null : each.getException().getMessagingErrorCode();
+                failures.add(devices.get(i).getPlatform() + ": " + code);
+            }
+            if (response.getFailureCount() > 0) {
+                pruneDeadTokens(devices, response.getResponses());
+            }
+            log.info("Test push for user {}: {} device(s), {} delivered, {} refused.",
+                    userId, devices.size(), response.getSuccessCount(), response.getFailureCount());
+            return new SendOutcome(true, devices.size(), response.getSuccessCount(), failures, null);
+        } catch (FirebaseMessagingException e) {
+            log.warn("Test push for user {} failed outright: {}", userId, e.getMessage());
+            return new SendOutcome(true, devices.size(), 0,
+                    List.of(String.valueOf(e.getMessagingErrorCode())),
+                    "Firebase refused the request: " + e.getMessage());
+        }
+    }
+
+    /**
      * Fire-and-forget delivery. Every failure mode here is logged and swallowed:
      * a push that does not arrive must never roll back or fail the action that
      * produced it, and the user still has the in-app notification either way.
@@ -154,9 +228,20 @@ public class PushNotificationService {
             if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
                 dead.add(devices.get(i));
             } else {
-                // Transient (quota, unavailable): keep the token and let the next
-                // notification retry it.
-                log.debug("Transient push failure for device {}: {}", devices.get(i).getId(), code);
+                /*
+                 * Keep the token and let the next notification retry it - the
+                 * usual causes here are quota and unavailability, which pass.
+                 *
+                 * Logged at warn, not debug. Not everything that lands here is
+                 * transient: SENDER_ID_MISMATCH and THIRD_PARTY_AUTH_ERROR mean
+                 * the server is authenticating as the wrong Firebase project,
+                 * which never recovers on its own and is the one failure that
+                 * silences push completely. At debug it was invisible at the
+                 * level anything actually runs at, so the symptom was "no
+                 * notifications" with a clean log.
+                 */
+                log.warn("Push to device {} failed with {} - not a dead token, keeping it.",
+                        devices.get(i).getId(), code);
             }
         }
         if (!dead.isEmpty()) {

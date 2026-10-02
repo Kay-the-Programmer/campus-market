@@ -3,6 +3,8 @@ package com.campusmarket.web;
 import com.campusmarket.security.AuthPrincipal;
 import com.campusmarket.security.Principal;
 import com.campusmarket.service.NotificationService;
+import com.campusmarket.security.AccessGuard;
+import com.campusmarket.service.PushNotificationService;
 import com.campusmarket.service.PushSubscriptionService;
 import com.campusmarket.web.dto.ModerationDtos.NotificationDto;
 import com.campusmarket.web.dto.ModerationDtos.NotificationPreferencesDto;
@@ -12,6 +14,7 @@ import com.campusmarket.web.request.PushRequests.UnregisterDeviceRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,6 +27,8 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final PushSubscriptionService pushSubscriptionService;
+    private final PushNotificationService pushNotificationService;
+    private final AccessGuard accessGuard;
 
     @GetMapping
     public Map<String, Object> list(@AuthPrincipal Principal principal) {
@@ -68,6 +73,38 @@ public class NotificationController {
                                                 @RequestBody UnregisterDeviceRequest request) {
         pushSubscriptionService.unregisterDevice(principal, request.token());
         return Map.of("success", true);
+    }
+
+    /**
+     * Sends a notification to the caller's own devices and reports what FCM
+     * said about each one.
+     *
+     * <p>The ordinary send path cannot answer "is push working?": it is
+     * asynchronous and swallows its failures on purpose, so a misconfigured
+     * server and a working one look identical from outside. This is the one
+     * place that waits for the answer and passes it back.
+     *
+     * <p>Only ever the caller's own devices, so it cannot be used to notify
+     * anybody else.
+     */
+    @PostMapping("/devices/test")
+    public Map<String, Object> sendTestPush(@AuthPrincipal Principal principal) {
+        accessGuard.requireAuthenticated(principal);
+        PushNotificationService.SendOutcome outcome = pushNotificationService.sendTest(
+                principal.id(),
+                "Test notification",
+                "If you can see this, push notifications are working on this device.");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", outcome.sent() > 0);
+        body.put("configured", outcome.configured());
+        body.put("devices", outcome.devices());
+        body.put("sent", outcome.sent());
+        body.put("failures", outcome.failures());
+        if (outcome.reason() != null) {
+            body.put("reason", outcome.reason());
+        }
+        return body;
     }
 
     @GetMapping("/preferences")

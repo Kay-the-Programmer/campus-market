@@ -1,6 +1,7 @@
 package com.campusmarket.config;
 
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
@@ -54,9 +55,29 @@ public class FirebaseConfig {
                     .setCredentials(credentials)
                     .build();
 
-            return FirebaseApp.getApps().isEmpty()
+            FirebaseApp app = FirebaseApp.getApps().isEmpty()
                     ? FirebaseApp.initializeApp(options)
                     : FirebaseApp.getInstance();
+
+            /*
+             * Which project, by name, on one line at startup.
+             *
+             * Credentials being present is not the same as them being the right
+             * ones, and the difference is otherwise invisible: the SDK starts
+             * happily against any project, Google sign-in and push both appear
+             * configured, and every send is then refused by FCM with
+             * SENDER_ID_MISMATCH because the browser's token was issued by a
+             * different project. That is a silent, total loss of notifications.
+             *
+             * This line is here to be compared against the frontend's
+             * VITE_FIREBASE_PROJECT_ID. They must match.
+             */
+            String projectId = credentials instanceof ServiceAccountCredentials sa
+                    ? sa.getProjectId()
+                    : "unknown (not a service-account key)";
+            log.info("Firebase Admin SDK initialised for project {} - this must match the "
+                    + "frontend's VITE_FIREBASE_PROJECT_ID, or push will be refused.", projectId);
+            return app;
         } catch (Exception e) {
             // Misconfigured credentials must not take the whole API down -
             // only the optional Firebase-backed paths degrade.

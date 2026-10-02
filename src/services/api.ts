@@ -1065,6 +1065,24 @@ export const api = {
       const res = await post('/api/notifications/devices/unregister', { token });
       return { success: res.ok, error: res.error, status: res.status };
     },
+    /**
+     * Sends a real push to this account's own devices and reports what FCM
+     * said. The only way to tell a working setup from a broken one: ordinary
+     * sends are asynchronous and swallow their failures by design.
+     */
+    async sendTestPush() {
+      const res = await post('/api/notifications/devices/test', {});
+      return {
+        success: res.data?.success === true,
+        configured: res.data?.configured === true,
+        devices: (res.data?.devices as number) ?? 0,
+        sent: (res.data?.sent as number) ?? 0,
+        failures: (res.data?.failures as string[]) ?? [],
+        reason: res.data?.reason as string | undefined,
+        error: res.error,
+        status: res.status,
+      };
+    },
     async getPreferences() {
       const res = await get('/api/notifications/preferences');
       return {
