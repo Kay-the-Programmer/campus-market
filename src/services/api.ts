@@ -1111,27 +1111,39 @@ export const api = {
       };
     },
 
-    /** Issues a one-time code. `devCode` comes back outside production so the
-     *  flow is testable without an SMS gateway. */
-    async sendPhoneCode(phone: string) {
-      const res = await post('/api/users/me/phone/send-code', { phone });
+    /**
+     * Stages a number and returns what to text, and where.
+     *
+     * <p>`code` comes back by design, which is the reverse of the usual OTP:
+     * the student is the one sending the message, so they have to be shown the
+     * thing to send. What proves the number is the text arriving from it, not
+     * the code being secret.
+     */
+    async beginPhoneVerification(phone: string) {
+      const res = await post('/api/users/me/phone/begin', { phone });
       return {
         success: res.ok,
-        message: res.data?.message,
-        devCode: res.data?.devCode as string | undefined,
+        phone: res.data?.phone as string | undefined,
+        verificationCode: res.data?.code as string | undefined,
+        gatewayNumber: res.data?.gatewayNumber as string | undefined,
+        messageBody: res.data?.messageBody as string | undefined,
+        expiresInSeconds: res.data?.expiresInSeconds as number | undefined,
         error: res.error,
         code: res.code,
         status: res.status,
       };
     },
 
-    async verifyPhone(code: string) {
-      const res = await post('/api/users/me/phone/verify', { code });
+    /** Polled while waiting for the student's text to reach the gateway. */
+    async phoneStatus() {
+      const res = await get('/api/users/me/phone/status');
       return {
         success: res.ok,
         phone: res.data?.phone as string | undefined,
+        phoneVerified: res.data?.phoneVerified === true,
+        waiting: res.data?.waiting === true,
+        expiresInSeconds: res.data?.expiresInSeconds as number | undefined,
         error: res.error,
-        code: res.code,
         status: res.status,
       };
     },

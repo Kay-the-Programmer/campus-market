@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Phone, ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, CheckCircle2, KeyRound, MessageSquare } from 'lucide-react';
 import { AuthSession, CAMPUS_ZONES, CampusZone } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from './Modal';
+import { buildSmsLink } from '../../utils/smsLink';
+import { isIos } from '../../utils/platform';
 
 interface ProfileEditorProps {
   isOpen: boolean;
@@ -36,8 +38,10 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
 
   const [phone, setPhone] = useState(currentUser.phone ?? '');
   const [step, setStep] = useState<Step>('details');
-  const [code, setCode] = useState('');
-  const [devCode, setDevCode] = useState<string | undefined>();
+  /** What the student has to text us, and where. Set by beginPhoneVerification. */
+  const [challenge, setChallenge] = useState<{
+    code: string; gatewayNumber: string; messageBody: string;
+  } | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(!!currentUser.phoneVerified);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -57,8 +61,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
     setPhone(currentUser.phone ?? '');
     setPhoneVerified(!!currentUser.phoneVerified);
     setStep('details');
-    setCode('');
-    setDevCode(undefined);
+    setChallenge(null);
     setError(null);
     setNotice(null);
     /*
@@ -81,35 +84,57 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   const phoneChanged = phone.trim() !== (currentUser.phone ?? '').trim();
   const showAsVerified = phoneVerified && !phoneChanged;
 
-  const sendCode = async () => {
+  const beginVerification = async () => {
     setBusy(true);
     setError(null);
-    const res = await api.users.sendPhoneCode(phone.trim());
+    const res = await api.users.beginPhoneVerification(phone.trim());
     setBusy(false);
-    if (res.success) {
-      setDevCode(res.devCode);
+    if (res.success && res.verificationCode && res.gatewayNumber && res.messageBody) {
+      setChallenge({
+        code: res.verificationCode,
+        gatewayNumber: res.gatewayNumber,
+        messageBody: res.messageBody,
+      });
       setStep('code');
-      setNotice(res.message ?? null);
+      setNotice(null);
     } else {
-      setError(res.error || 'Could not send that code.');
+      setError(res.error || 'Could not start verification.');
     }
   };
 
-  const verifyCode = async () => {
-    setBusy(true);
-    setError(null);
-    const res = await api.users.verifyPhone(code.trim());
-    setBusy(false);
-    if (res.success) {
-      setPhoneVerified(true);
-      setPhone(res.phone ?? phone);
-      setStep('details');
-      setNotice('Phone number verified.');
-      onSaved();
-    } else {
-      setError(res.error || 'That code did not work.');
-    }
-  };
+  /*
+   * Waits for the text to reach the gateway.
+   *
+   * Polled rather than pushed: the message arrives over the mobile network at
+   * a handset we do not control, so there is no moment the server could push
+   * from, and the round trip is a single cheap read. Stops as soon as it lands
+   * - and stops on unmount, so a closed editor is not still polling.
+   */
+  useEffect(() => {
+    if (step !== 'code' || !challenge) return;
+    let alive = true;
+
+    const timer = setInterval(async () => {
+      const res = await api.users.phoneStatus();
+      if (!alive) return;
+      if (res.phoneVerified) {
+        setPhoneVerified(true);
+        setPhone(res.phone ?? phone);
+        setStep('details');
+        setChallenge(null);
+        setNotice('Phone number verified.');
+        onSaved();
+      } else if (!res.waiting) {
+        // The code expired before anything arrived.
+        setStep('details');
+        setChallenge(null);
+        setError('That code expired before your message arrived. Try again.');
+      }
+    }, 3000);
+
+    return () => { alive = false; clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, challenge]);
 
   const changePassword = async () => {
     setBusy(true);
@@ -182,19 +207,13 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setStep('details')} className="btn-ghost !rounded-xl !text-sm">
-              Back
-            </button>
-            <button
-              onClick={verifyCode}
-              disabled={busy || code.trim().length < 4}
-              className="btn-primary !rounded-xl !text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-              Verify number
-            </button>
-          </div>
+          /* No confirm button on this step, because there is nothing for it to
+             submit: the number is proven by a text arriving from it, not by
+             anything this page can send. The step's own body carries the one
+             action there is - opening the messaging app. */
+          <button onClick={() => setStep('details')} className="btn-ghost !rounded-xl !text-sm w-full">
+            Back
+          </button>
         )
       }
     >
@@ -238,35 +257,53 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
             />
           </Field>
         </div>
-      ) : step === 'code' ? (
-        <div className="space-y-3">
+      ) : step === 'code' && challenge ? (
+        <div className="space-y-4">
           <p className="text-sm text-[#434655]">
-            Enter the 6-digit code we sent to <span className="font-semibold">{phone}</span>.
+            Text this code to us from <span className="font-semibold">{phone}</span>. Receiving it
+            from that number is what proves the number is yours.
           </p>
-          <Field label="Verification code">
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              autoFocus
-              placeholder="123456"
-              className="input-base text-lg tracking-[0.4em] font-bold text-center"
-            />
-          </Field>
-          {/* No SMS gateway is wired up yet, so the code is surfaced here in
-              development rather than leaving the flow untestable. */}
-          {devCode && (
-            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Development build — no SMS is actually sent. Your code is{' '}
-              <span className="font-mono font-bold">{devCode}</span>.
+
+          <div className="rounded-xl border border-[#c3c6d7] bg-[#f8f9ff] px-4 py-3 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737686]">
+              Send this
             </p>
-          )}
-          <button
-            onClick={sendCode}
-            disabled={busy}
-            className="text-xs font-bold text-[#2563eb] hover:text-[#004ac6] disabled:opacity-50"
+            <p className="text-lg font-bold tracking-[0.2em] text-[#0b1c30] mt-0.5">
+              {challenge.messageBody}
+            </p>
+            <p className="text-xs text-[#737686] mt-1">
+              to <span className="font-semibold">{challenge.gatewayNumber}</span>
+            </p>
+          </div>
+
+          {/* A plain link, not a fetch: only the device's own messaging app can
+              send from the student's number, which is the thing being proven.
+              The page cannot do it for them, and should not look like it can. */}
+          <a
+            href={buildSmsLink({
+              to: challenge.gatewayNumber,
+              body: challenge.messageBody,
+              ios: isIos(),
+            })}
+            className="w-full h-11 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
           >
-            Send another code
+            <MessageSquare className="w-4 h-4" /> Open messages
+          </a>
+
+          <p className="flex items-center justify-center gap-2 text-xs text-[#737686]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Waiting for your message…
+          </p>
+
+          <p className="text-[11px] text-[#737686] text-center">
+            Standard SMS rates apply — one message. Nothing is charged by CampusMarket.
+          </p>
+
+          <button
+            onClick={() => { setStep('details'); setChallenge(null); }}
+            className="w-full text-xs font-bold text-[#737686] hover:text-[#0b1c30]"
+          >
+            Cancel
           </button>
         </div>
       ) : (
@@ -297,18 +334,18 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
                 </span>
               ) : (
                 <button
-                  onClick={sendCode}
+                  onClick={beginVerification}
                   disabled={busy || phone.trim().length < 7}
                   className="px-3.5 py-2.5 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold shrink-0 disabled:opacity-50 transition-colors"
                 >
-                  {busy ? 'Sending…' : 'Send code'}
+                  {busy ? 'Starting…' : 'Verify'}
                 </button>
               )}
             </div>
             <p className="mt-1.5 text-xs text-[#737686]">
               {showAsVerified
                 ? 'This is how buyers and sellers reach you to arrange a handover.'
-                : 'Required. We send a code to check the number works before saving it.'}
+                : 'Required. You text us a short code from this number to confirm it is yours.'}
             </p>
           </div>
 

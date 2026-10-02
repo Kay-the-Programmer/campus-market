@@ -46,6 +46,11 @@ services:
       # the flag is dangerous enough to be worth stating where someone reading
       # the production config can see it.
       CAMPUSMARKET_EXPOSE_DEV_TOKENS: "false"
+      # Phone verification by inbound SMS. Both come from .env; leaving them
+      # unset disables the feature rather than half-enabling it, and an unset
+      # secret makes the webhook refuse every call.
+      CAMPUSMARKET_SMS_GATEWAY_NUMBER: "${CAMPUSMARKET_SMS_GATEWAY_NUMBER:-}"
+      CAMPUSMARKET_SMS_INBOUND_SECRET: "${CAMPUSMARKET_SMS_INBOUND_SECRET:-}"
       SERVER_ERROR_INCLUDE_MESSAGE: "never"
       CAMPUSMARKET_RATE_LIMIT_ENABLED: "true"
       # Hardcoded rather than defaulted: demo listings and demo accounts have

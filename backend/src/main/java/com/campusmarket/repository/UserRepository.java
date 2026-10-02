@@ -25,4 +25,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findBySellerApprovalStatusOrderBySellerRequestedAtAsc(SellerApprovalStatus status);
 
     long countBySellerApprovalStatus(SellerApprovalStatus status);
+
+    /**
+     * Everyone with a phone verification in flight.
+     *
+     * <p>Deliberately not {@code findByPhonePending(String)}: the number a
+     * student typed and the sender the network reports are the same line in two
+     * different formats, so an equality match on the column finds nothing. The
+     * reconciling is done in PhoneVerificationService, over this short list.
+     */
+    List<User> findByPhonePendingIsNotNull();
 }

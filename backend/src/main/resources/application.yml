@@ -109,6 +109,22 @@ campusmarket:
   # Dev convenience: return verification / password-reset tokens in API responses
   # so the flows are exercisable without a mail provider. MUST be false in prod.
   expose-dev-tokens: ${CAMPUSMARKET_EXPOSE_DEV_TOKENS:false}
+
+  # Phone verification, which works the opposite way round to the usual one:
+  # the student texts US a code shown on their screen, and a handset running a
+  # gateway app forwards what it received to /api/webhooks/sms/inbound. Nothing
+  # is sent by the server, so no SMS provider is billed.
+  sms:
+    # The number students text. Blank turns the feature off and says so, rather
+    # than offering a flow that cannot finish.
+    gateway-number: ${CAMPUSMARKET_SMS_GATEWAY_NUMBER:}
+    # Shared secret the gateway sends as `Authorization: Bearer <secret>`.
+    #
+    # The webhook cannot sit behind a session - a handset has no login - so this
+    # is the only thing protecting it, and anyone who can post to it unchecked
+    # can mark any number on the site as verified. Blank fails every call
+    # closed. Generate one with: openssl rand -hex 32
+    inbound-secret: ${CAMPUSMARKET_SMS_INBOUND_SECRET:}
   # The single source of truth for the CORS allowlist. These are origins the
   # FRONTEND is served from - not this API's own domain, which needs no entry
   # because a request from the same origin is never a CORS request.

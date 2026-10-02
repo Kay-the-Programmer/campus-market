@@ -264,8 +264,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 {currentUser.phone ? 'Confirm your phone number' : 'Add your phone number'}
               </p>
               <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                Buyers and sellers use it to reach you when arranging a handover. We send a code to
-                check it works.
+                Buyers and sellers use it to reach you when arranging a handover. Confirming it takes
+                one text from your phone.
               </p>
             </div>
             <button

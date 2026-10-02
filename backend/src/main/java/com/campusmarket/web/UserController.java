@@ -68,20 +68,27 @@ public class UserController {
     // ------------------------------------------------------ phone verification
     public record PhoneRequest(String phone) {}
 
-    public record CodeRequest(String code) {}
-
-    /** Issues a code to the number given. The number is only stored as pending
-     *  until the code comes back, so a typo cannot clear a verified one. */
-    @PostMapping("/me/phone/send-code")
-    public Map<String, Object> sendPhoneCode(@AuthPrincipal Principal principal,
-                                             @RequestBody PhoneRequest request) {
-        return phoneVerificationService.sendCode(principal, request == null ? null : request.phone());
+    /**
+     * Stages a number and returns the code to text us, plus where to text it.
+     * The number is only held as pending until a message arrives from it, so a
+     * typo cannot clear an already-verified one.
+     */
+    @PostMapping("/me/phone/begin")
+    public Map<String, Object> beginPhoneVerification(@AuthPrincipal Principal principal,
+                                                      @RequestBody PhoneRequest request) {
+        return phoneVerificationService.begin(principal, request == null ? null : request.phone());
     }
 
-    @PostMapping("/me/phone/verify")
-    public Map<String, Object> verifyPhone(@AuthPrincipal Principal principal,
-                                           @RequestBody CodeRequest request) {
-        return phoneVerificationService.verifyCode(principal, request == null ? null : request.code());
+    /**
+     * Polled while the client waits for the text to arrive.
+     *
+     * <p>There is deliberately no endpoint for submitting a code. The student
+     * is shown the code, so one they typed back proves nothing - see
+     * PhoneVerificationService. Only a message from the number itself counts.
+     */
+    @GetMapping("/me/phone/status")
+    public Map<String, Object> phoneStatus(@AuthPrincipal Principal principal) {
+        return phoneVerificationService.status(principal);
     }
 
     // ------------------------------------------- seller application thread
