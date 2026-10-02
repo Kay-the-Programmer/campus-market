@@ -256,23 +256,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             absence is worth interrupting for - but as a prompt, not a wall:
             locking someone out of their own profile page to demand it would
             be the one screen where they could go and add it. */}
-        {isSelf && !isAdmin && !currentUser.phoneVerified && (
+        {/* Only when there is no number at all. It used to appear for anyone
+            unverified too, nagging them toward a flow that cost them an SMS and
+            is no longer offered - an interruption nobody could act on. A number
+            that exists but is unverified is fine; it still reaches them. */}
+        {isSelf && !isAdmin && !currentUser.phone && (
           <div className="mb-5 flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-amber-900">
-                {currentUser.phone ? 'Confirm your phone number' : 'Add your phone number'}
-              </p>
+              <p className="text-sm font-bold text-amber-900">Add your phone number</p>
               <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                Buyers and sellers use it to reach you when arranging a handover. Confirming it takes
-                one text from your phone.
+                Buyers and sellers use it to reach you when arranging a handover.
               </p>
             </div>
             <button
               onClick={() => setEditOpen(true)}
               className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors"
             >
-              {currentUser.phone ? 'Verify' : 'Add number'}
+              Add number
             </button>
           </div>
         )}

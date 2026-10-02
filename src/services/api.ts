@@ -1118,6 +1118,8 @@ export const api = {
       campusZone?: string;
       avatarUrl?: string;
       privateAddress?: string;
+      /** Omit to leave it alone; the server rejects a blank one. */
+      phone?: string;
     }) {
       const res = await put('/api/users/me', payload);
       return {

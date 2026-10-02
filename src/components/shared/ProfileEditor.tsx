@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Phone, ShieldCheck, CheckCircle2, KeyRound, MessageSquare } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react';
 import { AuthSession, CAMPUS_ZONES, CampusZone } from '../../types';
 import { api } from '../../services/api';
 import { Modal, ErrorBanner, Field } from './Modal';
-import { buildSmsLink } from '../../utils/smsLink';
-import { isIos } from '../../utils/platform';
 
 interface ProfileEditorProps {
   isOpen: boolean;
@@ -14,7 +12,7 @@ interface ProfileEditorProps {
   onSaved: () => void;
 }
 
-type Step = 'details' | 'code' | 'password';
+type Step = 'details' | 'password';
 
 /**
  * Edit your own profile, including the phone number.
@@ -38,10 +36,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
 
   const [phone, setPhone] = useState(currentUser.phone ?? '');
   const [step, setStep] = useState<Step>('details');
-  /** What the student has to text us, and where. Set by beginPhoneVerification. */
-  const [challenge, setChallenge] = useState<{
-    code: string; gatewayNumber: string; messageBody: string;
-  } | null>(null);
+  /** Read-only here now: the badge is set by verification, which this form no
+   *  longer drives. Kept so a verified account still shows as one. */
   const [phoneVerified, setPhoneVerified] = useState(!!currentUser.phoneVerified);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -61,7 +57,6 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
     setPhone(currentUser.phone ?? '');
     setPhoneVerified(!!currentUser.phoneVerified);
     setStep('details');
-    setChallenge(null);
     setError(null);
     setNotice(null);
     /*
@@ -84,58 +79,6 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
   const phoneChanged = phone.trim() !== (currentUser.phone ?? '').trim();
   const showAsVerified = phoneVerified && !phoneChanged;
 
-  const beginVerification = async () => {
-    setBusy(true);
-    setError(null);
-    const res = await api.users.beginPhoneVerification(phone.trim());
-    setBusy(false);
-    if (res.success && res.verificationCode && res.gatewayNumber && res.messageBody) {
-      setChallenge({
-        code: res.verificationCode,
-        gatewayNumber: res.gatewayNumber,
-        messageBody: res.messageBody,
-      });
-      setStep('code');
-      setNotice(null);
-    } else {
-      setError(res.error || 'Could not start verification.');
-    }
-  };
-
-  /*
-   * Waits for the text to reach the gateway.
-   *
-   * Polled rather than pushed: the message arrives over the mobile network at
-   * a handset we do not control, so there is no moment the server could push
-   * from, and the round trip is a single cheap read. Stops as soon as it lands
-   * - and stops on unmount, so a closed editor is not still polling.
-   */
-  useEffect(() => {
-    if (step !== 'code' || !challenge) return;
-    let alive = true;
-
-    const timer = setInterval(async () => {
-      const res = await api.users.phoneStatus();
-      if (!alive) return;
-      if (res.phoneVerified) {
-        setPhoneVerified(true);
-        setPhone(res.phone ?? phone);
-        setStep('details');
-        setChallenge(null);
-        setNotice('Phone number verified.');
-        onSaved();
-      } else if (!res.waiting) {
-        // The code expired before anything arrived.
-        setStep('details');
-        setChallenge(null);
-        setError('That code expired before your message arrived. Try again.');
-      }
-    }, 3000);
-
-    return () => { alive = false; clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, challenge]);
-
   const changePassword = async () => {
     setBusy(true);
     setError(null);
@@ -155,6 +98,18 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       setError('Your name cannot be empty.');
       return;
     }
+    /* The same rule the signup form applies - see AuthModal. Counted in digits
+       rather than matched against a pattern, because people write a number
+       three different ways and all of them are real. */
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phoneDigits) {
+      setError('Add a phone number so you can be reached at a handover.');
+      return;
+    }
+    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
+      setError('That phone number does not look right. Check the digits and try again.');
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await api.users.updateProfile({
@@ -163,6 +118,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
       department: department.trim() || undefined,
       year: year.trim() || undefined,
       campusZone: campusZone || undefined,
+      phone: phone.trim(),
     });
     setBusy(false);
     if (res.success) {
@@ -257,63 +213,22 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
             />
           </Field>
         </div>
-      ) : step === 'code' && challenge ? (
-        <div className="space-y-4">
-          <p className="text-sm text-[#434655]">
-            Text this code to us from <span className="font-semibold">{phone}</span>. Receiving it
-            from that number is what proves the number is yours.
-          </p>
-
-          <div className="rounded-xl border border-[#c3c6d7] bg-[#f8f9ff] px-4 py-3 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#737686]">
-              Send this
-            </p>
-            <p className="text-lg font-bold tracking-[0.2em] text-[#0b1c30] mt-0.5">
-              {challenge.messageBody}
-            </p>
-            <p className="text-xs text-[#737686] mt-1">
-              to <span className="font-semibold">{challenge.gatewayNumber}</span>
-            </p>
-          </div>
-
-          {/* A plain link, not a fetch: only the device's own messaging app can
-              send from the student's number, which is the thing being proven.
-              The page cannot do it for them, and should not look like it can. */}
-          <a
-            href={buildSmsLink({
-              to: challenge.gatewayNumber,
-              body: challenge.messageBody,
-              ios: isIos(),
-            })}
-            className="w-full h-11 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" /> Open messages
-          </a>
-
-          <p className="flex items-center justify-center gap-2 text-xs text-[#737686]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Waiting for your message…
-          </p>
-
-          <p className="text-[11px] text-[#737686] text-center">
-            Standard SMS rates apply — one message. Nothing is charged by CampusMarket.
-          </p>
-
-          <button
-            onClick={() => { setStep('details'); setChallenge(null); }}
-            className="w-full text-xs font-bold text-[#737686] hover:text-[#0b1c30]"
-          >
-            Cancel
-          </button>
-        </div>
       ) : (
         <div className="space-y-4">
           <Field label="Name">
             <input value={name} onChange={(e) => setName(e.target.value)} className="input-base text-sm" />
           </Field>
 
-          {/* Phone sits inside the form but saves through its own path, which
-              the badge and button make explicit. */}
+          {/*
+            An ordinary field, saved with the rest of the form.
+            ----------------------------------------------------
+            It used to be editable only by completing SMS verification, which
+            made the number stronger evidence and - with no gateway configured -
+            impossible to change at all. A number its owner can correct is worth
+            more than one nobody can touch. The badge stays for accounts that
+            did verify; it is now something earned rather than the only way to
+            have a number.
+          */}
           <div>
             <label className="block text-xs font-semibold text-[#434655] mb-1.5">
               Phone number <span className="text-red-500">*</span>
@@ -322,30 +237,24 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({
               <div className="relative flex-1">
                 <Phone className="w-4 h-4 text-[#a0a3b1] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                  type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+260 97 123 4567"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  aria-required="true"
                   className="input-base text-sm !pl-9"
                 />
               </div>
-              {showAsVerified ? (
+              {showAsVerified && (
                 <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified
                 </span>
-              ) : (
-                <button
-                  onClick={beginVerification}
-                  disabled={busy || phone.trim().length < 7}
-                  className="px-3.5 py-2.5 rounded-xl bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold shrink-0 disabled:opacity-50 transition-colors"
-                >
-                  {busy ? 'Starting…' : 'Verify'}
-                </button>
               )}
             </div>
             <p className="mt-1.5 text-xs text-[#737686]">
-              {showAsVerified
-                ? 'This is how buyers and sellers reach you to arrange a handover.'
-                : 'Required. You text us a short code from this number to confirm it is yours.'}
+              This is how buyers and sellers reach you to arrange a handover.
             </p>
           </div>
 

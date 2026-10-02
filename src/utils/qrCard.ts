@@ -3,60 +3,50 @@ import QRCode from 'qrcode';
 /**
  * Draws the shareable QR card for a listing.
  *
- * <p>The card has one job and it is not information: it has to survive a
- * thumb moving at speed through a WhatsApp group. Whoever sends it is doing
- * the platform a favour, and they will only do it if the thing looks like
- * something they are happy to have their name on. So the composition is built
- * the way a poster is - one photo edge to edge, one number you can read
- * across a room, and the code on a clean white slab at the foot where the eye
- * lands last.
+ * <p>Redesigned to be the kind of thing people post to a Status or a story
+ * rather than merely forward: a saturated sunset gradient, a tilted
+ * polaroid-style photo, sticker-shaped price and discount badges, and the
+ * code on a clean white ticket at the foot. Loud on purpose - it has to win a
+ * scroll - but the one thing that must stay boring is the QR, which keeps
+ * dark modules on pure white with a full quiet zone so it still scans first
+ * time.
  *
- * <p>Everything is drawn to a canvas rather than composed in the DOM, for the
- * one reason that matters here: sharing needs a PNG file, and the only way to
- * get one from markup is to rasterise it by hand anyway.
+ * <p>Drawn to a canvas because sharing needs a PNG file.
  */
 
 /** Portrait, at the aspect ratio WhatsApp previews without cropping. */
 export const CARD_W = 1080;
 export const CARD_H = 1350;
 
-/** One margin, used by everything. Nothing on this card is aligned to anything else. */
 const M = 72;
 
 /*
- * The palette, taken from the logo rather than chosen alongside it.
- *
- * ORANGE and NAVY are the two colours sampled off assets/images/logo.png -
- * the pin and the stall inside it - so the card cannot drift away from the
- * mark sitting on top of it. INK is NAVY taken down to something that can
- * carry a full bleed without vibrating behind white text; it is the same hue,
- * not a separate dark.
- *
- * The proportions follow the logo too: navy is the ground and orange is the
- * one colour that gets to interrupt it. Orange used as a field reads as a
- * warning, which is not what a listing is.
+ * Palette. ORANGE and NAVY are still the logo's own colours; the gradient
+ * runs from the logo orange through hot pink and violet and lands on the logo
+ * navy, so the card is loud but still recognisably the brand. YELLOW and MINT
+ * are sticker colours - small doses only.
  */
 const ORANGE = '#ff9600';
+const PINK = '#ff2e7e';
+const VIOLET = '#7b2cff';
 const NAVY = '#092a6c';
-const INK = '#04102e';
-/** INK as channels, for the scrims that have to fade to it exactly. */
-const INK_RGB = '4,16,46';
+const INK = '#150a3d';
 const PAPER = '#ffffff';
+const YELLOW = '#ffe14d';
+const MINT = '#5cf2c0';
 const MUTED = '#6a7391';
 
-/*
- * The logo, served from assets/ - which vite.config.ts sets as publicDir, so
- * this file lands at /images/logo.png in both dev and the build. An absolute
- * path rather than an import: the file is already a public asset and a
- * bundler-hashed copy of it would be a second one.
- */
 const LOGO_SRC = '/images/logo.png';
 
-/** Vertical anchors. Fixed, so a one-line title and a two-line one both land right. */
-const PHOTO_H = 560;
-const PRICE_BASELINE = 852;
-const TICKET_TOP = 922;
-const TICKET_H = 356;
+/** Layout anchors. */
+const PHOTO_X = M;
+const PHOTO_Y = 168;
+const PHOTO_W = CARD_W - M * 2;
+const PHOTO_H = 450;
+const PRICE_TOP = 832;
+const PRICE_H = 108;
+const TICKET_TOP = 972;
+const TICKET_H = 312;
 
 export interface QrCardContent {
   title: string;
@@ -64,7 +54,7 @@ export interface QrCardContent {
   price: string;
   /** Struck through beside the price when there is a real reduction. */
   compareAtPrice?: string;
-  /** Drives the corner flash. Whole percent. */
+  /** Drives the corner burst. Whole percent. */
   discountPercent?: number;
   /** Shown under the code. The full URL is what the code itself carries. */
   prettyUrl: string;
@@ -74,7 +64,7 @@ export interface QrCardContent {
   url: string;
   /** Short facts as chips over the photo: condition, campus zone. */
   chips?: string[];
-  /** Small label above the title - the category. Fills the gap under the photo. */
+  /** Small label above the title - the category. */
   eyebrow?: string;
 }
 
@@ -92,17 +82,96 @@ function roundRect(
   ctx.closePath();
 }
 
+/** A four-point sparkle, the cheapest way to make a flat gradient feel alive. */
+function sparkle(
+  ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string, alpha = 1,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.quadraticCurveTo(cx, cy, cx + r, cy);
+  ctx.quadraticCurveTo(cx, cy, cx, cy + r);
+  ctx.quadraticCurveTo(cx, cy, cx - r, cy);
+  ctx.quadraticCurveTo(cx, cy, cx, cy - r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A starburst badge path: `points` spikes between two radii. */
+function burst(
+  ctx: CanvasRenderingContext2D, cx: number, cy: number, outer: number, inner: number, points: number,
+) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i += 1) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = (Math.PI * i) / points - Math.PI / 2;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+/**
+ * The backdrop: a diagonal sunset gradient, soft colour blobs for depth, a
+ * faint dot grid for texture, and a handful of sparkles. Positions are fixed,
+ * not random, so the same listing always renders the same card.
+ */
+function drawBackground(ctx: CanvasRenderingContext2D) {
+  const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+  bg.addColorStop(0, ORANGE);
+  bg.addColorStop(0.32, PINK);
+  bg.addColorStop(0.68, VIOLET);
+  bg.addColorStop(1, NAVY);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  const blob = (x: number, y: number, r: number, color: string, alpha: number) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color);
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.restore();
+  };
+  blob(120, 140, 420, YELLOW, 0.55);
+  blob(CARD_W - 80, 760, 380, MINT, 0.32);
+  blob(80, 1180, 420, ORANGE, 0.4);
+
+  // Dot grid, fading out downward so it never competes with the ticket.
+  ctx.save();
+  ctx.fillStyle = PAPER;
+  for (let gy = 24; gy < 960; gy += 36) {
+    for (let gx = 24; gx < CARD_W; gx += 36) {
+      ctx.globalAlpha = 0.14 * (1 - gy / 960);
+      ctx.beginPath();
+      ctx.arc(gx, gy, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  sparkle(ctx, 960, 70, 26, PAPER, 0.9);
+  sparkle(ctx, 905, 120, 12, YELLOW, 0.95);
+  sparkle(ctx, 60, 700, 22, YELLOW, 0.9);
+  sparkle(ctx, 1010, 690, 18, PAPER, 0.8);
+  sparkle(ctx, 540, 940, 14, MINT, 0.9);
+  sparkle(ctx, 1020, 940, 24, YELLOW, 0.9);
+}
+
 /**
  * The QR itself, drawn module by module.
  *
- * <p>Hand-drawn rather than handed to the library's own renderer so it can be
- * a designed object: dots instead of squares, finder patterns as rounded
- * frames, and a hole in the middle for the mark. The library is used only for
- * the part that must not be improvised - the encoding.
- *
- * <p>Error correction is fixed at H (~30% recoverable), which is what pays for
- * the hole in the middle. Anything lower and a code with a logo on it is a
- * code that sometimes does not scan, which is worse than a plain one.
+ * <p>Dots instead of squares, finder patterns as rounded frames, and a hole
+ * in the middle for the mark. The library is used only for the encoding.
+ * Error correction is fixed at H (~30% recoverable), which is what pays for
+ * the hole.
  */
 function drawQr(
   ctx: CanvasRenderingContext2D, url: string, boxX: number, boxY: number, box: number,
@@ -112,16 +181,9 @@ function drawQr(
   const count = qr.modules.size;
   const data = qr.modules.data;
 
-  /*
-   * The quiet zone, and it is not decoration.
-   *
-   * The spec asks for four clear modules on every side, and the matrix the
-   * library returns does not include them. Drawn without it the code still
-   * decodes from a tight crop - the data is all there - but a scanner looking
-   * at the whole card has nothing telling it where the code ends, and finds
-   * nothing at all. Measured on the rendered card: no quiet zone, no decode;
-   * with it, it reads first time, and still reads at a third of the size.
-   */
+  /* The quiet zone is not decoration: four clear modules on every side, which
+     the library's matrix does not include. Without it a scanner looking at the
+     whole card cannot tell where the code ends. */
   const QUIET = 4;
   const cell = box / (count + QUIET * 2);
   const x = boxX + QUIET * cell;
@@ -135,6 +197,8 @@ function drawQr(
     (row < 7 && col < 7) || (row < 7 && col >= count - 7) || (row >= count - 7 && col < 7)
   );
 
+  /* Colour lives in the ink, never in the contrast: modules are a deep indigo
+     (about 17:1 on white), so the code can look designed and still scan. */
   ctx.fillStyle = INK;
   for (let row = 0; row < count; row += 1) {
     for (let col = 0; col < count; col += 1) {
@@ -148,42 +212,27 @@ function drawQr(
     }
   }
 
-  /* The three corner eyes, drawn as shapes rather than as modules. They are
-     what a scanner locks onto, so their geometry is exact - only the corner
-     radius is ours.
-
-     The centre is NAVY and deliberately not ORANGE, which is the obvious
-     brand choice and the wrong one: that square is a dark module of the
-     finder pattern, and a scanner finds the pattern by contrast against the
-     white ring around it. Orange on white is about 2:1, below what a camera
-     can separate under room light; navy on white is about 12:1. The colour
-     sits where it cannot cost a scan. */
+  /* Finder eyes: exact geometry, only the corner radius is ours. The centre
+     stays dark navy - a bright centre would cost the contrast a scanner locks
+     onto. */
   const eye = (row: number, col: number) => {
     const ex = x + col * cell;
     const ey = y + row * cell;
     ctx.fillStyle = INK;
-    roundRect(ctx, ex, ey, cell * 7, cell * 7, cell * 2.2);
+    roundRect(ctx, ex, ey, cell * 7, cell * 7, cell * 2.4);
     ctx.fill();
     ctx.fillStyle = PAPER;
-    roundRect(ctx, ex + cell, ey + cell, cell * 5, cell * 5, cell * 1.6);
+    roundRect(ctx, ex + cell, ey + cell, cell * 5, cell * 5, cell * 1.7);
     ctx.fill();
     ctx.fillStyle = NAVY;
-    roundRect(ctx, ex + cell * 2, ey + cell * 2, cell * 3, cell * 3, cell);
+    roundRect(ctx, ex + cell * 2, ey + cell * 2, cell * 3, cell * 3, cell * 1.1);
     ctx.fill();
   };
   eye(0, 0);
   eye(0, count - 7);
   eye(count - 7, 0);
 
-  /* The mark in the hole.
-   *
-   * The logo sits on a white disc with an orange ring, rather than directly
-   * on the modules: the pin is mostly orange and the modules are navy, and
-   * without the white between them the mark reads as a smudge in the code at
-   * thumbnail size - which is the size this is usually seen at.
-   *
-   * Falls back to the lettered disc when the logo could not be loaded, so an
-   * offline render still produces a finished card rather than a gap. */
+  // The mark in the hole, on a white disc with a pink ring.
   const holePx = holeCells * cell;
   const cx = x + holeStart * cell + holePx / 2;
   const cy = y + holeStart * cell + holePx / 2;
@@ -192,7 +241,7 @@ function drawQr(
   ctx.beginPath();
   ctx.arc(cx, cy, holePx * 0.7, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = ORANGE;
+  ctx.strokeStyle = PINK;
   ctx.lineWidth = holePx * 0.07;
   ctx.beginPath();
   ctx.arc(cx, cy, holePx * 0.66, 0, Math.PI * 2);
@@ -214,14 +263,7 @@ function drawQr(
   }
 }
 
-/**
- * Breaks a single word that is wider than the column into pieces that fit.
- *
- * <p>Without this a word with nowhere to break - a URL, a model number, a
- * German compound - is accepted onto an empty line whole and painted straight
- * out of its column and across the card. The listing URL does exactly that:
- * it has no spaces and a listing id on the end.
- */
+/** Breaks a single word wider than the column into pieces that fit. */
 function splitLongWord(
   ctx: CanvasRenderingContext2D, word: string, maxWidth: number,
 ): string[] {
@@ -289,24 +331,24 @@ function chip(
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   const padding = 26;
-  const h = 52;
+  const h = 56;
   const w = ctx.measureText(text).width + padding * 2;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(21,10,61,0.35)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 4;
   ctx.fillStyle = bg;
   roundRect(ctx, x, centerY - h / 2, w, h, h / 2);
   ctx.fill();
+  ctx.restore();
+
   ctx.fillStyle = fg;
   ctx.fillText(text, x + padding, centerY + 1);
   return w;
 }
 
-/**
- * Loads the listing photo for compositing.
- *
- * <p>Resolves to null rather than rejecting on anything going wrong, because
- * every failure here has the same answer: draw the card without it. Requested
- * with crossOrigin so the canvas stays untainted - a tainted canvas cannot be
- * exported, which would break the share rather than the decoration.
- */
+/** Loads an image for compositing; resolves to null on any failure. */
 function loadImage(src?: string): Promise<HTMLImageElement | null> {
   if (!src) return Promise.resolve(null);
   return new Promise((resolve) => {
@@ -318,71 +360,82 @@ function loadImage(src?: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Full-bleed photo, or a brand wash when there is none. */
+/**
+ * The photo as a slightly tilted, white-bordered print with a deep shadow -
+ * the "stuck on a wall" look. With no photo the print becomes a brand panel
+ * with the logo large behind it, so the card is never left with a hole.
+ */
 function drawPhoto(
   ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, logo: HTMLImageElement | null,
 ) {
-  /*
-   * Clipped to its band before anything is drawn.
-   *
-   * A cover fit is deliberately larger than the box on one axis - that is what
-   * "cover" means - so without this the overflow paints straight down the card
-   * and the title ends up written across the bottom of the photograph.
-   */
+  const BORDER = 14;
+  const cx = PHOTO_X + PHOTO_W / 2;
+  const cy = PHOTO_Y + PHOTO_H / 2;
+
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, CARD_W, PHOTO_H);
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.022);
+  ctx.translate(-cx, -cy);
+
+  // The white print, with the shadow.
+  ctx.save();
+  ctx.shadowColor = 'rgba(21,10,61,0.5)';
+  ctx.shadowBlur = 50;
+  ctx.shadowOffsetY = 22;
+  ctx.fillStyle = PAPER;
+  roundRect(ctx, PHOTO_X, PHOTO_Y, PHOTO_W, PHOTO_H, 44);
+  ctx.fill();
+  ctx.restore();
+
+  // The picture, clipped inside the border.
+  const ix = PHOTO_X + BORDER;
+  const iy = PHOTO_Y + BORDER;
+  const iw = PHOTO_W - BORDER * 2;
+  const ih = PHOTO_H - BORDER * 2;
+
+  ctx.save();
+  roundRect(ctx, ix, iy, iw, ih, 32);
   ctx.clip();
 
   if (img) {
     // Cover, not stretch: a distorted product photo is worse than a cropped one.
-    const scale = Math.max(CARD_W / img.width, PHOTO_H / img.height);
+    const scale = Math.max(iw / img.width, ih / img.height);
     const dw = img.width * scale;
     const dh = img.height * scale;
-    ctx.drawImage(img, (CARD_W - dw) / 2, (PHOTO_H - dh) / 2, dw, dh);
+    ctx.drawImage(img, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
   } else {
-    /* No photograph. The band becomes the brand instead of becoming a hole:
-       navy wash, and the logo large and faint behind it, which is the one
-       place on the card where the mark can be the subject rather than a
-       credit. */
-    const wash = ctx.createLinearGradient(0, 0, CARD_W, PHOTO_H);
-    wash.addColorStop(0, NAVY);
-    wash.addColorStop(1, INK);
+    const wash = ctx.createLinearGradient(ix, iy, ix + iw, iy + ih);
+    wash.addColorStop(0, VIOLET);
+    wash.addColorStop(0.55, PINK);
+    wash.addColorStop(1, ORANGE);
     ctx.fillStyle = wash;
-    ctx.fillRect(0, 0, CARD_W, PHOTO_H);
-
+    ctx.fillRect(ix, iy, iw, ih);
+    sparkle(ctx, ix + 90, iy + 90, 28, PAPER, 0.85);
+    sparkle(ctx, ix + iw - 110, iy + ih - 150, 20, YELLOW, 0.9);
     if (logo) {
       ctx.save();
-      ctx.globalAlpha = 0.16;
-      const size = PHOTO_H * 0.72;
-      ctx.drawImage(logo, (CARD_W - size) / 2, (PHOTO_H - size) / 2 - 20, size, size);
+      ctx.globalAlpha = 0.3;
+      const size = ih * 0.8;
+      ctx.drawImage(logo, ix + (iw - size) / 2, iy + (ih - size) / 2, size, size);
       ctx.restore();
     }
   }
 
-  /* Two scrims, each earning its place: the top one so the wordmark stays
-     legible over a bright photo, the bottom one so the photo dissolves into
-     the card instead of ending at a hard line across the middle. */
-  const top = ctx.createLinearGradient(0, 0, 0, 220);
-  top.addColorStop(0, `rgba(${INK_RGB},0.62)`);
-  top.addColorStop(1, `rgba(${INK_RGB},0)`);
-  ctx.fillStyle = top;
-  ctx.fillRect(0, 0, CARD_W, 220);
+  // Bottom scrim so the chips stay readable on any photograph.
+  const scrim = ctx.createLinearGradient(0, iy + ih - 190, 0, iy + ih);
+  scrim.addColorStop(0, 'rgba(21,10,61,0)');
+  scrim.addColorStop(1, 'rgba(21,10,61,0.7)');
+  ctx.fillStyle = scrim;
+  ctx.fillRect(ix, iy + ih - 190, iw, 190);
 
-  const bottom = ctx.createLinearGradient(0, PHOTO_H - 320, 0, PHOTO_H);
-  bottom.addColorStop(0, `rgba(${INK_RGB},0)`);
-  bottom.addColorStop(0.55, `rgba(${INK_RGB},0.75)`);
-  bottom.addColorStop(1, INK);
-  ctx.fillStyle = bottom;
-  ctx.fillRect(0, PHOTO_H - 320, CARD_W, 320);
-
+  ctx.restore();
   ctx.restore();
 }
 
 /**
  * Renders the whole card and hands back the canvas.
  *
- * <p>Async only because of the photo; everything else is synchronous drawing.
+ * <p>Async only because of the images; everything else is synchronous drawing.
  */
 export async function renderQrCard(content: QrCardContent): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
@@ -391,172 +444,229 @@ export async function renderQrCard(content: QrCardContent): Promise<HTMLCanvasEl
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('This browser cannot generate the QR card.');
 
-  ctx.fillStyle = INK;
-  ctx.fillRect(0, 0, CARD_W, CARD_H);
-
-  /* Both images are fetched together rather than in sequence: the logo is a
-     local file and the photo is remote, so awaiting them one after the other
-     would add the logo's latency to every card for no reason. */
+  // Both images are fetched together: one is local, one is remote.
   const [photo, logo] = await Promise.all([
     loadImage(content.imageUrl),
     loadImage(LOGO_SRC),
   ]);
 
-  drawPhoto(ctx, photo, logo);
+  drawBackground(ctx);
 
-  // ── Wordmark, over the photo ──────────────────────────────────────────
+  // ── Wordmark pill ─────────────────────────────────────────────────────
+  ctx.font = '800 36px system-ui, sans-serif';
+  const campusW = ctx.measureText('Campus').width;
+  const marketW = ctx.measureText('Market').width;
+  const pillW = 14 + 56 + 14 + campusW + marketW + 26;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(21,10,61,0.35)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = PAPER;
+  roundRect(ctx, M, 62, pillW, 76, 38);
+  ctx.fill();
+  ctx.restore();
+
   if (logo) {
-    /* On a white disc. The logo's pin is orange and its interior is navy;
-       dropped straight onto an unpredictable photograph it loses whichever of
-       the two happens to match the pixels behind it. */
-    ctx.fillStyle = PAPER;
-    ctx.beginPath();
-    ctx.arc(M + 30, 96, 30, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.drawImage(logo, M + 30 - 25, 96 - 25, 50, 50);
+    ctx.drawImage(logo, M + 14, 72, 56, 56);
   } else {
-    ctx.fillStyle = PAPER;
-    ctx.beginPath();
-    ctx.arc(M + 30, 96, 30, 0, Math.PI * 2);
-    ctx.fill();
     ctx.fillStyle = NAVY;
-    ctx.font = '800 32px system-ui, sans-serif';
+    ctx.beginPath();
+    ctx.arc(M + 42, 100, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = PAPER;
+    ctx.font = '800 30px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('C', M + 30, 98);
+    ctx.fillText('C', M + 42, 102);
   }
-
+  ctx.font = '800 36px system-ui, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = PAPER;
-  ctx.font = '700 36px system-ui, sans-serif';
-  ctx.fillText('Campus', M + 76, 97);
-  const campusW = ctx.measureText('Campus').width;
-  /* "Market" in orange: the wordmark carries the accent colour even on a card
-     whose photograph happens to be orange-heavy and swallows the pin. */
-  ctx.fillStyle = ORANGE;
-  ctx.fillText('Market', M + 76 + campusW, 97);
+  ctx.fillStyle = NAVY;
+  ctx.fillText('Campus', M + 84, 101);
+  ctx.fillStyle = PINK;
+  ctx.fillText('Market', M + 84 + campusW, 101);
 
-  // ── Sale flash ────────────────────────────────────────────────────────
+  // ── Photo ─────────────────────────────────────────────────────────────
+  drawPhoto(ctx, photo, logo);
+
+  // ── Chips, riding the bottom edge of the photo ────────────────────────
+  const chipColors: Array<[string, string]> = [[YELLOW, NAVY], [MINT, NAVY], [PAPER, NAVY]];
+  let chipX = M + 36;
+  (content.chips ?? []).slice(0, 3).forEach((text, i) => {
+    const [bg, fg] = chipColors[i % chipColors.length];
+    chipX += chip(ctx, text, chipX, PHOTO_Y + PHOTO_H - 62, bg, fg,
+      '700 28px system-ui, sans-serif') + 14;
+  });
+
+  // ── Discount burst, stuck over the photo's top-right corner ───────────
   if (content.discountPercent && content.discountPercent > 0) {
-    const label = `${content.discountPercent}% OFF`;
-    ctx.font = '800 30px system-ui, sans-serif';
-    const w = ctx.measureText(label).width + 52;
-    /* Orange on navy text, not red on white. Red would be a third colour on a
-       card that only has two, and orange is already the logo's own "look
-       here" - so the discount borrows the brand's loudest voice instead of
-       competing with it. */
-    ctx.fillStyle = ORANGE;
-    roundRect(ctx, CARD_W - M - w, 96 - 27, w, 54, 27);
+    const bx = CARD_W - M - 54;
+    const by = PHOTO_Y + 20;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(0.2);
+    ctx.shadowColor = 'rgba(21,10,61,0.45)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = YELLOW;
+    burst(ctx, 0, 0, 108, 90, 18);
     ctx.fill();
-    ctx.fillStyle = NAVY;
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(0.2);
     ctx.textAlign = 'center';
-    ctx.fillText(label, CARD_W - M - w / 2, 98);
-    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = PINK;
+    ctx.font = '900 54px system-ui, sans-serif';
+    ctx.fillText(`${content.discountPercent}%`, 0, -10);
+    ctx.fillStyle = NAVY;
+    ctx.font = '800 28px system-ui, sans-serif';
+    ctx.fillText('OFF', 0, 30);
+    ctx.restore();
   }
 
-  // ── Chips, sitting on the photo's scrim ───────────────────────────────
-  let chipX = M;
-  for (const text of (content.chips ?? []).slice(0, 3)) {
-    chipX += chip(ctx, text, chipX, PHOTO_H - 60, 'rgba(255,255,255,0.18)', PAPER,
-      '600 28px system-ui, sans-serif') + 14;
-  }
-
-  // ── Title, anchored upward from the price ─────────────────────────────
+  // ── Eyebrow + title ───────────────────────────────────────────────────
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = PAPER;
-  ctx.font = '700 66px system-ui, sans-serif';
+  ctx.font = '800 66px system-ui, sans-serif';
   const titleLines = wrap(ctx, content.title, CARD_W - M * 2, 2);
-  const titleLead = 80;
-  const lastTitleBaseline = PRICE_BASELINE - 116;
+  const titleLead = 76;
+  const lastTitleBaseline = PRICE_TOP - 34;
   const firstTitleBaseline = lastTitleBaseline - (titleLines.length - 1) * titleLead;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(21,10,61,0.4)';
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = PAPER;
   titleLines.forEach((line, i) => {
     ctx.fillText(line, M, firstTitleBaseline + i * titleLead);
   });
+  ctx.restore();
 
-  /* An eyebrow over the title. Half of its job is the category; the other half
-     is filling the band between the photograph and the headline, which without
-     it reads as a mistake rather than as space. */
   if (content.eyebrow) {
-    ctx.fillStyle = '#ffb14d';
-    ctx.font = '700 26px system-ui, sans-serif';
-    ctx.fillText(content.eyebrow.toUpperCase(), M, firstTitleBaseline - 62);
+    ctx.font = '800 24px system-ui, sans-serif';
+    const label = content.eyebrow.toUpperCase();
+    const w = ctx.measureText(label).width + 40;
+    const ey = firstTitleBaseline - 66 - 34;
+    ctx.fillStyle = 'rgba(21,10,61,0.55)';
+    roundRect(ctx, M, ey, w, 46, 23);
+    ctx.fill();
+    ctx.fillStyle = YELLOW;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, M + 20, ey + 24);
+    ctx.textBaseline = 'alphabetic';
   }
 
-  // ── Price, the loudest thing on the card ──────────────────────────────
-  ctx.fillStyle = PAPER;
-  ctx.font = '800 92px system-ui, sans-serif';
-  ctx.fillText(content.price, M, PRICE_BASELINE);
+  // ── Price: a tilted yellow sticker ────────────────────────────────────
+  ctx.font = '900 84px system-ui, sans-serif';
+  const priceW = ctx.measureText(content.price).width + 64;
+  const pcx = M + priceW / 2;
+  const pcy = PRICE_TOP + PRICE_H / 2;
+
+  ctx.save();
+  ctx.translate(pcx, pcy);
+  ctx.rotate(-0.035);
+  ctx.shadowColor = 'rgba(21,10,61,0.45)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle = YELLOW;
+  roundRect(ctx, -priceW / 2, -PRICE_H / 2, priceW, PRICE_H, 30);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = NAVY;
+  ctx.font = '900 84px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(content.price, 0, 4);
+  ctx.restore();
 
   if (content.compareAtPrice) {
-    const priceWidth = ctx.measureText(content.price).width;
-    ctx.font = '500 40px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    const wasX = M + priceWidth + 24;
-    ctx.fillText(content.compareAtPrice, wasX, PRICE_BASELINE - 6);
-    // Struck through by hand: canvas has no text-decoration.
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '600 40px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const wasX = M + priceW + 28;
+    const wasY = PRICE_TOP + PRICE_H / 2 + 14;
+    ctx.fillText(content.compareAtPrice, wasX, wasY);
     const wasWidth = ctx.measureText(content.compareAtPrice).width;
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = PAPER;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(wasX, PRICE_BASELINE - 20);
-    ctx.lineTo(wasX + wasWidth, PRICE_BASELINE - 20);
+    ctx.moveTo(wasX - 4, wasY - 14);
+    ctx.lineTo(wasX + wasWidth + 4, wasY - 14);
     ctx.stroke();
   }
 
   // ── The ticket ────────────────────────────────────────────────────────
+  const tw = CARD_W - M * 2;
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.35)';
-  ctx.shadowBlur = 40;
-  ctx.shadowOffsetY = 12;
+  ctx.shadowColor = 'rgba(21,10,61,0.5)';
+  ctx.shadowBlur = 50;
+  ctx.shadowOffsetY = 18;
   ctx.fillStyle = PAPER;
-  roundRect(ctx, M, TICKET_TOP, CARD_W - M * 2, TICKET_H, 48);
+  roundRect(ctx, M, TICKET_TOP, tw, TICKET_H, 52);
   ctx.fill();
   ctx.restore();
 
-  const qrBox = 320;
-  const qrX = M + 18;
-  const qrY = TICKET_TOP + (TICKET_H - qrBox) / 2;
+  // A candy-stripe gradient cap along the top edge of the ticket.
+  ctx.save();
+  roundRect(ctx, M, TICKET_TOP, tw, TICKET_H, 52);
+  ctx.clip();
+  const cap = ctx.createLinearGradient(M, 0, M + tw, 0);
+  cap.addColorStop(0, ORANGE);
+  cap.addColorStop(0.5, PINK);
+  cap.addColorStop(1, VIOLET);
+  ctx.fillStyle = cap;
+  ctx.fillRect(M, TICKET_TOP, tw, 14);
+  ctx.restore();
+
+  const qrBox = 284;
+  const qrX = M + 20;
+  const qrY = TICKET_TOP + 14 + (TICKET_H - 14 - qrBox) / 2;
   drawQr(ctx, content.url, qrX, qrY, qrBox, logo);
 
-  /* The text column starts where the code ends, and the whole block is
-     centred on the code's own middle - which is what stops this half of the
-     ticket reading as an afterthought stuck beside a square. */
-  const textX = qrX + qrBox + 36;
-  const textW = CARD_W - M - 40 - textX;
-  const middle = TICKET_TOP + TICKET_H / 2;
-
-  /* A short orange rule over the heading. The ticket is the one large white
-     field on the card, and without a touch of the accent on it the bottom
-     third stops looking like it belongs to the top two. */
-  ctx.fillStyle = ORANGE;
-  roundRect(ctx, textX, middle - 92, 64, 8, 4);
-  ctx.fill();
+  // Text column, centred on the code's own middle.
+  const textX = qrX + qrBox + 30;
+  const textW = CARD_W - M - 36 - textX;
+  const middle = TICKET_TOP + 14 + (TICKET_H - 14) / 2;
 
   ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = INK;
-  ctx.font = '700 46px system-ui, sans-serif';
-  ctx.fillText('Scan to view', textX, middle - 34);
+  ctx.font = '800 50px system-ui, sans-serif';
+  ctx.fillText('Scan to grab it', textX, middle - 24);
 
   ctx.fillStyle = MUTED;
-  ctx.font = '400 28px system-ui, sans-serif';
-  ctx.fillText('Point any camera at the code', textX, middle + 16);
+  ctx.font = '500 28px system-ui, sans-serif';
+  ctx.fillText('Point any camera at the code', textX, middle + 20);
 
-  /* One line, truncated from the tail. Wrapping this would break the domain
-     across two lines, and the domain is the only part a reader uses - it is
-     what tells them where the code goes before they point a camera at it. The
-     listing id after it is for the machine, which is reading the code, not
-     this. */
-  ctx.fillStyle = NAVY;
-  ctx.font = '600 28px system-ui, sans-serif';
-  ctx.fillText(fitOneLine(ctx, content.prettyUrl, textW), textX, middle + 72);
+  /* The URL in a gradient pill, one line, truncated from the tail: the domain
+     is the only part a reader uses, so it must never be wrapped. */
+  ctx.font = '700 26px system-ui, sans-serif';
+  const urlText = fitOneLine(ctx, content.prettyUrl, textW - 40);
+  const urlPillW = Math.min(textW, ctx.measureText(urlText).width + 40);
+  const pillGrad = ctx.createLinearGradient(textX, 0, textX + urlPillW, 0);
+  pillGrad.addColorStop(0, NAVY);
+  pillGrad.addColorStop(1, VIOLET);
+  ctx.fillStyle = pillGrad;
+  roundRect(ctx, textX, middle + 46, urlPillW, 52, 26);
+  ctx.fill();
+  ctx.fillStyle = PAPER;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(urlText, textX + 20, middle + 73);
 
   // ── Footer ────────────────────────────────────────────────────────────
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.font = '500 26px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '700 26px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Buy, sell and trade with students you can actually meet.', CARD_W / 2, 1322);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Buy, sell and trade with students you can actually meet ✨', CARD_W / 2, 1324);
 
   return canvas;
 }
@@ -564,9 +674,8 @@ export async function renderQrCard(content: QrCardContent): Promise<HTMLCanvasEl
 /**
  * The card as a PNG file, ready for the share sheet.
  *
- * <p>Named after the listing so a saved copy is findable, and PNG rather than
- * JPEG because the card is flat colour and text, where JPEG's artefacts show
- * worst - including on the code itself.
+ * <p>PNG rather than JPEG because the card has flat colour, text and a QR
+ * code, where JPEG's artefacts show worst.
  */
 export function canvasToFile(canvas: HTMLCanvasElement, filename: string): Promise<File> {
   return new Promise((resolve, reject) => {

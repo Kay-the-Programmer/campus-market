@@ -49,7 +49,9 @@ public class UserController {
             String year,
             String campusZone,
             String avatarUrl,
-            String privateAddress) {}
+            String privateAddress,
+            /** Null means "not editing it"; blank is rejected. */
+            String phone) {}
 
     @PutMapping("/me")
     public Map<String, Object> updateOwnProfile(@AuthPrincipal Principal principal,
@@ -62,7 +64,8 @@ public class UserController {
                 request.year(),
                 request.campusZone(),
                 request.avatarUrl(),
-                request.privateAddress());
+                request.privateAddress(),
+                request.phone());
     }
 
     // ------------------------------------------------------ phone verification

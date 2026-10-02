@@ -44,9 +44,21 @@ public class UserProfileService {
      * "update the profile" has exactly one legitimate target, and accepting an
      * id would turn this into an account-takeover endpoint one bug away.
      *
-     * <p>The phone number is deliberately NOT settable here. It changes only
-     * through {@link PhoneVerificationService}, so a number on a profile has
-     * always been confirmed by whoever holds it.
+     * <p>The phone number is settable here, and was not always.
+     *
+     * <p>It used to change only through {@link PhoneVerificationService}, so
+     * that a number on a profile had always been confirmed by whoever holds
+     * it. That is a stronger guarantee and it cost more than it was worth:
+     * verification needs the student to send an SMS they pay for, which
+     * excludes anyone out of airtime, and with no gateway configured it
+     * excluded everyone - leaving the number on a profile uneditable, not
+     * merely unverified. A number somebody can correct beats a number nobody
+     * can touch.
+     *
+     * <p>Verification still exists and still sets {@code phoneVerified}; it is
+     * now a badge an account can earn rather than the only way to have a
+     * number at all. Setting a number here clears that badge, because the new
+     * number plainly has not been confirmed.
      */
     @Transactional
     public Map<String, Object> updateOwnProfile(Principal principal,
@@ -56,7 +68,8 @@ public class UserProfileService {
                                                 String year,
                                                 String campusZone,
                                                 String avatarUrl,
-                                                String privateAddress) {
+                                                String privateAddress,
+                                                String phone) {
         if (principal.isGuest()) {
             throw ApiException.unauthorized("Please log in to edit your profile.");
         }
@@ -77,6 +90,31 @@ public class UserProfileService {
         user.setYear(blankToNull(year));
         user.setAvatarUrl(blankToNull(avatarUrl));
         user.setPrivateAddress(blankToNull(privateAddress));
+
+        /*
+         * Only when the caller actually sent one. A null means "not editing
+         * the phone" - every other field here is sent on every save, but
+         * treating a missing phone as "clear it" would wipe the number of any
+         * older client, and the number is now required at registration.
+         */
+        if (phone != null) {
+            String cleanPhone = blankToNull(phone);
+            if (cleanPhone == null) {
+                throw ApiException.badRequest("PHONE_REQUIRED",
+                        "Add a phone number so you can be reached at a handover.");
+            }
+            String normalised = PhoneVerificationService.normalise(cleanPhone);
+            if (normalised == null) {
+                throw ApiException.badRequest("PHONE_INVALID",
+                        "That phone number does not look right. Check the digits and try again.");
+            }
+            // A changed number is an unverified number - the badge belongs to
+            // the line that was confirmed, not to the account.
+            if (!normalised.equals(user.getPhone())) {
+                user.setPhone(normalised);
+                user.setPhoneVerified(false);
+            }
+        }
 
         if (campusZone != null && !campusZone.isBlank()) {
             try {
