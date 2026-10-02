@@ -178,6 +178,28 @@ public class AuthService {
                 .orElse(null);
 
         boolean isNewUser = user == null;
+
+        /*
+         * A phone number is required to finish registering, and this is the
+         * only place it can be enforced for a Google account - the request
+         * record cannot carry @NotBlank because the first leg of this flow
+         * legitimately arrives without one.
+         *
+         * The trigger is the campus zone, because supplying it is what makes a
+         * call the profile-completing leg rather than an ordinary sign-in.
+         * Keyed that way so the rule applies to new registrations only: an
+         * established account with no number on file - every account that
+         * registered before this was required - still signs in untouched,
+         * because an ordinary sign-in sends no zone. Making the number
+         * mandatory for them too is a migration, not a validation rule.
+         */
+        boolean completingProfile = blankToNull(request.campusZone()) != null;
+        boolean hasPhoneOnFile = !isNewUser && blankToNull(user.getPhone()) != null;
+        if (completingProfile && !hasPhoneOnFile && blankToNull(request.phone()) == null) {
+            throw ApiException.badRequest("PHONE_REQUIRED",
+                    "Add a phone number so you can be reached at a handover.");
+        }
+
         if (isNewUser) {
             user = new User();
             user.setEmail(email);

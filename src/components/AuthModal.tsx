@@ -252,6 +252,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Read and accept the seller terms to apply.');
       return;
     }
+    /*
+     * Counted in digits rather than matched against a pattern. People type a
+     * number as +260 97 123 4567, 0971234567 or 097-123-4567, and a regex
+     * strict enough to be worth having rejects at least one of those. Nine
+     * digits is a local mobile without the leading zero; fifteen is E.164's
+     * ceiling, so anything longer is a typo rather than a country we have not
+     * thought of.
+     */
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phoneDigits) {
+      setError('Add a phone number so you can be reached at a handover.');
+      return;
+    }
+    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
+      setError('That phone number does not look right. Check the digits and try again.');
+      return;
+    }
     if (!googleToken) {
       // The held token is gone (a reopened modal, say) - restart cleanly rather
       // than half-finishing a signup.
@@ -266,8 +283,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       accountType,
       campusZone,
       // Was being dropped here: the request has always carried a phone, and
-      // the form now asks for one.
-      phone: phone.trim() || undefined,
+      // the form now asks for one. Required from here on, so no `|| undefined`
+      // - an empty string reaching the server would be a bug worth a 400
+      // rather than something to quietly turn into "not provided".
+      phone: phone.trim(),
       // Only meaningful for a seller; the server ignores it for a buyer.
       acceptedTermsVersion: accountType === 'SELLER' ? SELLER_TERMS_VERSION : undefined });
     setBusy(false);
@@ -591,25 +610,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               />
             )}
 
-            {/* Optional, and said so plainly. Nothing here is payment or
+            {/* Required, and said so plainly. Nothing here is payment or
                 delivery - the number exists so the two of you can find each
                 other at a handover that happens in person, which is why the
-                hint says what it is FOR rather than just asking for it. */}
+                hint says what it is FOR rather than just demanding it. Asking
+                for something mandatory without saying why is what makes a
+                signup form feel like it is collecting data on you. */}
             <Field label="Phone number">
-
-
+              {/* aria-required rather than required: the native attribute
+                  would block submit with the browser's own "please fill out
+                  this field" bubble, which says nothing about why the number
+                  is wanted - and would pre-empt the message below, which
+                  does. Every other rule on this form is checked the same way,
+                  into the one error banner. */}
               <input
                 type="tel"
+                aria-required="true"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+260 97 123 4567"
                 autoComplete="tel"
                 inputMode="tel"
+                aria-invalid={!!error && !phone.trim()}
                 className="input-base text-sm"
               />
               <p className="mt-1 text-[11px] text-[#737686]">
                 Shared only with someone you're trading with, so you can meet up.
-                You can add it later.
               </p>
             </Field>
 

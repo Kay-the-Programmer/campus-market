@@ -473,7 +473,8 @@ export const api = {
       password: string;
       accountType: AccountType;
       campusZone: CampusZone;
-      phone?: string;
+      /** Required: the server rejects a signup without one. */
+      phone: string;
       department?: string;
       year?: string;
     }) {

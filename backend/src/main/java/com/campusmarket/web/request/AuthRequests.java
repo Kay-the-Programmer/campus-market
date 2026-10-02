@@ -27,7 +27,14 @@ public final class AuthRequests {
             @NotBlank(message = "Choose your campus location.")
             String campusZone,
 
+            /**
+             * Required. Buyers and sellers meet in person to hand things over,
+             * and the number is how they arrange it - an account without one
+             * cannot complete the thing the site exists to do.
+             */
+            @NotBlank(message = "Add a phone number so you can be reached at a handover.")
             String phone,
+
             String department,
             String year,
 
@@ -51,6 +58,15 @@ public final class AuthRequests {
              */
             String accountType,
             String campusZone,
+
+            /**
+             * Deliberately not {@code @NotBlank}, although a phone number is
+             * required to finish registering. The first leg of this flow runs
+             * before anybody has been asked for one, so a constraint here
+             * would reject the very call whose job is to report
+             * {@code needsProfile}. AuthService requires it on the leg that
+             * actually completes the profile instead.
+             */
             String phone,
 
             /** As above: required only when accountType is SELLER. */
