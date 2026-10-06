@@ -99,19 +99,13 @@ export const ListingQrModal: React.FC<ListingQrModalProps> = ({ isOpen, onClose,
           prettyUrl: url.replace(/^https?:\/\//, ''),
           imageUrl: listing.image || undefined,
           eyebrow: listing.categoryName || listing.category,
+          /* Two at most, and these two: the condition answers the question a
+             buyer asks first, and the zone answers whether they can get to it.
+             Everything else about the listing is one scan away. */
           chips: [
             listing.condition && listing.condition !== 'N/A' ? listing.condition : null,
             listing.location,
           ].filter(Boolean) as string[],
-          /* Classic sets these two out separately - a spec line under the title
-             and a place of its own - where the other styles read them as chips
-             over the photo. */
-          details: [
-            listing.categoryName || listing.category,
-            listing.condition && listing.condition !== 'N/A' ? listing.condition : null,
-            listing.brand,
-          ].filter(Boolean).join(' | '),
-          location: listing.location,
         }, style);
         if (!alive) return;
         drawnFor.current = listing.id;

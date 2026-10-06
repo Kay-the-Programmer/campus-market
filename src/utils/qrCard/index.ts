@@ -3,27 +3,25 @@
  *
  * <p>The point is the hand-off between a phone screen and everything that is
  * not one: a code someone can scan off a noticeboard, a table or a status, plus
- * a picture of the thing worth scanning for. Which is why there is more than one
- * style - the poster that wins a scroll is not the poster you want to print in
- * black and white - and why the photo is always fitted whole rather than cropped
- * to the layout.
+ * a picture of the thing worth scanning for. Which is why the photo is the
+ * largest thing on the page and is never cropped - see layout.ts, which sizes
+ * the page around it.
  *
- * <p>Drawn to a canvas because sharing needs a PNG file. Loaded lazily by the
- * share modal; the names of the styles live in utils/qrCardStyles, which is
- * cheap enough to import eagerly.
+ * <p>Drawn to a canvas because sharing needs a PNG. Loaded lazily by the share
+ * modal; the names of the styles live in utils/qrCardStyles, which is cheap
+ * enough to import eagerly.
  */
 
-import {
-  DEFAULT_QR_CARD_STYLE, QR_CARD_STYLES, resolveQrCardStyle, type QrCardStyleId,
-} from '../qrCardStyles';
-import { CARD_H, CARD_W, LOGO_SRC, type QrCardContent, type QrCardDrawer } from './card';
+import { DEFAULT_QR_CARD_STYLE, resolveQrCardStyle, type QrCardStyleId } from '../qrCardStyles';
+import { LOGO_SRC, type QrCardContent } from './card';
 import { loadImage } from './canvas';
-import { drawClassic } from './styles/classic';
-import { drawClean } from './styles/clean';
-import { drawNight } from './styles/night';
-import { drawVibrant } from './styles/vibrant';
+import { layoutPoster } from './layout';
+import { drawPoster, type PosterSkin } from './poster';
+import { classicSkin } from './styles/classic';
+import { cleanSkin } from './styles/clean';
+import { nightSkin } from './styles/night';
+import { vibrantSkin } from './styles/vibrant';
 
-export { CARD_H, CARD_W };
 export type { QrCardContent };
 
 /**
@@ -33,11 +31,11 @@ export type { QrCardContent };
  * style that is offered in the picker but cannot be drawn, which is the one
  * mistake here that would reach a user as a blank card.
  */
-const DRAWERS: Record<QrCardStyleId, QrCardDrawer> = {
-  classic: drawClassic,
-  vibrant: drawVibrant,
-  clean: drawClean,
-  night: drawNight,
+const SKINS: Record<QrCardStyleId, PosterSkin> = {
+  classic: classicSkin,
+  vibrant: vibrantSkin,
+  clean: cleanSkin,
+  night: nightSkin,
 };
 
 /**
@@ -46,20 +44,17 @@ const DRAWERS: Record<QrCardStyleId, QrCardDrawer> = {
  * <p>Async only because of the images; everything else is synchronous drawing.
  * An unknown style falls back to the default rather than throwing - see
  * resolveQrCardStyle.
+ *
+ * <p>The order matters: the photo has to be loaded before the page can be
+ * measured, because its shape is what the page is sized from, and the canvas
+ * has to be sized before anything is drawn on it - setting width or height
+ * clears it.
  */
 export async function renderQrCard(
   content: QrCardContent,
   style: QrCardStyleId | string = DEFAULT_QR_CARD_STYLE,
 ): Promise<HTMLCanvasElement> {
-  const id = resolveQrCardStyle(style);
-  // Styles are not all the same page: Classic is a 2:3 flyer, the rest are 4:5.
-  const size = QR_CARD_STYLES.find((s) => s.id === id)!.size;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = size.w;
-  canvas.height = size.h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('This browser cannot generate the QR card.');
+  const skin = SKINS[resolveQrCardStyle(style)];
 
   // Both images are fetched together: one is local, one is remote.
   const [photo, logo] = await Promise.all([
@@ -67,7 +62,17 @@ export async function renderQrCard(
     loadImage(LOGO_SRC),
   ]);
 
-  DRAWERS[id](ctx, content, { photo, logo });
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('This browser cannot generate the QR card.');
+
+  /* Measured on the context before it has a size. Font metrics do not depend on
+     the canvas' dimensions, and the sizing below would wipe anything drawn. */
+  const layout = layoutPoster(ctx, content, photo, skin.qrBox);
+  canvas.width = layout.page.w;
+  canvas.height = layout.page.h;
+
+  drawPoster(ctx, content, { photo, logo }, skin, layout);
   return canvas;
 }
 

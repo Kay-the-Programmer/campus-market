@@ -21,13 +21,15 @@ export interface CardSize {
 }
 
 /**
- * 4:5 portrait - the tallest aspect WhatsApp previews without cropping, which
- * is what the three in-app styles are drawn to.
+ * The shape the preview reserves before a poster has been measured.
+ *
+ * <p>Nominal, not the output: a finished poster is 1080 wide and however tall
+ * its photo and its title make it - see utils/qrCard/layout. This is 4:5, the
+ * tallest aspect WhatsApp previews without cropping, which is the middle of the
+ * range the real pages land in and therefore the least jarring box to hold
+ * open while one is drawn.
  */
 export const CARD_SIZE: CardSize = { w: 1080, h: 1350 };
-
-/** 2:3, the flyer proportion the Classic poster was designed at. */
-export const POSTER_SIZE: CardSize = { w: 1024, h: 1536 };
 
 export interface QrCardStyleMeta {
   id: QrCardStyleId;
@@ -37,15 +39,16 @@ export interface QrCardStyleMeta {
   hint: string;
   /** Three colours, drawn as a diagonal gradient on the picker's swatch. */
   swatch: [string, string, string];
-  /** The page it is drawn at. The preview reserves space at this aspect. */
+  /** The aspect the preview reserves while the real page is measured. */
   size: CardSize;
 }
 
 /**
  * Order is the picker's order, and the first is the default.
  *
- * <p>Four, not more: a style you have to scroll to find is a style nobody uses,
- * and each one has to be worth maintaining as a layout.
+ * <p>Four, not more: a style you have to scroll to find is a style nobody uses.
+ * They share one layout and differ only in colour - see utils/qrCard/poster -
+ * so the cost of a fifth is the picker's width, not another page to maintain.
  */
 export const QR_CARD_STYLES: readonly QrCardStyleMeta[] = [
   {
@@ -53,7 +56,7 @@ export const QR_CARD_STYLES: readonly QrCardStyleMeta[] = [
     name: 'Classic',
     hint: 'The standard CampusMarket flyer',
     swatch: ['#1B2A4A', '#F5901E', '#ffffff'],
-    size: POSTER_SIZE,
+    size: CARD_SIZE,
   },
   {
     id: 'vibrant',

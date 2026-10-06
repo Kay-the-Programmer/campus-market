@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { fitContain, fitCover } from './canvas';
+import { fitContain } from './canvas';
 
 /*
  * The poster used to fill its photo frame, which meant cropping: a frame is a
  * fixed shape and a listing photo is whatever shape the seller's phone
  * produced, so a tall photo lost its top and bottom - on a card whose entire
- * job is showing the thing being sold. These are the two sizing rules that
- * replaced it, and the first is the one with a promise attached: nothing is
- * cut off.
+ * job is showing the thing being sold. This is the sizing rule that replaced
+ * it, and it has a promise attached: nothing is cut off.
+ *
+ * It now runs twice per poster. Once to size the frame from the photo's own
+ * aspect - layout.ts fits the aspect itself into the page's budget - and once
+ * to place the photo in the frame that produced. That is what removed the
+ * letterboxing too: a frame that came from the photo is a frame the photo
+ * reaches the edges of.
  */
 
-const BOX = { w: 936, h: 520 };
+const BOX = { w: 936, h: 1040 };
 
 /** Shapes a phone camera actually produces, plus the awkward ends. */
 const PHOTOS: Array<[string, number, number]> = [
@@ -20,7 +25,7 @@ const PHOTOS: Array<[string, number, number]> = [
   ['tall screenshot', 828, 2400],
   ['wide panorama', 4000, 900],
   ['tiny thumbnail', 64, 48],
-  ['exactly the frame', 936, 520],
+  ['exactly the frame', 936, 1040],
 ];
 
 describe('fitting a photo into a frame', () => {
@@ -42,7 +47,7 @@ describe('fitting a photo into a frame', () => {
   });
 
   it('leaves a photo of the frame’s own shape exactly filling it', () => {
-    expect(fitContain(1872, 1040, BOX.w, BOX.h)).toEqual({ w: BOX.w, h: BOX.h });
+    expect(fitContain(1872, 2080, BOX.w, BOX.h)).toEqual({ w: BOX.w, h: BOX.h });
   });
 
   /*
@@ -53,28 +58,6 @@ describe('fitting a photo into a frame', () => {
     'falls back to the frame for a %sx%s image',
     (w, h) => {
       expect(fitContain(w, h, BOX.w, BOX.h)).toEqual({ w: BOX.w, h: BOX.h });
-      expect(fitCover(w, h, BOX.w, BOX.h)).toEqual({ w: BOX.w, h: BOX.h });
     },
   );
-});
-
-describe('the wash behind it', () => {
-  it.each(PHOTOS)('covers the frame for a %s', (_name, w, h) => {
-    const covered = fitCover(w, h, BOX.w, BOX.h);
-
-    // The opposite promise, and why cover is only ever used for the blurred
-    // backdrop: it reaches both edges, and overshoots one of them.
-    expect(covered.w).toBeGreaterThanOrEqual(BOX.w - 0.001);
-    expect(covered.h).toBeGreaterThanOrEqual(BOX.h - 0.001);
-    expect(covered.w / covered.h).toBeCloseTo(w / h, 5);
-  });
-
-  it('never shows less of the photo than the fitted copy does', () => {
-    PHOTOS.forEach(([, w, h]) => {
-      const fitted = fitContain(w, h, BOX.w, BOX.h);
-      const covered = fitCover(w, h, BOX.w, BOX.h);
-      expect(covered.w).toBeGreaterThanOrEqual(fitted.w - 0.001);
-      expect(covered.h).toBeGreaterThanOrEqual(fitted.h - 0.001);
-    });
-  });
 });
