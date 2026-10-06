@@ -101,14 +101,40 @@ class ListingScorerTest {
     @DisplayName("co-visitation lifts a listing from a category they have never browsed")
     void coVisitationCrossesCategories() {
         TasteProfile profile = shopsFor(BOOKS, "100");
-        Candidate stranger = listing(FOOD, "100");
-        Candidate plainBook = listing(BOOKS, "100");
+        Instant posted = NOW.minus(1, ChronoUnit.DAYS);
+        Candidate withOthers = listing(UUID.randomUUID(), FOOD, "100", posted);
+        Candidate onItsOwn = listing(UUID.randomUUID(), FOOD, "100", posted);
 
-        ListingScorer.Context withCoView = new ListingScorer.Context(
-                Map.of(stranger.id(), 1.0), Map.of(), 0, null, NOW);
+        ListingScorer.Context context = new ListingScorer.Context(
+                Map.of(withOthers.id(), 1.0), Map.of(), 0, null, NOW);
 
-        assertThat(ListingScorer.score(stranger, profile, withCoView))
-                .isGreaterThan(ListingScorer.score(plainBook, profile, withCoView));
+        assertThat(ListingScorer.score(withOthers, profile, context))
+                .isGreaterThan(ListingScorer.score(onItsOwn, profile, context));
+    }
+
+    /*
+     * ...but not above what they actually shop for, and that is deliberate.
+     *
+     * A perfect co-visitation score is worth about half a category match, so
+     * "people who looked at this also looked at that" can reorder the things
+     * someone was going to be shown anyway and can pull an unfamiliar category
+     * up the page - it cannot push their own demonstrated preference down it.
+     * Pinned because it is the judgement the weights encode, and the first
+     * thing a re-tuning would change by accident.
+     */
+    @Test
+    @DisplayName("a category they shop for still outranks a pure co-visitation hit")
+    void ownPreferenceOutranksTheCrowd() {
+        TasteProfile profile = shopsFor(BOOKS, "100");
+        Instant posted = NOW.minus(1, ChronoUnit.DAYS);
+        Candidate crowdFavourite = listing(UUID.randomUUID(), FOOD, "100", posted);
+        Candidate theirCategory = listing(UUID.randomUUID(), BOOKS, "100", posted);
+
+        ListingScorer.Context context = new ListingScorer.Context(
+                Map.of(crowdFavourite.id(), 1.0), Map.of(), 0, null, NOW);
+
+        assertThat(ListingScorer.score(theirCategory, profile, context))
+                .isGreaterThan(ListingScorer.score(crowdFavourite, profile, context));
     }
 
     @Test
