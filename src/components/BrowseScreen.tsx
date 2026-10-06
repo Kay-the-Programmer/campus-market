@@ -19,6 +19,7 @@ import { SpecialOffers } from './browse/SpecialOffers';
 import { IntentPicker } from './browse/IntentPicker';
 import { CategoryStrip } from './browse/CategoryStrip';
 import { NoResultsSuggestions, FeedPatch } from './browse/NoResultsSuggestions';
+import { SocialChannelsBanner } from './browse/SocialChannelsBanner';
 import {
   CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
@@ -2312,6 +2313,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           <CtaBanner slot={cta.tail} onNavigate={followPromoLink} className="mt-8" />
         )}
 
+        {/* ═══════════════ FOLLOW US, end of page ═══════════════ */}
+        {/* Below the marketing banner, because this one is evergreen: whatever
+            campaign is running above it, the channels are where someone goes
+            once they have run out of listings to look at. Also held back while
+            the feed loads, so the page never opens on an invitation to leave
+            it. */}
+        {!loading && <SocialChannelsBanner className="mt-8" />}
 
       </div>
 

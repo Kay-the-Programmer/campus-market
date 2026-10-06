@@ -1,7 +1,8 @@
 import React from 'react';
-import { MapPin, ShieldCheck, Facebook, MessageCircle, Music2 } from 'lucide-react';
+import { MapPin, ShieldCheck } from 'lucide-react';
 import { ViewType } from '../../types';
 import { GUEST_ALLOWED } from './navShared';
+import { LIVE_SOCIAL_CHANNELS } from '../../data/socialChannels';
 
 interface SiteFooterProps {
   currentView: ViewType;
@@ -43,34 +44,6 @@ const ACCOUNT: FooterLink[] = [
 const SUPPORT: FooterLink[] = [
   { label: 'Help & support', view: 'support' },
   { label: 'Terms & safety', view: 'legal' },
-];
-
-/**
- * Where the marketplace lives off-platform.
- *
- * <p>Placeholders until the real handles are supplied - each is a single
- * string to change. A link is only rendered when its `url` is set, so an
- * unfilled one is absent rather than sending people to a dead page.
- */
-const SOCIAL_LINKS: { label: string; url: string; icon: React.ReactNode; hover: string }[] = [
-  {
-    label: 'Facebook',
-    url: 'https://www.facebook.com/profile.php?id=61593716265353&mibextid=wwXIfr&mibextid=wwXIfr',
-    hover: 'hover:text-[#1877f2] hover:border-[#1877f2]',
-    icon: <Facebook className="w-4 h-4" />,
-  },
-  {
-    label: 'WhatsApp channel',
-    url: 'https://whatsapp.com/channel/0029Vb7qiIlADTO5fqOBq91s',
-    hover: 'hover:text-[#25d366] hover:border-[#25d366]',
-    icon: <MessageCircle className="w-4 h-4" />,
-  },
-  {
-    label: 'TikTok',
-    url: 'https://www.tiktok.com/@campus.market.mu',
-    hover: 'hover:text-[#0b1c30] hover:border-[#0b1c30]',
-    icon: <Music2 className="w-4 h-4" />,
-  },
 ];
 
 /**
@@ -158,9 +131,9 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({
                 Follow us
               </p>
               <div className="flex items-center gap-2">
-                {SOCIAL_LINKS.filter((s) => s.url).map((s) => (
+                {LIVE_SOCIAL_CHANNELS.map((s) => (
                   <a
-                    key={s.label}
+                    key={s.id}
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -168,7 +141,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({
                     title={s.label}
                     className={`w-9 h-9 rounded-xl border border-[#c3c6d7] text-[#737686] flex items-center justify-center transition-colors duration-150 ${s.hover}`}
                   >
-                    {s.icon}
+                    <s.icon className="w-4 h-4" />
                   </a>
                 ))}
               </div>

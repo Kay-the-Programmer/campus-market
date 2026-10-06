@@ -614,7 +614,7 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                         type="button"
                         onClick={() => removePhoto(index)}
                         aria-label="Remove photo"
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-2 sm:p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-opacity [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
