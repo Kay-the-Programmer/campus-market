@@ -20,6 +20,9 @@ import { IntentPicker } from './browse/IntentPicker';
 import { CategoryStrip } from './browse/CategoryStrip';
 import { NoResultsSuggestions, FeedPatch } from './browse/NoResultsSuggestions';
 import { SocialChannelsBanner } from './browse/SocialChannelsBanner';
+import { SuggestedCategories } from './browse/SuggestedCategories';
+import { isBarPinned } from './browse/stickyBar';
+import { resolveSort } from './browse/resolveSort';
 import {
   CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
@@ -142,17 +145,22 @@ const iconForLink = (link?: string): React.ReactNode => {
  * someone types - see `effectiveSort` below.
  */
 const SORTS = [
-  { value: 'relevance', label: 'Best match', needsQuery: true, needsDeals: false },
+  /* Ranked by what this person looks to be shopping for - see the server's
+     RecommendationService. Offered only while the feed is unsearched, because
+     someone who typed "textbook" asked a question with a right answer and
+     re-ordering that by taste would answer a different one. */
+  { value: 'foryou', label: 'For you', needsQuery: false, needsDeals: false, hideWithQuery: true },
+  { value: 'relevance', label: 'Best match', needsQuery: true, needsDeals: false, hideWithQuery: false },
   /* Offered only while the deals filter is on, for the same reason as "Best
      match": a saving is something only a reduced listing has, so ranking the
      whole catalogue by it would put every full-price row in an arbitrary order
      behind the handful that are reduced. The server takes the same view and
      applies the filter itself - see ListingService.search. */
-  { value: 'discount', label: 'Biggest saving', needsQuery: false, needsDeals: true },
-  { value: 'newest', label: 'Newest', needsQuery: false, needsDeals: false },
-  { value: 'popular', label: 'Most popular', needsQuery: false, needsDeals: false },
-  { value: 'price_asc', label: 'Price: Low to High', needsQuery: false, needsDeals: false },
-  { value: 'price_desc', label: 'Price: High to Low', needsQuery: false, needsDeals: false },
+  { value: 'discount', label: 'Biggest saving', needsQuery: false, needsDeals: true, hideWithQuery: false },
+  { value: 'newest', label: 'Newest', needsQuery: false, needsDeals: false, hideWithQuery: false },
+  { value: 'popular', label: 'Most popular', needsQuery: false, needsDeals: false, hideWithQuery: false },
+  { value: 'price_asc', label: 'Price: Low to High', needsQuery: false, needsDeals: false, hideWithQuery: false },
+  { value: 'price_desc', label: 'Price: High to Low', needsQuery: false, needsDeals: false, hideWithQuery: false },
 ] as const;
 
 type CoreType = 'All' | 'Product' | 'Service' | 'Food';
@@ -622,7 +630,10 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     const node = resultsRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
-      ([entry]) => setBarStuck(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      ([entry]) => setBarStuck(isBarPinned(
+        { top: entry.boundingClientRect.top, isIntersecting: entry.isIntersecting },
+        headerHeight,
+      )),
       // Offset by the header, so "gone" means gone behind the header rather
       // than gone off the top of the window.
       { rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px`, threshold: 0 },
@@ -630,6 +641,33 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     observer.observe(node);
     return () => observer.disconnect();
   }, [headerHeight]);
+
+  /*
+   * What this device has been looking at, which is what a ranked feed is built
+   * from for anybody not signed in.
+   *
+   * Read from the same local history the "Continue browsing" row uses - this
+   * adds no tracking, it sends ids that already exist on the device. A
+   * signed-in caller's own history is better and is already on the server, so
+   * these are sent and then ignored for them.
+   */
+  const viewedIds = useMemo(
+    () => getRecentlyViewed(currentUser?.id ?? ''),
+    // Recomputed when the feed reloads rather than on every view: the ranking
+    // is for the session, and re-sorting the grid under somebody the instant
+    // they come back from a listing is disorienting.
+    [currentUser?.id],
+  );
+
+  /**
+   * Whether there is enough to rank by.
+   *
+   * <p>Three listings. Below that a "For you" feed is newest-first wearing a
+   * different label, and the server would decline to rank it anyway - so the
+   * sort is not offered as the default until it would mean something. The
+   * server holds the same line from its own side, on better evidence.
+   */
+  const personalisable = viewedIds.length >= 3;
 
   /*
    * The sort actually applied, as opposed to the one held in state.
@@ -641,19 +679,13 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
    * nothing is just newest wearing a different label. An explicit choice is
    * never overridden either way.
    */
-  const effectiveSort = (() => {
-    /* Turning the deals filter off strands a "Biggest saving" selection with
-       nothing to rank, exactly as clearing the box strands "Best match". */
-    if (!dealsOnly && sort === 'discount') return 'newest';
-    /* Switching it on, having expressed no preference, means the deepest
-       savings first - which is what asking for deals asks for. An explicit
-       choice is never overridden, and neither is a query's relevance ranking
-       once someone has chosen it. */
-    if (dealsOnly && !sortTouched) return 'discount';
-    if (!searchQuery.trim()) return sort === 'relevance' ? 'newest' : sort;
-    if (!sortTouched && sort === 'newest') return 'relevance';
-    return sort;
-  })();
+  const effectiveSort = resolveSort({
+    sort,
+    sortTouched,
+    hasQuery: !!searchQuery.trim(),
+    dealsOnly,
+    personalisable,
+  });
 
   /* ── Query the feed. Filtering, sorting and paging are all server-side ── */
   const requestId = useRef(0);
@@ -681,6 +713,11 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         maxPrice: maxPrice || undefined,
         hasDiscount: dealsOnly ? 'true' : undefined,
         sort: effectiveSort !== 'newest' ? effectiveSort : undefined,
+        // Only where it is read. Sending a browsing history on every ordinary
+        // search would be handing over something nothing was going to use.
+        recent: effectiveSort === 'foryou' && viewedIds.length
+          ? viewedIds.join(',')
+          : undefined,
         page: nextPage,
         size: PAGE_SIZE,
       }, controller.signal);
@@ -703,7 +740,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
       setLoading(false);
       setLoadingMore(false);
     },
-    [searchQuery, coreType, categoryId, zone, effectiveSort, minPrice, maxPrice, dealsOnly],
+    [searchQuery, coreType, categoryId, zone, effectiveSort, minPrice, maxPrice, dealsOnly,
+      viewedIds],
   );
 
   /*
@@ -917,7 +955,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   );
 
   const visibleSorts = useMemo(
-    () => SORTS.filter((s) => (!s.needsQuery || searchQuery.trim()) && (!s.needsDeals || dealsOnly)),
+    () => SORTS.filter((s) => (!s.needsQuery || searchQuery.trim())
+      && (!s.needsDeals || dealsOnly)
+      && !(s.hideWithQuery && searchQuery.trim())),
     [searchQuery, dealsOnly],
   );
 
@@ -1455,6 +1495,22 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           </section>
         )}
 
+        {/* ═══════════════════ WORTH A LOOK ═══════════════════ */}
+        {/*
+          Where to browse next, which is a different question from what to buy
+          next and the one somebody has when the feed has stopped surprising
+          them. Below the watched searches and above trending: it is a
+          suggestion, so it yields to anything they explicitly asked to be kept
+          informed about.
+        */}
+        {onHomeFeed && (
+          <SuggestedCategories
+            recentIds={viewedIds}
+            userId={currentUser?.id}
+            onSelect={browseCategoryOnly}
+          />
+        )}
+
         {/* ═══════════════════ TRENDING ON CAMPUS ═══════════════════ */}
         {/*
           What people are actually opening this week, counted from timestamped
@@ -1861,9 +1917,20 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           way back to the full filter row for the rest.
         */}
         <div
-          className={`sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 mb-4 transition-all duration-200 ${barStuck
-            ? 'bg-[#f8f9ff]/95 backdrop-blur-md border-b border-[#c3c6d7]/40 shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]'
-            : 'bg-transparent'
+          /*
+            The background is unconditional, and opaque.
+
+            It is the page's own colour, so unpinned it cannot be seen - and
+            pinned, there is no state anything has to get right for the grid to
+            stop showing through the text. It used to be switched on with
+            barStuck, which made every way of being wrong about that - the
+            observer firing a frame late, a fast scroll, the fade below - a bar
+            you could read the listings through. Only the edge and the lift are
+            worth announcing, and being late with those costs nothing.
+          */
+          className={`sticky z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2.5 mb-4 bg-[#f8f9ff] transition-[border-color,box-shadow] duration-200 ${barStuck
+            ? 'border-b border-[#c3c6d7]/40 shadow-[0_4px_20px_-4px_rgba(11,28,48,0.08)]'
+            : 'border-b border-transparent'
             }`}
           style={{ top: headerHeight }}
         >

@@ -63,4 +63,52 @@ public interface ListingViewRepository extends JpaRepository<ListingView, UUID> 
             """)
     List<Object[]> countRecentByListingIds(@Param("since") Instant since,
                                            @Param("listingIds") Collection<UUID> listingIds);
+
+    /**
+     * What else the people who looked at these listings looked at.
+     *
+     * <p>Co-visitation, and the only thing the recommender knows that a
+     * person's own history cannot tell it: that the people who open a lab coat
+     * tend to go on to open a particular calculator. No model and no training -
+     * on one campus the join is small enough to ask the database directly, and
+     * the answer is current rather than as of the last batch run.
+     *
+     * <p>Counted by distinct viewer rather than by row, so one person opening
+     * the same pair every day for a week contributes once. Guests are excluded
+     * by the join on viewer id - every guest shares a null, so counting them
+     * would pair strangers with each other.
+     *
+     * <p>Seeds are excluded from their own results, and the window keeps this
+     * proportional to recent traffic rather than to the table.
+     */
+    @Query("""
+            select other.listingId, count(distinct other.viewerId)
+            from ListingView seed, ListingView other
+            where seed.listingId in :seedIds
+              and seed.viewerId is not null
+              and other.viewerId = seed.viewerId
+              and other.listingId not in :seedIds
+              and seed.viewedAt >= :since
+              and other.viewedAt >= :since
+            group by other.listingId
+            order by count(distinct other.viewerId) desc
+            """)
+    List<Object[]> findCoViewed(@Param("seedIds") Collection<UUID> seedIds,
+                                @Param("since") Instant since,
+                                Pageable pageable);
+
+    /**
+     * The listings one person has opened, most recent first.
+     *
+     * <p>The backbone of their taste profile. Capped by the caller: a profile
+     * is a summary of what somebody is in the market for now, and a year of
+     * history would mostly describe a person who no longer exists.
+     */
+    @Query("""
+            select v.listingId
+            from ListingView v
+            where v.viewerId = :viewerId
+            order by v.viewedAt desc
+            """)
+    List<UUID> findRecentlyViewedBy(@Param("viewerId") UUID viewerId, Pageable pageable);
 }

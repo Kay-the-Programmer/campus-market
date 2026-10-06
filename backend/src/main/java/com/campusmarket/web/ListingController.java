@@ -41,10 +41,18 @@ public class ListingController {
                                       @RequestParam(required = false) Boolean specialOffer,
                                       @RequestParam(required = false) Boolean hasDiscount,
                                       @RequestParam(defaultValue = "0") int page,
-                                      @RequestParam(defaultValue = "24") int size) {
+                                      @RequestParam(defaultValue = "24") int size,
+                                      /*
+                                       * Listings the caller has been looking at, sent by their
+                                       * own device. Only read when sort=foryou, and only used by
+                                       * guests - a signed-in caller's history is already here and
+                                       * is better. Never stored: it ranks this response and is
+                                       * dropped with it.
+                                       */
+                                      @RequestParam(required = false) List<UUID> recent) {
         return listingService.search(principal, search, type, categoryId, minPrice, maxPrice,
                 condition, location, campusZone, sellerId, sort, specialOffer, hasDiscount,
-                page, size);
+                page, size, recent);
     }
 
     /**

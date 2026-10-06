@@ -18,6 +18,7 @@ import { ListingQrModal } from './shared/ListingQrModal';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { Avatar } from './shared/Avatar';
 import { RichText } from './shared/RichText';
+import { SuggestionRow } from './shared/SuggestionRow';
 import { plainText } from '../utils/richText';
 
 interface DetailScreenProps {
@@ -350,6 +351,50 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     };
     return [...pool].sort((a, b) => score(a) - score(b)).slice(0, 5);
   }, [similarListings, listing.id, listing.categoryId, listing.category]);
+
+  /*
+   * "People also viewed" - co-visitation, from the server.
+   *
+   * The one thing on this page that can suggest something the category never
+   * would: the goggles under the lab coat. Fetched rather than derived, because
+   * it is a fact about what everybody else did and this client knows only what
+   * its own feed happens to hold.
+   *
+   * Shown only when it is really that. The server tops a thin result up from
+   * the same category and says so, and a category row is already below - so
+   * when that is all it managed, this one stays away rather than printing the
+   * same listings twice under a heading that is not true of them.
+   */
+  const [coViewed, setCoViewed] = useState<Listing[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    setCoViewed([]);
+
+    api.listings.suggested(listing.id, 10, controller.signal).then((res) => {
+      if (cancelled || res.aborted || res.error) return;
+      /* Only when it really is what the heading says. The server tops a thin
+         result up from the same category and tells us so; that row is already
+         below, and printing it twice under a claim about other people's
+         behaviour would be a claim the data does not support. */
+      if (res.basis !== 'also-viewed' && res.basis !== 'mixed') return;
+      setCoViewed(res.listings);
+    });
+
+    return () => { cancelled = true; controller.abort(); };
+    // Keyed on the listing alone. Deduplication happens below, at render, so
+    // the feed arriving behind this does not cost a second request.
+  }, [listing.id]);
+
+  const alsoViewed = useMemo(() => {
+    const alreadyShown = new Set(similar.map((item) => item.id));
+    const picks = coViewed.filter(
+      (item) => item.id !== listing.id && !alreadyShown.has(item.id),
+    );
+    // One lonely card under a heading about what other people did reads as a
+    // bug rather than a recommendation.
+    return picks.length >= 2 ? picks.slice(0, 5) : [];
+  }, [coViewed, similar, listing.id]);
 
   /*
    * Home › Category › This listing.
@@ -1098,58 +1143,28 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
           </div>
         </div>
 
-        {/* ── Similar Listings ── */}
-        {similar.length > 0 && (
-          <div className="mt-10 sm:mt-14">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Similar Listings</h2>
-              {onViewAllSimilar && (
-                <button
-                  onClick={() => onViewAllSimilar(listing)}
-                  className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                >
-                  View all <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {similar
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => onSelectSimilar(item)}
-                    className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-                      <ListingImage
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {/* This row was the last grid in the app still quoting a
-                          bare price, which made the cheaper alternative to
-                          what you are looking at the one place its saving was
-                          invisible. */}
-                      <div className="absolute top-2.5 left-2.5">
-                        <DiscountFlag percent={item.discountPercent} />
-                      </div>
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <h3 className="font-bold text-slate-900 text-sm truncate group-hover:text-blue-600 transition-colors">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center justify-between gap-2 mt-1.5">
-                        <PriceTag listing={item} size="sm" />
-                        <span className="text-xs text-slate-400 font-medium shrink-0">
-                          {item.categoryName || item.category}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
+        {/*
+          ── What else the people who opened this went on to open ──
+
+          Above "Similar Listings" because it is the more useful of the two and
+          the less obvious: similar is what you can already see by going back to
+          the category, while this is the only thing on the page that can tell
+          you the lab coat needs goggles. Absent when the server could only
+          offer the same category again - that row already exists below.
+        */}
+        <SuggestionRow
+          title="People also viewed"
+          caption="What other students opened after this one"
+          listings={alsoViewed}
+          onSelect={onSelectSimilar}
+        />
+
+        <SuggestionRow
+          title="Similar Listings"
+          listings={similar}
+          onSelect={onSelectSimilar}
+          onViewAll={onViewAllSimilar ? () => onViewAllSimilar(listing) : undefined}
+        />
       </main>
 
       {/* ── Mobile Floating Action Bar ── */}

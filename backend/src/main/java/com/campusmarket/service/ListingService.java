@@ -8,6 +8,7 @@ import com.campusmarket.web.dto.ListingDtos.ListingDto;
 import com.campusmarket.web.dto.ListingDtos.PageDto;
 import com.campusmarket.web.dto.ListingDtos.SuggestionDto;
 import com.campusmarket.web.dto.ListingDtos.SuggestionsDto;
+import com.campusmarket.service.recommend.TasteProfile;
 import com.campusmarket.web.error.ApiException;
 import com.campusmarket.web.request.ListingRequests.SaveListingRequest;
 import com.campusmarket.web.request.ListingRequests.StatusChangeRequest;
@@ -80,6 +81,8 @@ public class ListingService {
     /** Records edits an admin makes to someone else's listing. */
     private final AuditService auditService;
     private final AccessGuard accessGuard;
+    /** Ranks the "For you" feed, which is the only ordering this class cannot express in SQL. */
+    private final RecommendationService recommendationService;
     private final DtoMapper mapper;
 
     // ----------------------------------------------------------- workflow 10
@@ -98,7 +101,8 @@ public class ListingService {
                                       Boolean specialOffer,
                                       Boolean hasDiscount,
                                       int page,
-                                      int size) {
+                                      int size,
+                                      List<UUID> recent) {
 
         /*
          * "Biggest discount first" over a list that also contains full-price
@@ -146,6 +150,24 @@ public class ListingService {
          */
         boolean byPopular = "popular".equalsIgnoreCase(sort == null ? "" : sort.trim());
 
+        /*
+         * "For you" is ranked in memory over a capped pool rather than in SQL -
+         * see RecommendationService.rank. It cannot be a Sort or a Specification
+         * because the score depends on the caller's own history and on
+         * co-visitation, neither of which is a column on this table.
+         *
+         * A search term beats it. Someone who typed "textbook" is asking a
+         * question with a right answer, and quietly re-ordering that by taste
+         * would answer a different one.
+         */
+        boolean byForYou = "foryou".equalsIgnoreCase(sort == null ? "" : sort.trim()) && !hasTerm;
+        if (byForYou) {
+            TasteProfile profile = recommendationService.profileFor(principal, recent);
+            RecommendationService.RankedPage ranked =
+                    recommendationService.rank(principal, profile, spec, safePage, safeSize);
+            return toPage(principal, ranked.listings(), safePage, safeSize, ranked.total());
+        }
+
         Sort ordering;
         if (byPopular) {
             spec = and(spec, ListingSpecifications.orderByTrending(TRENDING_WINDOW_DAYS));
@@ -168,15 +190,28 @@ public class ListingService {
         Page<Listing> result = listingRepository.findAll(spec,
                 PageRequest.of(safePage, safeSize, ordering));
 
+        return toPage(principal, result.getContent(), safePage, safeSize, result.getTotalElements());
+    }
+
+    /**
+     * One page of listings, as DTOs.
+     *
+     * <p>Shared by the ordinary orderings and the ranked one, so a personalised
+     * feed carries exactly the same card data as every other feed - the saved
+     * hearts and the view counts included.
+     */
+    private PageDto<ListingDto> toPage(Principal principal, List<Listing> listings,
+                                       int page, int size, long total) {
         Set<UUID> saved = savedIdsFor(principal);
         // One grouped query for the whole page, so "seen N times this week" on
         // a grid of two dozen cards costs one round trip rather than 24.
-        Map<UUID, Long> recentViews = recentViewsFor(result.getContent());
-        List<ListingDto> items = result.getContent().stream()
+        Map<UUID, Long> recentViews = recentViewsFor(listings);
+        List<ListingDto> items = listings.stream()
                 .map(listing -> mapper.listing(listing, principal, saved, recentViews))
                 .toList();
 
-        return new PageDto<>(items, safePage, safeSize, result.getTotalElements(), result.getTotalPages());
+        int totalPages = size <= 0 ? 0 : (int) Math.ceil((double) total / size);
+        return new PageDto<>(items, page, size, total, totalPages);
     }
 
     /**

@@ -661,6 +661,27 @@ export const api = {
       };
     },
 
+    /**
+     * What the people who opened this listing went on to open.
+     *
+     * <p>Deliberately not "similar": the page already shows similar things, and
+     * a row of five more of the same textbook is the least useful thing a
+     * listing page can offer. The server says which it actually managed -
+     * co-visitation, the category, or a mix - so the heading can be honest.
+     */
+    async suggested(listingId: string, limit = 8, signal?: AbortSignal) {
+      const res = await get(
+        `/api/listings/${listingId}/suggested?limit=${limit}`, signal);
+      return {
+        listings: ((res.data?.listings ?? []) as unknown[]).map(toListing),
+        /** 'also-viewed' | 'mixed' | 'category' | 'none' */
+        basis: (res.data?.basis ?? 'none') as string,
+        aborted: res.code === 'ABORTED',
+        error: res.error,
+        status: res.status,
+      };
+    },
+
     /** Search-as-you-type. Fires per keystroke, so keep the caller debounced. */
     async suggestions(q: string, limit = 6, signal?: AbortSignal) {
       const res = await get(
@@ -889,6 +910,30 @@ export const api = {
        */
       return {
         categories: Array.isArray(res.data) ? res.data : [],
+        error: res.error,
+        status: res.status,
+      };
+    },
+
+    /**
+     * Where this person might want to browse next.
+     *
+     * <p>Chosen from where the people around their listings went, not from
+     * where they have already been - a shelf recommending the category someone
+     * is standing in has told them nothing. With nothing to go on it answers
+     * with the busiest categories of the week, which is the right answer to
+     * "where should I look" for somebody we know nothing about.
+     *
+     * @param recent ids from this device, so a signed-out visitor gets
+     *   suggestions too. Sent, never stored - see the server's note on it.
+     */
+    async suggested(limit = 6, recent: string[] = [], signal?: AbortSignal) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (recent.length) query.set('recent', recent.join(','));
+      const res = await get(`/api/recommendations/categories?${query}`, signal);
+      return {
+        categories: Array.isArray(res.data?.categories) ? res.data.categories : [],
+        aborted: res.code === 'ABORTED',
         error: res.error,
         status: res.status,
       };
