@@ -4,6 +4,7 @@ import { AddToCart, AuthSession, Listing } from '../../types';
 import { api } from '../../services/api';
 import { useChatSeller, ConnectingToSellerOverlay } from '../../hooks/useChatSeller';
 import { ListingImage } from '../shared/ListingImage';
+import { ListingGallery } from '../shared/ListingGallery';
 import { PriceTag } from '../shared/PriceTag';
 
 interface SpecialOffersProps {
@@ -151,8 +152,8 @@ export const SpecialOffers: React.FC<SpecialOffersProps> = ({
               {/* The picture carries this section - offers live or die on how
                   good the thing looks, so it gets the whole card width. */}
               <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
-                <ListingImage
-                  src={item.image}
+                <ListingGallery
+                  images={item.gallery?.length ? item.gallery : [item.image]}
                   alt={item.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />

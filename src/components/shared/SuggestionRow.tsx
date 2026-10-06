@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Listing } from '../../types';
-import { ListingImage } from './ListingImage';
+import { ListingGallery } from './ListingGallery';
 import { PriceTag, DiscountFlag } from './PriceTag';
 
 /**
@@ -61,8 +61,8 @@ export const SuggestionRow: React.FC<SuggestionRowProps> = ({
             className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
-              <ListingImage
-                src={item.image}
+              <ListingGallery
+                images={item.gallery?.length ? item.gallery : [item.image]}
                 alt={item.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />

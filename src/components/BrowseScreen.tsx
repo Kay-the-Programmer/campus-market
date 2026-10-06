@@ -29,6 +29,7 @@ import {
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
+import { ListingGallery } from './shared/ListingGallery';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 interface BrowseScreenProps {
@@ -1570,8 +1571,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                     className="snap-start shrink-0 w-40 sm:w-44 bg-white rounded-2xl border border-[#e5eeff]/80 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]"
                   >
                     <div className="relative aspect-[4/3] bg-[#e5eeff] overflow-hidden">
-                      <ListingImage
-                        src={item.image}
+                      <ListingGallery
+                        images={item.gallery?.length ? item.gallery : [item.image]}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -2219,8 +2220,12 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       className="animate-card-in group bg-white rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 overflow-hidden flex flex-col cursor-pointer border border-[#e5eeff]/80 hover:border-[#b4c5ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] focus-visible:ring-offset-2"
                     >
                       <div className="relative aspect-[4/3] w-full bg-[#e5eeff] overflow-hidden">
-                        <ListingImage
-                          src={item.image}
+                        {/* Cycles when the listing has more than one photo -
+                            the back of the jacket and the crack in the screen
+                            are what change somebody's mind, and the feed was
+                            the one place they never appeared. */}
+                        <ListingGallery
+                          images={item.gallery?.length ? item.gallery : [item.image]}
                           alt={item.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
