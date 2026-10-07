@@ -1255,14 +1255,16 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
            with the bottom nav, which is later in the DOM and therefore wins.
            Sits above it instead. */
         <div
-          /* No safe-area padding here, deliberately: this bar is anchored
-             above the bottom nav, and the nav is what the home indicator
-             actually sits on - it carries the inset for both of them. Adding
-             it here too would open a second gap the width of the indicator
-             between this bar and the one below it. */
-          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+          /* The gutter, and nothing else: this element is only a positioner,
+             so it lets taps through to the page either side of the card. No
+             safe-area padding either, deliberately - the nav below is what the
+             home indicator sits on and it carries the inset for both bars. */
+          className="lg:hidden fixed left-0 right-0 z-30 px-3 pointer-events-none motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
           style={{
-            bottom: 'var(--bottom-nav-h, 72px)',
+            /* Floats clear of the nav rather than sitting on top of it: two
+               cards with a gap between them, which is what makes them read as
+               two separate things rather than one bar split by a line. */
+            bottom: 'calc(var(--bottom-nav-h, 72px) + 0.5rem)',
             /* Follows the bottom bar when it slides away on a scroll down,
                rather than hovering above the strip of screen it left behind.
                The offset it sits at is layout and stays put - see the note on
@@ -1270,7 +1272,9 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
             transform: 'translateY(var(--bottom-nav-shift, 0px))',
           }}
         >
-          <div className="max-w-3xl mx-auto px-4 py-3">
+          {/* The card itself, matching the nav's pill - same radius, same
+              border, same shadow, so the two read as one family. */}
+          <div className="max-w-3xl mx-auto pointer-events-auto rounded-[1.75rem] bg-white/95 backdrop-blur-xl border border-[#c3c6d7]/40 shadow-[0_10px_30px_-6px_rgba(11,28,48,0.28)] px-4 py-3">
             {isGuest && (
               <button
                 onClick={onOpenAuthModal}
