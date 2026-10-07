@@ -1118,7 +1118,21 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   // so there is one behaviour to reason about instead of a per-tile switch.
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] pb-28">
+    /*
+     * clip, not hidden.
+     *
+     * Both stop the page being dragged sideways, but `overflow-x: hidden`
+     * computes overflow-y to `auto` and turns this element into a scroll
+     * container - and the two sticky bars inside it (the category header and
+     * the results bar) would then be sticky to a container that never
+     * scrolls, which is to say not sticky at all. `clip` forbids scrolling on
+     * the axis without creating a scroll container, so they keep working.
+     *
+     * The rows that scroll sideways on purpose - the category strip, the
+     * carousel, Trending - are unaffected: they are their own scroll
+     * containers and this only clips what escapes the page.
+     */
+    <div className="min-h-screen bg-[#f8f9ff] pb-28 overflow-x-clip">
       {/* Small, self-contained keyframes for the polish added below - kept
           local to this screen rather than touching the shared stylesheet.
           Every animation is skipped for prefers-reduced-motion. */}
