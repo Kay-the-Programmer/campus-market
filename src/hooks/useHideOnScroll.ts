@@ -24,7 +24,16 @@ interface HideOnScrollOptions {
    * that barely scrolls never flickers it away and back.
    */
   revealAbove?: number;
-  /** Movement below this many pixels is not treated as a direction. */
+  /**
+   * Movement below this many pixels is not treated as a direction.
+   *
+   * <p>Has to clear more than finger jitter. A page whose images are still
+   * arriving settles by a few pixels as they do, and the browser corrects the
+   * scroll position to match - which arrives here as a small upward movement
+   * nobody made. Measured at eight pixels on the feed, so the default sits
+   * above that: without the margin the bar pops back into view on its own
+   * while someone is still scrolling down past loading images.
+   */
   threshold?: number;
 }
 
@@ -42,7 +51,7 @@ export interface HideOnScroll {
 export function useHideOnScroll({
   disabled = false,
   revealAbove = 72,
-  threshold = 8,
+  threshold = 12,
 }: HideOnScrollOptions = {}): HideOnScroll {
   const [hidden, setHidden] = useState(false);
   /*

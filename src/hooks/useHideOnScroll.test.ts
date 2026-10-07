@@ -89,6 +89,23 @@ describe('useHideOnScroll', () => {
     expect(result.current.hidden).toBe(false);
   });
 
+  /*
+   * The bug this default was raised for, caught on the real feed: scrolling
+   * to 500 landed at 492, because the images above were still arriving and
+   * the browser corrected the scroll position as the page settled. At the old
+   * eight-pixel default that correction cleared the bar on its own, so the
+   * nav popped back into view mid-scroll with nobody having scrolled up.
+   */
+  it('ignores the scroll correction a page makes as it settles', () => {
+    const { result } = renderHook(() => useHideOnScroll());
+
+    scrollTo(500);
+    expect(result.current.hidden).toBe(true);
+
+    scrollTo(492);
+    expect(result.current.hidden).toBe(true);
+  });
+
   it('never hides while disabled - reduced motion, or a screen with no bar', () => {
     const { result } = renderHook(() => useHideOnScroll({ disabled: true }));
 
