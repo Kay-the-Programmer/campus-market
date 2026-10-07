@@ -8,7 +8,7 @@ import { resolveSort, type SortContext } from './resolveSort';
  * overrode a choice" or "the default stayed put when the context moved".
  */
 const context = (over: Partial<SortContext> = {}): SortContext => ({
-  sort: 'newest',
+  sort: 'best',
   sortTouched: false,
   hasQuery: false,
   dealsOnly: false,
@@ -17,8 +17,8 @@ const context = (over: Partial<SortContext> = {}): SortContext => ({
 });
 
 describe('the default order of an unsearched feed', () => {
-  it('is newest for somebody we know nothing about', () => {
-    expect(resolveSort(context())).toBe('newest');
+  it('is the blended order for somebody we know nothing about', () => {
+    expect(resolveSort(context())).toBe('best');
   });
 
   it('is ranked once there is enough history to rank by', () => {
@@ -28,8 +28,8 @@ describe('the default order of an unsearched feed', () => {
   /* The whole reason personalisation is gated: a ranked feed built on two
      glances is newest-first wearing a different label, and claiming otherwise
      in the sort control is the lie. */
-  it('is not ranked on too little history', () => {
-    expect(resolveSort(context({ personalisable: false }))).toBe('newest');
+  it('is not personalised on too little history', () => {
+    expect(resolveSort(context({ personalisable: false }))).toBe('best');
   });
 
   it('leaves an explicit "Newest" alone, however much history there is', () => {
@@ -43,7 +43,7 @@ describe('the default order of an unsearched feed', () => {
     });
 
   it('falls back from relevance when the search box is empty', () => {
-    expect(resolveSort(context({ sort: 'relevance' }))).toBe('newest');
+    expect(resolveSort(context({ sort: 'relevance' }))).toBe('best');
   });
 });
 
@@ -76,7 +76,7 @@ describe('searching', () => {
     expect(resolveSort(context({ sort: 'relevance', hasQuery: false, personalisable: true })))
       .toBe('foryou');
     expect(resolveSort(context({ sort: 'relevance', hasQuery: false, personalisable: false })))
-      .toBe('newest');
+      .toBe('best');
   });
 });
 

@@ -102,7 +102,8 @@ public class ListingService {
                                       Boolean hasDiscount,
                                       int page,
                                       int size,
-                                      List<UUID> recent) {
+                                      List<UUID> recent,
+                                      Integer postedWithinDays) {
 
         /*
          * "Biggest discount first" over a list that also contains full-price
@@ -128,6 +129,7 @@ public class ListingService {
         spec = and(spec, ListingSpecifications.bySeller(sellerId));
         spec = and(spec, ListingSpecifications.onlySpecialOffers(specialOffer));
         spec = and(spec, ListingSpecifications.hasDiscount(hasDiscount));
+        spec = and(spec, ListingSpecifications.postedWithin(postedWithinDays));
 
         int safeSize = Math.min(Math.max(size, 1), 60);
         int safePage = Math.max(page, 0);
@@ -160,7 +162,24 @@ public class ListingService {
          * question with a right answer, and quietly re-ordering that by taste
          * would answer a different one.
          */
-        boolean byForYou = "foryou".equalsIgnoreCase(sort == null ? "" : sort.trim()) && !hasTerm;
+        /*
+         * The blended default. Same machinery as "For you" with nobody's
+         * profile attached, so the personal terms score zero and what orders
+         * the feed is demand, completeness and freshness together.
+         *
+         * This is what an unsorted browse gets. Ordering purely by date put an
+         * hour-old listing with no photograph and no description above a
+         * complete one from yesterday that half the campus is opening, every
+         * time - "Newest" is still there for anyone who actually wants that.
+         */
+        String requested = sort == null ? "" : sort.trim();
+        boolean byBest = ("best".equalsIgnoreCase(requested) || requested.isEmpty()) && !hasTerm;
+        boolean byForYou = "foryou".equalsIgnoreCase(requested) && !hasTerm;
+        if (byBest) {
+            RecommendationService.RankedPage ranked = recommendationService.rank(
+                    principal, TasteProfile.empty(), spec, safePage, safeSize);
+            return toPage(principal, ranked.listings(), safePage, safeSize, ranked.total());
+        }
         if (byForYou) {
             TasteProfile profile = recommendationService.profileFor(principal, recent);
             RecommendationService.RankedPage ranked =

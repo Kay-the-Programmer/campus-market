@@ -394,6 +394,23 @@ public final class ListingSpecifications {
     }
 
     /**
+     * Posted in the last so many days.
+     *
+     * <p>For the "New this week" shelf, which has to be able to say nothing at
+     * all. A shelf headed "new" over whatever happens to be newest is a claim
+     * the data may not support - on a quiet week the newest listing can be a
+     * month old - so the cutoff is a filter rather than a sort, and the shelf
+     * renders only when something clears it.
+     */
+    public static Specification<Listing> postedWithin(Integer days) {
+        if (days == null || days <= 0) {
+            return null;
+        }
+        Instant cutoff = Instant.now().minus(Duration.ofDays(days));
+        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.<Instant>get("createdAt"), cutoff);
+    }
+
+    /**
      * Busiest recently, rather than busiest ever.
      *
      * <p>"Most popular" used to be {@code ORDER BY views_count DESC} - a

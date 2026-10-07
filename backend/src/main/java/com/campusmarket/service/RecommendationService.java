@@ -4,6 +4,7 @@ import com.campusmarket.domain.Category;
 import com.campusmarket.domain.Listing;
 import com.campusmarket.repository.CartItemRepository;
 import com.campusmarket.repository.CategoryRepository;
+import com.campusmarket.repository.ListingImageRepository;
 import com.campusmarket.repository.ListingRepository;
 import com.campusmarket.repository.ListingViewRepository;
 import com.campusmarket.repository.OrderRepository;
@@ -110,6 +111,8 @@ public class RecommendationService {
     private final CartItemRepository cartItemRepository;
     private final OrderRepository orderRepository;
     private final CategoryRepository categoryRepository;
+    /** Photo counts for a whole pool at once - see ListingImageRepository. */
+    private final ListingImageRepository listingImageRepository;
     private final DtoMapper mapper;
 
     /** A page of the feed, already in order. The caller owns turning it into DTOs. */
@@ -213,7 +216,16 @@ public class RecommendationService {
         Sort newest = Sort.by(Sort.Direction.DESC, "createdAt");
         int offset = page * size;
 
-        if (profile.isCold() || offset >= RANK_POOL) {
+        /*
+         * Ranked even for somebody we know nothing about, which is most
+         * sessions. With an empty profile every personal term scores zero and
+         * what is left - demand, completeness, freshness - is still a better
+         * feed than a list by date: an hour-old listing with no photograph and
+         * no description is not the best thing to lead with, and under a pure
+         * recency order it always was. That blend is what `sort=best` asks for
+         * and what an unsorted browse now gets.
+         */
+        if (offset >= RANK_POOL) {
             Page<Listing> plain = listingRepository.findAll(spec, PageRequest.of(page, size, newest));
             return new RankedPage(plain.getContent(), plain.getTotalElements());
         }
@@ -255,10 +267,18 @@ public class RecommendationService {
                 ? principal.user().getId() : null;
         ListingScorer.Context context = contextFor(profile, viewerId, pool);
 
+        /* One grouped query for the whole pool. Reading each listing's image
+           collection instead would be a query per row to rank it, which is the
+           cost that makes ranking not worth doing. */
+        Map<UUID, Long> photos = counts(listingImageRepository.countByListingIds(
+                pool.stream().map(Listing::getId).toList()));
+
         Map<UUID, Double> scores = new HashMap<>(pool.size());
         pool.forEach(listing -> scores.put(
                 listing.getId(),
-                ListingScorer.score(Candidate.of(listing), profile, context)));
+                ListingScorer.score(
+                        Candidate.of(listing, photos.getOrDefault(listing.getId(), 0L)),
+                        profile, context)));
 
         return pool.stream()
                 .sorted(Comparator

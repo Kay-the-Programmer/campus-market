@@ -1619,6 +1619,16 @@ export default function App() {
                     updateUrl('search');
                     syncSearchUrl(next);
                   }}
+                  /* The "Worth a look" shelf. Opens the category on its own,
+                     with every other filter cleared - the point of the shelf is
+                     a different shelf, not this listing's one narrowed. */
+                  onBrowseCategory={(categoryId) => {
+                    const next: SearchFilters = { ...EMPTY_SEARCH_FILTERS, categoryId };
+                    setSearchFilters(next);
+                    setCurrentView('search');
+                    updateUrl('search');
+                    syncSearchUrl(next);
+                  }}
                 />
               )}
 

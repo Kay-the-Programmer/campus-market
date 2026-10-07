@@ -33,8 +33,16 @@ class ListingScorerTest {
     }
 
     private static Candidate listing(UUID id, UUID category, String price, Instant posted) {
+        return listing(id, category, price, posted, HALF_FILLED);
+    }
+
+    /** Middling, so the comparisons that are not about completeness are fair. */
+    private static final double HALF_FILLED = 0.5;
+
+    private static Candidate listing(UUID id, UUID category, String price, Instant posted,
+                                     double completeness) {
         return new Candidate(id, UUID.randomUUID(), category, ListingType.PRODUCT,
-                new BigDecimal(price), CampusZone.DOWNSCHOOL, posted);
+                new BigDecimal(price), CampusZone.DOWNSCHOOL, posted, completeness);
     }
 
     private static TasteProfile shopsFor(UUID category, String price) {
@@ -180,7 +188,7 @@ class ListingScorerTest {
     void neverYourOwn() {
         UUID me = UUID.randomUUID();
         Candidate mine = new Candidate(UUID.randomUUID(), me, BOOKS, ListingType.PRODUCT,
-                new BigDecimal("100"), CampusZone.DOWNSCHOOL, NOW);
+                new BigDecimal("100"), CampusZone.DOWNSCHOOL, NOW, 1);
         ListingScorer.Context asMe = new ListingScorer.Context(Map.of(), Map.of(), 0, me, NOW);
 
         assertThat(ListingScorer.score(mine, shopsFor(BOOKS, "100"), asMe)).isNegative();
@@ -216,6 +224,53 @@ class ListingScorerTest {
 
         assertThat(ListingScorer.score(busy, nobody, context))
                 .isGreaterThan(ListingScorer.score(quiet, nobody, context));
+    }
+
+    /*
+     * The reason the feed is no longer a list by date.
+     *
+     * A listing with no photograph and one line of description cannot be
+     * bought from - nobody can tell what it is - and posting it ten minutes
+     * ago does not change that. This is the comparison the old ordering got
+     * wrong every single time.
+     */
+    @Test
+    @DisplayName("a complete listing from yesterday beats a bare one posted an hour ago")
+    void completenessBeatsBeingNewest() {
+        TasteProfile nobody = TasteProfile.empty();
+        Candidate filledIn = listing(UUID.randomUUID(), BOOKS, "100",
+                NOW.minus(1, ChronoUnit.DAYS), 1.0);
+        Candidate bare = listing(UUID.randomUUID(), BOOKS, "100",
+                NOW.minus(1, ChronoUnit.HOURS), 0.0);
+
+        assertThat(ListingScorer.score(filledIn, nobody, plain()))
+                .isGreaterThan(ListingScorer.score(bare, nobody, plain()));
+    }
+
+    @Test
+    @DisplayName("between two listings posted together, the filled-in one wins")
+    void completenessBreaksTheTie() {
+        Instant posted = NOW.minus(2, ChronoUnit.DAYS);
+        Candidate filledIn = listing(UUID.randomUUID(), BOOKS, "100", posted, 1.0);
+        Candidate bare = listing(UUID.randomUUID(), BOOKS, "100", posted, 0.0);
+
+        assertThat(ListingScorer.score(filledIn, TasteProfile.empty(), plain()))
+                .isGreaterThan(ListingScorer.score(bare, TasteProfile.empty(), plain()));
+    }
+
+    /* But it cannot bury something genuinely new: a week between them is more
+       than completeness is worth, or nothing posted today would ever be seen. */
+    @Test
+    @DisplayName("completeness does not outweigh a week of age")
+    void completenessIsNotTheWholeRanking() {
+        TasteProfile nobody = TasteProfile.empty();
+        Candidate oldButPerfect = listing(UUID.randomUUID(), BOOKS, "100",
+                NOW.minus(12, ChronoUnit.DAYS), 1.0);
+        Candidate newAndDecent = listing(UUID.randomUUID(), BOOKS, "100",
+                NOW.minus(2, ChronoUnit.HOURS), 0.8);
+
+        assertThat(ListingScorer.score(newAndDecent, nobody, plain()))
+                .isGreaterThan(ListingScorer.score(oldButPerfect, nobody, plain()));
     }
 
     @Test

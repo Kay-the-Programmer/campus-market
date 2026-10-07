@@ -23,6 +23,7 @@ import { SocialChannelsBanner } from './browse/SocialChannelsBanner';
 import { SuggestedCategories } from './browse/SuggestedCategories';
 import { isBarPinned } from './browse/stickyBar';
 import { resolveSort } from './browse/resolveSort';
+import { groupByCategory } from './browse/groupByCategory';
 import {
   CtaBanner, ctaBannersFrom, placeCtaBanners, CTA_INLINE_AFTER,
 } from './shared/CtaBanner';
@@ -145,11 +146,19 @@ const iconForLink = (link?: string): React.ReactNode => {
  * feed is being searched. It is also what an untouched sort becomes the moment
  * someone types - see `effectiveSort` below.
  */
+/** How recent a listing has to be for the "Just arrived" shelf to claim it. */
+const NEW_ARRIVAL_DAYS = 7;
+
 const SORTS = [
   /* Ranked by what this person looks to be shopping for - see the server's
      RecommendationService. Offered only while the feed is unsearched, because
      someone who typed "textbook" asked a question with a right answer and
      re-ordering that by taste would answer a different one. */
+  /* The default, and no longer "whatever was posted last": demand,
+     completeness and freshness together - see the server's ListingScorer. A
+     listing with no photograph and no description is not the best thing to
+     lead with however recently it went up. */
+  { value: 'best', label: 'Recommended', needsQuery: false, needsDeals: false, hideWithQuery: true },
   { value: 'foryou', label: 'For you', needsQuery: false, needsDeals: false, hideWithQuery: true },
   { value: 'relevance', label: 'Best match', needsQuery: true, needsDeals: false, hideWithQuery: false },
   /* Offered only while the deals filter is on, for the same reason as "Best
@@ -193,7 +202,7 @@ function readUrlFilters() {
     q: p.get('q') || '',
     coreType: (['Product', 'Service', 'Food'].includes(type || '') ? type : 'All') as CoreType,
     categoryId: p.get('categoryId') || '',
-    sort: p.get('sort') || 'newest',
+    sort: p.get('sort') || 'best',
     // Distinguishes "the link said newest" from "nobody has chosen yet".
     sortParam: p.get('sort'),
     campusZone: (CAMPUS_ZONES.some((z) => z.value === zone) ? zone : '') as CampusZone | '',
@@ -540,6 +549,32 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     });
   }, []);
 
+  /*
+   * ── "Just arrived": the week's new listings, as their own shelf ─────────
+   *
+   * The grid stopped being a list by date, which is right - a bare listing
+   * posted an hour ago is not the best thing to lead with - but "what is new"
+   * is still a real question, and it had nowhere left to be answered. So it
+   * gets a shelf of its own rather than the whole feed.
+   *
+   * Filtered by date on the server, not just taken from the top of the newest
+   * sort: on a quiet week the newest listing can be a month old, and a shelf
+   * headed "just arrived" over that is a claim the data does not support. An
+   * empty answer is a real answer and the shelf does not render.
+   */
+  const [arrivals, setArrivals] = useState<Listing[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    api.listings.search({
+      sort: 'newest',
+      postedWithinDays: NEW_ARRIVAL_DAYS,
+      size: 10,
+    }, controller.signal).then((res) => {
+      if (!res.aborted && !res.error) setArrivals(res.listings);
+    });
+    return () => controller.abort();
+  }, []);
+
   /* Saves made elsewhere have to reach these rows too, or one listing shows
      two different hearts depending on which shelf you are looking at. */
   useEffect(() => {
@@ -713,7 +748,8 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         minPrice: minPrice || undefined,
         maxPrice: maxPrice || undefined,
         hasDiscount: dealsOnly ? 'true' : undefined,
-        sort: effectiveSort !== 'newest' ? effectiveSort : undefined,
+        /* 'best' is the server's own default, so it is not worth sending. */
+        sort: effectiveSort !== 'best' ? effectiveSort : undefined,
         // Only where it is read. Sending a browsing history on every ordinary
         // search would be handing over something nothing was going to use.
         recent: effectiveSort === 'foryou' && viewedIds.length
@@ -768,7 +804,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
     if (dealsOnly) params.set('deals', '1');
-    if (effectiveSort !== 'newest') params.set('sort', effectiveSort);
+    if (effectiveSort !== 'best') params.set('sort', effectiveSort);
     const qs = params.toString();
     window.history.replaceState({}, '', qs ? `/browse?${qs}` : '/browse');
     // Keyed on the settled snapshot only - `runSearch` changes identity on
@@ -881,7 +917,7 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
     setZone('');
     setPrice('', '');
     setDealsOnly(false);
-    setSort('newest');
+    setSort('best');
     // Back to a feed nobody has expressed a preference about.
     setSortTouched(false);
   };
@@ -968,7 +1004,35 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   const showRecentRow = recent.length > 0 && onHomeFeed;
   /* The server withholds the shelf when nothing clears its view floor, so an
      empty list here means "nothing is trending", not "the call failed". */
+  /*
+   * Whether this is a phone, which is the one thing CSS cannot answer here:
+   * the two layouts differ in the ORDER of the cards, not just their styling,
+   * and order is data. A phone keeps the ranked run with the category printed
+   * on each card; anything wider blocks the same cards under headings.
+   */
+  const [isPhone, setIsPhone] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 639px)').matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia?.('(max-width: 639px)');
+    if (!query) return;
+    const sync = () => setIsPhone(query.matches);
+    sync();
+    query.addEventListener?.('change', sync);
+    return () => query.removeEventListener?.('change', sync);
+  }, []);
+
+  /* Grouped only on the unfiltered home feed. Once somebody has searched or
+     narrowed to one category, the results are the answer and blocking them
+     under headings is either noise or a single heading over everything. */
+  const feed = useMemo(
+    () => groupByCategory(results, !isPhone && onHomeFeed),
+    [results, isPhone, onHomeFeed],
+  );
+
   const showTrendingRow = trending.length > 0 && onHomeFeed;
+  /* Three is the fewest that reads as a shelf rather than a leftover. */
+  const showArrivalsRow = arrivals.length >= 3 && onHomeFeed;
 
   const isCoreActive = (type?: CoreType) => {
     if (type === undefined) return coreType === 'All' && !categoryId;
@@ -1525,6 +1589,91 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
           floor, so this section cannot appear over data too thin to support
           the word "trending".
         */}
+        {/* ═══════════════════ JUST ARRIVED ═══════════════════ */}
+        {/*
+          Above trending, because "what is new" is the question somebody has on
+          a second visit and trending answers the one they had on the first.
+          "View more" switches the feed to Newest, which is the whole shelf
+          rather than a longer version of it.
+        */}
+        {showArrivalsRow && (
+          <section className="mb-7">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#e8f7ef] text-[#00613f] text-[10px] font-extrabold uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3" />
+                  New
+                </span>
+                <h2 className="text-sm font-bold text-[#0b1c30]">Just arrived this week</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setSort('newest');
+                  setSortTouched(true);
+                  const el = resultsRef.current;
+                  if (el) {
+                    const top = el.getBoundingClientRect().top + window.scrollY - 120;
+                    window.scrollTo({ top, behavior: 'smooth' });
+                  }
+                }}
+                className="flex items-center gap-1 text-[11px] font-bold text-[#2563eb] hover:text-[#004ac6] transition-colors shrink-0"
+              >
+                View more
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+              {arrivals.map((item) => {
+                const unavailable = item.badgeText === 'Sold' || item.badgeText === 'Reserved';
+                return (
+                  <article
+                    key={item.id}
+                    onClick={() => onSelectListing(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectListing(item);
+                      }
+                    }}
+                    className="snap-start shrink-0 w-40 sm:w-44 bg-white rounded-2xl border border-[#e5eeff]/80 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 overflow-hidden cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+                  >
+                    <div className="relative aspect-[4/3] bg-[#e5eeff] overflow-hidden">
+                      <ListingGallery
+                        images={item.gallery?.length ? item.gallery : [item.image]}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <DiscountFlag percent={unavailable ? undefined : item.discountPercent} />
+                      </div>
+                      {unavailable && (
+                        <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1">
+                          <span className="block text-center text-[10px] font-bold text-white uppercase tracking-widest">
+                            {item.badgeText}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-[#a0a3b1] truncate">
+                        {item.categoryName || item.category}
+                      </span>
+                      <h3 className="font-medium text-[#0b1c30] text-xs truncate group-hover:text-[#2563eb] transition-colors">
+                        {item.title}
+                      </h3>
+                      <PriceTag listing={item} size="sm" className="mt-0.5" />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {showTrendingRow && (
           <section className="mb-7">
             <div className="flex items-center justify-between mb-3">
@@ -2189,11 +2338,24 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-              {results.map((item, index) => {
+              {feed.ordered.map((item, index) => {
                 const detail = contextualDetail(item);
                 const unavailable = item.badgeText === 'Sold' || item.badgeText === 'Reserved';
+                const heading = feed.headingAt.get(index);
                 return (
                   <React.Fragment key={item.id}>
+                    {/* The category this block is. Full width so it starts its
+                        own row, and hidden on phones, which carry the category
+                        on each card instead - see the card body below. */}
+                    {heading && (
+                      <h3
+                        className={`col-span-full hidden sm:flex items-center gap-2 text-sm font-bold text-[#0b1c30] ${index === 0 ? '' : 'mt-4'
+                          }`}
+                      >
+                        <span className="shrink-0">{heading}</span>
+                        <span className="flex-1 h-px bg-[#e5eeff]" aria-hidden="true" />
+                      </h3>
+                    )}
                     {/* Full width, so it starts its own row and the cards
                         above it keep their alignment. */}
                     {cta.inline && index === CTA_INLINE_AFTER && (
@@ -2270,6 +2432,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       </div>
 
                       <div className="p-3.5 flex-1 flex flex-col">
+                        {/* Phones only. There the grid is one flat run of
+                            cards in ranked order, so each has to say which
+                            shelf it came from; from sm up the grid is grouped
+                            under category headings and repeating it per card
+                            would be the same word four times in a row. */}
+                        <span className="sm:hidden block text-[10px] font-bold uppercase tracking-wider text-[#a0a3b1] truncate">
+                          {item.categoryName || item.category}
+                        </span>
                         <h3 className="font-medium text-[#0b1c30] text-sm truncate group-hover:text-[#2563eb] transition-colors duration-150">
                           {item.title}
                         </h3>

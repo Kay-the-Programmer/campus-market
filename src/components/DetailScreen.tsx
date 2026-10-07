@@ -19,6 +19,9 @@ import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { Avatar } from './shared/Avatar';
 import { RichText } from './shared/RichText';
 import { SuggestionRow } from './shared/SuggestionRow';
+import { pickSuggestions } from './shared/pickSuggestions';
+import { SuggestedCategories } from './browse/SuggestedCategories';
+import { getRecentlyViewed } from '../services/recentlyViewed';
 import { plainText } from '../utils/richText';
 
 interface DetailScreenProps {
@@ -38,6 +41,8 @@ interface DetailScreenProps {
   onEditListing?: (listing: Listing) => void;
   /** "View all" under the similar row - browses the rest of this category. */
   onViewAllSimilar?: (listing: Listing) => void;
+  /** Opens a category from the "Worth a look" shelf. Absent in the Sell preview. */
+  onBrowseCategory?: (categoryId: string) => void;
   /** Breadcrumb "Home". Absent in the Sell preview, which has nowhere to go. */
   onGoHome?: () => void;
   /** Renders inline rather than fixed - used for the Preview overlay in SellScreen. */
@@ -89,6 +94,7 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
   onAddToCart,
   onEditListing,
   onViewAllSimilar,
+  onBrowseCategory,
   onGoHome,
   embedded }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -386,15 +392,66 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
     // the feed arriving behind this does not cost a second request.
   }, [listing.id]);
 
-  const alsoViewed = useMemo(() => {
-    const alreadyShown = new Set(similar.map((item) => item.id));
-    const picks = coViewed.filter(
-      (item) => item.id !== listing.id && !alreadyShown.has(item.id),
-    );
-    // One lonely card under a heading about what other people did reads as a
-    // bug rather than a recommendation.
-    return picks.length >= 2 ? picks.slice(0, 5) : [];
-  }, [coViewed, similar, listing.id]);
+  const alsoViewed = useMemo(
+    () => pickSuggestions(coViewed, { currentId: listing.id, exclude: [similar] }),
+    [coViewed, similar, listing.id],
+  );
+
+  /*
+   * What this device has been looking at, which is what the two rows at the
+   * foot of the page are built from for anybody not signed in. The same local
+   * history the feed uses - no new tracking, ids that already exist here.
+   */
+  const viewedIds = useMemo(
+    () => getRecentlyViewed(isGuest ? '' : currentUser.id),
+    [isGuest, currentUser.id],
+  );
+
+  /*
+   * "Inspired from your history" - the ranked feed, cut down to a row.
+   *
+   * The same engine the browse feed uses, asked for a handful rather than a
+   * page: category affinity, price band, what they have saved and bought. It
+   * answers a third question the other two rows cannot - not "more like this
+   * one" and not "what did other people open", but "what else is this person
+   * in the market for", which is the question somebody has once they have
+   * decided this particular listing is not it.
+   *
+   * Withheld entirely without a history to be inspired by. A heading that
+   * claims to know somebody, over a feed that is really just the newest
+   * listings, is worse than no row.
+   */
+  const [fromHistory, setFromHistory] = useState<Listing[]>([]);
+  useEffect(() => {
+    const hasHistory = !isGuest || viewedIds.length >= 2;
+    if (!hasHistory) {
+      setFromHistory([]);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+
+    api.listings.search({
+      sort: 'foryou',
+      size: 12,
+      recent: viewedIds.length ? viewedIds.join(',') : undefined,
+    }, controller.signal).then((res) => {
+      if (cancelled || res.aborted || res.error) return;
+      setFromHistory(res.listings);
+    });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [isGuest, viewedIds, listing.id]);
+
+  /* Nothing already on the page, and never this listing - a row of things you
+     are "inspired" towards that includes the one you are reading is a bug. */
+  const inspired = useMemo(
+    () => pickSuggestions(fromHistory, {
+      currentId: listing.id,
+      exclude: [similar, alsoViewed],
+    }),
+    [fromHistory, similar, alsoViewed, listing.id],
+  );
 
   /*
    * Home › Category › This listing.
@@ -1164,6 +1221,31 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
           listings={similar}
           onSelect={onSelectSimilar}
           onViewAll={onViewAllSimilar ? () => onViewAllSimilar(listing) : undefined}
+        />
+
+        {/*
+          ── Where to go next ──
+
+          Below the listings rather than between them: the three rows above
+          are all "here is another listing", and this is the one that says
+          "here is another shelf" - which is the thing to offer once somebody
+          has read all of them and none was it.
+        */}
+        {onBrowseCategory && (
+          <div className="mt-10 sm:mt-14">
+            <SuggestedCategories
+              recentIds={viewedIds}
+              userId={isGuest ? undefined : currentUser.id}
+              onSelect={onBrowseCategory}
+            />
+          </div>
+        )}
+
+        <SuggestionRow
+          title="Inspired from your history"
+          caption="Picked from what you have been looking at"
+          listings={inspired}
+          onSelect={onSelectSimilar}
         />
       </main>
 

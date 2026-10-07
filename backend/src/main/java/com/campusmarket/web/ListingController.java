@@ -49,10 +49,14 @@ public class ListingController {
                                        * is better. Never stored: it ranks this response and is
                                        * dropped with it.
                                        */
-                                      @RequestParam(required = false) List<UUID> recent) {
+                                      @RequestParam(required = false) List<UUID> recent,
+                                      /* Drives the "New this week" shelf, which must be able to
+                                         come back empty rather than calling whatever is newest
+                                         new. A filter, not a sort. */
+                                      @RequestParam(required = false) Integer postedWithinDays) {
         return listingService.search(principal, search, type, categoryId, minPrice, maxPrice,
                 condition, location, campusZone, sellerId, sort, specialOffer, hasDiscount,
-                page, size, recent);
+                page, size, recent, postedWithinDays);
     }
 
     /**

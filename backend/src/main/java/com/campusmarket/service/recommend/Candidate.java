@@ -23,10 +23,20 @@ public record Candidate(
         ListingType type,
         BigDecimal price,
         CampusZone zone,
-        Instant createdAt
+        Instant createdAt,
+        /**
+         * How well the seller filled the listing in, 0..1.
+         *
+         * <p>Ranking by it is not a judgement about the seller: a listing with
+         * no photograph and one line of description cannot be bought from,
+         * because nobody can tell what it is. Putting those below the complete
+         * ones is what stops the feed leading with rows that waste the tap.
+         */
+        double completeness
 ) {
 
-    public static Candidate of(Listing listing) {
+    /** @param photoCount how many photographs, counted for the whole pool at once */
+    public static Candidate of(Listing listing, long photoCount) {
         return new Candidate(
                 listing.getId(),
                 listing.getSeller() == null ? null : listing.getSeller().getId(),
@@ -34,6 +44,33 @@ public record Candidate(
                 listing.getType(),
                 listing.getPrice(),
                 listing.getCampusZone(),
-                listing.getCreatedAt());
+                listing.getCreatedAt(),
+                completenessOf(listing, photoCount));
+    }
+
+    /**
+     * What a listing has to say for itself.
+     *
+     * <p>Four things a buyer looks for, weighted by how badly their absence
+     * hurts. A photograph is half of it on its own - it is the difference
+     * between a listing and a classified ad - and the rest is whether the
+     * description says anything, whether the price is answerable, and whether
+     * it says where on campus to collect it.
+     */
+    private static double completenessOf(Listing listing, long photoCount) {
+        double score = 0;
+        if (photoCount > 0) score += 0.5;
+        // More than one angle is worth something, and worth much less than the
+        // first one existing at all.
+        if (photoCount > 1) score += 0.1;
+
+        String description = listing.getDescription();
+        if (description != null && description.trim().length() >= 40) score += 0.2;
+
+        // A service priced on request is complete; a product with no price is not.
+        if (listing.getPrice() != null || listing.getType() != ListingType.PRODUCT) score += 0.1;
+
+        if (listing.getCampusZone() != null) score += 0.1;
+        return Math.min(score, 1);
     }
 }

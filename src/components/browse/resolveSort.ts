@@ -12,7 +12,8 @@
  */
 
 export type SortValue =
-  | 'foryou' | 'relevance' | 'discount' | 'newest' | 'popular' | 'price_asc' | 'price_desc';
+  | 'best' | 'foryou' | 'relevance' | 'discount' | 'newest' | 'popular'
+  | 'price_asc' | 'price_desc';
 
 export interface SortContext {
   /** The value held in state, or read from the URL. */
@@ -41,23 +42,28 @@ export function resolveSort(context: SortContext): SortValue {
   if (dealsOnly && !sortTouched) return 'discount';
 
   if (!hasQuery) {
-    // Relevance to nothing is newest wearing a different label.
-    const unsearched = sort === 'relevance' ? 'newest' : sort;
+    // Relevance to nothing is not an ordering; it falls back to the default.
+    const unsearched = sort === 'relevance' ? 'best' : sort;
     /*
-     * The one place a ranked feed belongs: an unsearched feed nobody has given
-     * an order to, once there is something to rank by. Everywhere else the
-     * ordering was asked for and is left alone - including an explicit
-     * "Newest", which is a person saying they want the new things.
+     * Nobody has chosen an order, so the feed picks one.
+     *
+     * "For you" where there is a history to rank by, and the blended default
+     * otherwise - demand, completeness and freshness together, which is what
+     * stopped this being a list by date. Neither overrides a real choice:
+     * an explicit "Newest" is a person saying they want the new things, and
+     * they get them.
      */
-    if (!sortTouched && unsearched === 'newest' && personalisable) return 'foryou';
+    if (!sortTouched && unsearched === 'best') return personalisable ? 'foryou' : 'best';
     return unsearched as SortValue;
   }
 
-  /* A search has a right answer, and ranking it by taste would answer a
-     different question - so "For you" stands down the moment there is a term,
-     chosen or not. This is the one case where an explicit choice IS overridden,
-     because the alternative is a search that quietly ignores what was typed. */
-  if (sort === 'foryou') return 'relevance';
+  /* A search has a right answer, and ordering it by taste or by a general
+     notion of "good" answers a different question - so both ranked orders
+     stand down the moment there is a term, chosen or not. This is the one case
+     where an explicit choice IS overridden, because the alternative is a
+     search that quietly ignores what was typed. The server takes the same
+     view: neither ranking is applied to a query. */
+  if (sort === 'foryou' || sort === 'best') return 'relevance';
 
   if (!sortTouched && sort === 'newest') return 'relevance';
   return sort as SortValue;

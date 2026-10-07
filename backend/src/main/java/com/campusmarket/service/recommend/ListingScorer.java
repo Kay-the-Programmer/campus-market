@@ -46,6 +46,15 @@ public final class ListingScorer {
     private static final double W_TRENDING = 0.7;
     /** Just posted. Also the tie-breaker that keeps a cold feed sensible. */
     private static final double W_FRESH = 0.8;
+    /**
+     * Has a photograph, a description, a price.
+     *
+     * <p>Weighted close to freshness on purpose, and this is the term that
+     * stopped the feed being a list by date. An hour-old listing with no
+     * photograph and no description is not the best thing to lead with, and
+     * under a pure recency order it always was.
+     */
+    private static final double W_COMPLETE = 0.9;
 
     /**
      * Already seen it.
@@ -120,6 +129,7 @@ public final class ListingScorer {
         score += W_CO_VIEW * clamp(context.coViews().getOrDefault(candidate.id(), 0d));
         score += W_TRENDING * trendingFit(candidate.id(), context);
         score += W_FRESH * freshness(candidate.createdAt(), context.now());
+        score += W_COMPLETE * clamp(candidate.completeness());
 
         double touched = profile.touched(candidate.id());
         if (touched >= Signal.Strength.SAVED) {
