@@ -650,8 +650,13 @@ export const CartScreen: React.FC<CartScreenProps> = ({
           bar is buried; they have to stack.
         */
         <div
-          className="lg:hidden fixed inset-x-0 z-30 bg-white border-t border-[#e5eeff] px-4 py-3 shadow-[0_-4px_16px_rgba(11,28,48,0.08)]"
-          style={{ bottom: 'var(--bottom-nav-h, 72px)' }}
+          className="lg:hidden fixed inset-x-0 z-30 bg-white border-t border-[#e5eeff] px-4 py-3 shadow-[0_-4px_16px_rgba(11,28,48,0.08)] motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+          style={{
+            bottom: 'var(--bottom-nav-h, 72px)',
+            /* Follows the bottom bar down when it slides away - see the note
+               on --bottom-nav-shift in BottomNav. */
+            transform: 'translateY(var(--bottom-nav-shift, 0px))',
+          }}
         >
           <div className="max-w-6xl mx-auto flex items-center gap-3">
             <div className="min-w-0">

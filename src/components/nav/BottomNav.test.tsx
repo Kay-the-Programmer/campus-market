@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BottomNav } from './BottomNav';
 import { AuthSession, ViewType } from '../../types';
 
@@ -150,5 +150,89 @@ describe('BottomNav publishes its height', () => {
     expect(varOf()).toMatch(/^\d+px$/);
     rerender(<BottomNav {...props(user, 'sell')} />);
     expect(varOf()).toBe('0px');
+  });
+});
+
+/**
+ * The bar floats and gets out of the way while the page is being scrolled
+ * down.
+ *
+ * <p>It covers content now rather than ending the page, so on a phone it
+ * would otherwise spend a sixth of the screen on navigation nobody is using
+ * while they read. What is asserted here is the contract the rest of the app
+ * depends on: the transform the bar carries, and --bottom-nav-shift, which is
+ * what the cart's checkout bar and the detail page's buy bar follow it by.
+ * The reserved height must NOT move with it - that one is layout, and
+ * changing it mid-scroll would reflow the page under the thumb scrolling it.
+ */
+describe('BottomNav hides on a scroll down', () => {
+  const scrollTo = (y: number) => {
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: y, configurable: true, writable: true });
+      window.dispatchEvent(new Event('scroll'));
+    });
+  };
+  const bar = () => screen.getByLabelText('Primary');
+  const shift = () => document.documentElement.style.getPropertyValue('--bottom-nav-shift');
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+  });
+
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--bottom-nav-shift');
+    document.documentElement.style.removeProperty('--bottom-nav-h');
+  });
+
+  it('slides away on the way down and back on the way up', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+    expect(bar().style.transform).toBe('translateY(0)');
+
+    scrollTo(400);
+    expect(bar().style.transform).not.toBe('translateY(0)');
+
+    scrollTo(300);
+    expect(bar().style.transform).toBe('translateY(0)');
+  });
+
+  it('leaves the reserved height alone, so nothing reflows mid-scroll', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+    const reserved = document.documentElement.style.getPropertyValue('--bottom-nav-h');
+
+    scrollTo(400);
+    expect(document.documentElement.style.getPropertyValue('--bottom-nav-h')).toBe(reserved);
+  });
+
+  it('offers the bars above it something to follow it down by', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+    expect(shift()).toBe('0px');
+
+    scrollTo(400);
+    // jsdom measures every box as 0, so the unit is what can be asserted.
+    expect(shift()).toMatch(/^\d+px$/);
+
+    scrollTo(300);
+    expect(shift()).toBe('0px');
+  });
+
+  it('comes back when the screen changes, wherever the page was left', () => {
+    const user = session({ role: 'customer' });
+    const { rerender } = render(<BottomNav {...props(user, 'browse')} />);
+
+    scrollTo(400);
+    expect(bar().style.transform).not.toBe('translateY(0)');
+
+    rerender(<BottomNav {...props(user, 'saved')} />);
+    expect(bar().style.transform).toBe('translateY(0)');
+  });
+
+  it('comes back when focus lands inside it, which scrolling cannot answer for', () => {
+    render(<BottomNav {...props(session({ role: 'customer' }))} />);
+
+    scrollTo(400);
+    expect(bar().style.transform).not.toBe('translateY(0)');
+
+    act(() => { (screen.getByLabelText('Home') as HTMLElement).focus(); });
+    expect(bar().style.transform).toBe('translateY(0)');
   });
 });

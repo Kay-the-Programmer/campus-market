@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Home, Heart, Plus, MessageSquare, ShoppingBag, Tag } from 'lucide-react';
 import { ViewType, AuthSession } from '../../types';
+import { useHideOnScroll } from '../../hooks/useHideOnScroll';
+import { useOnboarding } from '../../hooks/useOnboarding';
 import { badgeText, canSell, GUEST_ALLOWED, HIDES_BOTTOM_NAV, isSellerState } from './navShared';
 
 interface BottomNavProps {
@@ -19,6 +21,16 @@ const SWIPE_MAX_DURATION = 350; // ms — anything slower reads as a drag, not a
 const SWIPE_AXIS_LOCK_RATIO = 1.5; // horizontal must dominate vertical by this much
 const TAP_DEBOUNCE_MS = 350; // ignore accidental double-taps on the same control
 const SPRING_EASE = 'cubic-bezier(0.34, 1.56, 0.64, 1)'; // native-feeling overshoot
+
+/*
+ * How far the bar travels to get out of sight.
+ *
+ * Its own height plus a margin, because the Sell button overhangs the top of
+ * the pill by 20px and is not part of that height - without the extra, a
+ * green disc stays peeking over the bottom edge of a page that is supposed to
+ * be clear.
+ */
+const HIDE_TRANSFORM = 'translateY(calc(100% + 28px))';
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentView,
@@ -85,6 +97,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
    * bar is ever briefly drawn underneath this one.
    */
   const navRef = useRef<HTMLElement>(null);
+  /** Last measured height, so the follow-me offset below can reuse it. */
+  const heightRef = useRef(0);
   const hiddenHere = currentUser.role === 'admin' || HIDES_BOTTOM_NAV.includes(currentView);
 
   useLayoutEffect(() => {
@@ -101,7 +115,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     const apply = () => {
       // Zero at lg and above, where the bar is display:none and the page
       // carries no bottom chrome at all.
-      root.style.setProperty('--bottom-nav-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+      heightRef.current = Math.round(el.getBoundingClientRect().height);
+      root.style.setProperty('--bottom-nav-h', `${heightRef.current}px`);
     };
     apply();
 
@@ -135,6 +150,61 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       window.removeEventListener('orientationchange', apply);
     };
   }, [hiddenHere]);
+
+  /*
+   * The bar steps out of the way while the page is being scrolled down and
+   * comes back the moment it is scrolled up.
+   *
+   * It floats now, so it covers content rather than ending the page - on a
+   * phone that is a sixth of the screen spent on navigation nobody is using
+   * while they read. Direction rather than depth: the one moment someone
+   * wants the navigation back is halfway down a long feed, which a
+   * hide-below-this-offset rule can never give them.
+   *
+   * Held open for anyone who asked their OS to reduce motion. A bar that
+   * slides away unbidden is precisely the motion that setting turns off, and
+   * the cost of obeying it is a strip of screen, not a broken screen.
+   */
+  const prefersReducedMotion = useMemo(
+    () => typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  );
+  /*
+   * Held open during a guided tour as well.
+   *
+   * Four of the tour's steps point a ring at a tab in this bar, and the
+   * ring is measured from the element's real position - a bar that had slid
+   * away would leave the step explaining something nobody can see. Null
+   * outside the provider, which is how this stays safe to render in a test.
+   */
+  const tourOpen = Boolean(useOnboarding()?.due);
+
+  const { hidden: scrolledAway, reveal } = useHideOnScroll({
+    disabled: hiddenHere || prefersReducedMotion || tourOpen,
+  });
+
+  // A new screen starts with its navigation in view, whatever the scroll
+  // position was left at on the way out of the last one.
+  useEffect(() => { reveal(); }, [currentView, reveal]);
+
+  /*
+   * How far bottom-anchored chrome may follow the bar down, as
+   * --bottom-nav-shift.
+   *
+   * Separate from --bottom-nav-h, which stays put: that one is reserved
+   * LAYOUT - the spacer at the end of the page and the offset the cart's
+   * checkout bar sits at - and changing it mid-scroll would reflow the page
+   * under the thumb doing the scrolling. This one is a transform, so the
+   * checkout and buy bars can slide into the space the nav vacates and slide
+   * back with it, instead of being left hovering above a strip of nothing.
+   */
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--bottom-nav-shift',
+      scrolledAway && !hiddenHere ? `${heightRef.current}px` : '0px',
+    );
+  }, [scrolledAway, hiddenHere]);
 
   const go = useCallback(
     (view: ViewType) => {
@@ -284,25 +354,48 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           height rather than repeating it, so the two can never disagree. */}
       <div className="lg:hidden" aria-hidden="true" style={{ height: 'var(--bottom-nav-h, 72px)' }} />
 
+      {/*
+        The outer element is the positioning frame, not the bar: it spans the
+        full width and down to the very bottom of the screen so the slide-away
+        transform clears the edge, and it is transparent and click-through so
+        the gutters it leaves around the floating pill do not swallow taps
+        meant for the page underneath.
+      */}
       <nav
         ref={navRef}
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#c3c6d7]/30 shadow-[0_-4px_20px_0_rgba(0,0,0,0.08)] py-2 px-3 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 px-3 pointer-events-none lg:hidden motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
         aria-label="Primary"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={() => (touchState.current = null)}
+        // Focus can arrive by keyboard while the bar is out of sight - from
+        // Tab, or from a screen reader moving through the page - and a
+        // control that takes focus off-screen is a control nobody can use.
+        onFocusCapture={reveal}
         style={{
-          // max(), not the env() fallback: the fallback applies when the
-          // function is unsupported, never when it returns 0 - so on a phone
-          // with no home indicator this was padding the bar by nothing.
-          paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
-          // Prevent iOS rubber-band scroll and pull-to-refresh from
-          // leaking through the bar during a swipe gesture.
-          overscrollBehavior: 'contain',
-          touchAction: 'pan-x',
+          /*
+           * The gap below the floating pill, added to the safe-area inset
+           * rather than replacing it, so the bar clears a home indicator too.
+           *
+           * Added rather than max()'d for the reason the old fallback here
+           * got fixed: env()'s own fallback applies only where the function
+           * is unsupported, never where it returns 0, so anything that leans
+           * on it gives a phone with no home indicator no gap at all. A sum
+           * is 0.75rem either way.
+           */
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+          transform: scrolledAway ? HIDE_TRANSFORM : 'translateY(0)',
         }}
       >
-        <div className="max-w-md mx-auto flex items-end justify-between">
+        <div
+          className="max-w-md mx-auto flex items-end justify-between pointer-events-auto rounded-[1.75rem] bg-white/95 backdrop-blur-xl border border-[#c3c6d7]/40 shadow-[0_10px_30px_-6px_rgba(11,28,48,0.28)] py-2 px-3"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={() => (touchState.current = null)}
+          style={{
+            // Prevent iOS rubber-band scroll and pull-to-refresh from
+            // leaking through the bar during a swipe gesture.
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-x',
+          }}
+        >
           {tab('browse', 'Home', Home)}
 
           {isSeller

@@ -1260,8 +1260,15 @@ export const DetailScreen: React.FC<DetailScreenProps> = ({
              actually sits on - it carries the inset for both of them. Adding
              it here too would open a second gap the width of the indicator
              between this bar and the one below it. */
-          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80"
-          style={{ bottom: 'var(--bottom-nav-h, 72px)' }}
+          className="lg:hidden fixed left-0 right-0 z-30 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
+          style={{
+            bottom: 'var(--bottom-nav-h, 72px)',
+            /* Follows the bottom bar when it slides away on a scroll down,
+               rather than hovering above the strip of screen it left behind.
+               The offset it sits at is layout and stays put - see the note on
+               --bottom-nav-shift in BottomNav. */
+            transform: 'translateY(var(--bottom-nav-shift, 0px))',
+          }}
         >
           <div className="max-w-3xl mx-auto px-4 py-3">
             {isGuest && (
