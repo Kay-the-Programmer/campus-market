@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X, CheckCircle2, AlertCircle, MailCheck, Loader2, ArrowLeft,
   ShoppingBag, Store, MapPin } from 'lucide-react';
@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { isGoogleSignInConfigured, signInWithGoogle } from '../firebase';
 import { AccountType, CampusZone, CAMPUS_ZONES } from '../types';
 import { SellerTermsConsent } from './shared/SellerTermsConsent';
+import { useDialog } from './shared/useDialog';
 import { SELLER_TERMS_VERSION } from '../data/sellerTerms';
 
 /**
@@ -51,6 +52,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   googleRedirectPending = false }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
+  const panelRef = useRef<HTMLDivElement>(null);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -133,6 +136,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, pendingGoogleToken]);
+
+  /* The same dialog behaviour the shared Modal shell has. AuthModal keeps its
+     own layout - the illustration and the step flow do not fit that shell -
+     but the keyboard contract should not depend on which shell you landed in. */
+  useDialog(isOpen, () => handleDismiss(), panelRef);
 
   if (!isOpen) return null;
 
@@ -460,7 +468,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#213145]/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-modal overflow-hidden border border-[#e5eeff] p-6 sm:p-8 animate-slide-up max-h-[92vh] overflow-y-auto">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        /* aria-label, not labelledby: the two visible headings are each
+           conditional, and the Google progress step renders neither - a
+           labelledby pointing at an element that is not there names the
+           dialog nothing at all. titles[mode] is always accurate. */
+        aria-label={titles[mode]}
+        tabIndex={-1}
+        className="relative w-full max-w-sm bg-white rounded-3xl shadow-modal overflow-hidden border border-[#e5eeff] p-6 sm:p-8 animate-slide-up max-h-[92vh] overflow-y-auto focus:outline-none"
+      >
         <button
           onClick={handleDismiss}
           className="absolute top-4 right-4 p-2 text-[#737686] hover:text-[#0b1c30] rounded-full hover:bg-[#f8f9ff] transition-all duration-150"

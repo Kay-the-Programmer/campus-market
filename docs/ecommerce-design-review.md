@@ -41,8 +41,13 @@ advice we have already taken.
 
 ## Worth doing
 
-(1), (2) and (5) are done — see `shared/VerifiedBadge.tsx`, `nav/CategoryMenu.tsx`,
-`vercel.json` and the caching block in the `Caddyfile`. The rest stand.
+(1), (2), (3), (5) and (8) are done — see `shared/VerifiedBadge.tsx`,
+`nav/CategoryMenu.tsx`, the feed trail in `BrowseScreen.tsx`, `vercel.json`
+with the matching block in the `Caddyfile`, and the description prompts in
+`SellScreen.tsx`. What is left — (4) seller replies to reviews, (6) live counts
+above the fold — both need a backend change: a reply column on the review model,
+and a public stats endpoint, since the only counts today are admin-only. (7), the
+accessibility sweep, is still open and needs no backend.
 
 1. **Verified badge on browse and search cards.** It is on detail, profile and saved
    cards, but the feed — where buyers decide what to click — does not show it. The
@@ -67,3 +72,33 @@ advice we have already taken.
    carousel, search overlay, modals and the filter pills.
 8. **Benefit-led listing descriptions.** We cannot write sellers' copy, but
    `SellScreen.tsx` can prompt for it: condition, reason for selling, what's included.
+
+## The accessibility sweep (item 7)
+
+What it found, rather than what was feared. The carousel already honours
+`prefers-reduced-motion` and pauses on hover and on user request; the search
+overlay is a proper labelled dialog; the bottom nav sets `aria-current`; the
+filter pills carry an accessible name that says what pressing one does. The
+habitual `aria-` use was, on inspection, mostly correct.
+
+Two things were not.
+
+**Dialogs were divs.** The shared `Modal` shell - worn by the report, review,
+booking, mark-sold and become-seller dialogs - had no role, no name, no
+Escape, and no focus handling, so a dialog announced nothing and Tab walked
+the feed behind the overlay. `AuthModal`, the front door, had its own markup
+and the same gaps. Both now share `shared/useDialog.ts`: role and name,
+Escape, focus into the panel on open and back to the opener on close, and a
+Tab trap. Verified in a real browser as well as in jsdom - eight Tabs stayed
+inside the sign-in dialog, Escape closed it, focus returned to the Log In
+button. Focus lands on the panel rather than the first control, which here is
+the × - landing there means Enter dismisses a dialog just opened.
+
+**`#a0a3b1` fails contrast.** 2.51:1 on white, against the 4.5:1 that normal
+text needs, and it is used as a text colour in 90 places across 28 files -
+counts, placeholders, category eyebrows. `#737686` passes at exactly 4.50:1,
+so the fix is probably to replace one with the other, but it darkens a lot of
+small print at once and that is a design call rather than a sweep. Left alone,
+flagged here. `#c3c6d7` (10 uses) and `#b4c5ff` (21) are worse still at
+1.70:1; most are decorative icons where it does not apply, but they want
+checking one at a time.

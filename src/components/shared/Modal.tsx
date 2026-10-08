@@ -1,7 +1,16 @@
-import React from 'react';
+import React, { useId, useRef } from 'react';
 import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useDialog } from './useDialog';
 
-/** Shared shell so every dialog in the app looks and behaves the same. */
+/**
+ * Shared shell so every dialog in the app looks and behaves the same.
+ *
+ * <p>It was a plain div for a long time, which meant a dialog announced
+ * nothing, could not be dismissed from the keyboard, and left focus on the
+ * page behind it - so Tab walked the feed under the overlay while the dialog
+ * sat there apparently inert. Everything below is that: a name, an Escape, and
+ * focus kept inside until it closes.
+ */
 export const Modal: React.FC<{
   isOpen: boolean;
   title: string;
@@ -10,13 +19,25 @@ export const Modal: React.FC<{
   children: React.ReactNode;
   footer?: React.ReactNode;
 }> = ({ isOpen, title, subtitle, onClose, children, footer }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useDialog(isOpen, onClose, panelRef);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#213145]/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-modal border border-[#e5eeff] max-h-[90vh] flex flex-col">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-modal border border-[#e5eeff] max-h-[90vh] flex flex-col focus:outline-none"
+      >
         <div className="flex items-start justify-between p-6 pb-4">
           <div>
-            <h3 className="text-lg font-bold text-[#0b1c30]">{title}</h3>
+            <h3 id={titleId} className="text-lg font-bold text-[#0b1c30]">{title}</h3>
             {subtitle && <p className="text-xs text-[#737686] mt-1">{subtitle}</p>}
           </div>
           <button

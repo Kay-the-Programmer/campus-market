@@ -73,6 +73,19 @@ const MAX_SOURCE_FILE_MB = 15;
  */
 const DESCRIPTION_MAX = 4000;
 
+/**
+ * What a listing leaves out, by type.
+ *
+ * <p>Drawn from what a buyer has to message to find out, which is the real
+ * cost of a thin description: the seller answers it per enquirer, in private,
+ * where the next buyer cannot read it.
+ */
+const DESCRIPTION_PROMPTS: Record<ListingCategory, string[]> = {
+  Product: ['What condition is it in?', 'What is included?', 'Why are you selling?'],
+  Service: ['What exactly do you do?', 'How long does it take?', 'What have you done before?'],
+  Food: ['What is in it?', 'How big is a portion?', 'Any allergens?'],
+};
+
 /** Splits a pre-existing free-text availability string into recognised chips
  *  plus whatever doesn't match one, so editing an older listing never silently
  *  drops information the seller already wrote. */
@@ -708,6 +721,17 @@ export const SellScreen: React.FC<SellScreenProps> = ({
                             : "Describe the item's features, flaws, or why you're selling it…"
                       }
                     />
+                    {/* The placeholder says the same thing and then leaves on
+                        the first keystroke - which is the moment the prompt
+                        starts being useful. This stays. Phrased as what buyers
+                        ask rather than what we want: a seller who answers all
+                        three stops answering the same message four times. */}
+                    {offeringType && (
+                      <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed">
+                        <span className="font-semibold text-slate-600">Buyers usually ask: </span>
+                        {DESCRIPTION_PROMPTS[offeringType].join(' · ')}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

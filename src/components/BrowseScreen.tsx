@@ -32,6 +32,7 @@ import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
 import { VerifiedBadge } from './shared/VerifiedBadge';
 import { ListingGallery } from './shared/ListingGallery';
+import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
 interface BrowseScreenProps {
@@ -175,6 +176,14 @@ const SORTS = [
 ] as const;
 
 type CoreType = 'All' | 'Product' | 'Service' | 'Food';
+
+/** Plural, because a crumb names a shelf rather than one item on it. */
+const CORE_TYPE_LABEL: Record<CoreType, string> = {
+  All: 'All listings',
+  Product: 'Products',
+  Service: 'Services',
+  Food: 'Food',
+};
 
 const TYPE_PARAM: Record<CoreType, string | undefined> = {
   All: undefined,
@@ -1048,6 +1057,37 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
   /** The category filtering the feed right now, for the sticky bar’s chip. */
   const activeCategory = categories.find((c) => c.id === categoryId) ?? null;
 
+  /**
+   * The trail, but only once the feed is actually somewhere.
+   *
+   * <p>On the unfiltered home feed a lone "Home" crumb states the obvious and
+   * costs a row of vertical space above the fold, so there is none. Narrowed
+   * to a type or a category it earns its place: it names where the grid came
+   * from - which matters most for a feed arrived at from a link or the nav
+   * menu rather than by pressing the filter yourself - and the first crumb is
+   * the way back out of it.
+   */
+  const feedCrumbs: Crumb[] = React.useMemo(() => {
+    if (searchQuery.trim()) return [];
+    const narrowed = !!activeCategory || coreType !== 'All';
+    if (!narrowed) return [];
+
+    const trail: Crumb[] = [{ label: 'Home', onClick: () => pickCore('All') }];
+    if (activeCategory) {
+      /* A subcategory names its parent on the way past, which is the only
+         place in the feed the tree is ever visible. */
+      const parent = activeCategory.parentId
+        ? categories.find((c) => c.id === activeCategory.parentId)
+        : undefined;
+      if (parent) trail.push({ label: parent.name, onClick: () => pickCategory(parent.id) });
+      trail.push({ label: activeCategory.name });
+    } else {
+      trail.push({ label: CORE_TYPE_LABEL[coreType] });
+    }
+    return trail;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, categories, coreType, searchQuery]);
+
   const pickCategory = (id: string) => {
     setCategoryId(id === categoryId ? '' : id);
     setCoreType('All');
@@ -1322,6 +1362,9 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5">
+        {/* Empty on the unfiltered feed - see the note where these are built. */}
+        {feedCrumbs.length > 0 && <Breadcrumbs items={feedCrumbs} className="mb-3" />}
+
         {/*
           Browsing, not filtering - which is why it sits in the page rather
           than in the sticky bar above with the type tabs. Hidden while a
