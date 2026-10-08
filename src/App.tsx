@@ -1374,6 +1374,32 @@ export default function App() {
 
   // Stable ref so the popstate handler always calls the latest handleNavigate
   // without needing to re-register the event listener.
+  /*
+   * Into the feed with one filter applied and the rest cleared.
+   *
+   * Shared by the categories page and the nav's category menu. Both have to
+   * clear the query, the type and the deals filter alongside setting the one
+   * the person chose - a category arriving on top of a leftover "deals only"
+   * shows a nearly empty shelf and reads as a broken category.
+   */
+  const browseCategory = (categoryId: string) => {
+    setFeedQuery('');
+    setFeedType('All');
+    setFeedDealsOnly(false);
+    setFeedCategoryId(categoryId);
+    handleNavigate('browse');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const browseType = (type: FeedType) => {
+    setFeedQuery('');
+    setFeedCategoryId('');
+    setFeedDealsOnly(false);
+    setFeedType(type);
+    handleNavigate('browse');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleNavigateRef = React.useRef(handleNavigate);
   React.useEffect(() => {
     handleNavigateRef.current = handleNavigate;
@@ -1519,6 +1545,8 @@ export default function App() {
                    wired to the same handlers directly - see SearchOverlay
                    below - so the nav only has to open it. */
                 onOpenSearchOverlay={() => setIsSearchOverlayOpen(true)}
+                onBrowseCategory={browseCategory}
+                onBrowseType={browseType}
               />
             )}
 
@@ -1713,25 +1741,11 @@ export default function App() {
               {currentView === 'categories' && (
                 <CategoriesScreen
                   onBack={handleBack}
-                  onSelectCategory={(id) => {
-                    /* Straight into the feed with that category applied, rather
-                       than a category-shaped screen of its own: one grid to
-                       maintain, and every other filter still works from there. */
-                    setFeedQuery('');
-                    setFeedType('All');
-                    setFeedDealsOnly(false);
-                    setFeedCategoryId(id);
-                    handleNavigate('browse');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  onSelectType={(type) => {
-                    setFeedQuery('');
-                    setFeedCategoryId('');
-                    setFeedDealsOnly(false);
-                    setFeedType(type);
-                    handleNavigate('browse');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  /* Straight into the feed with that category applied, rather
+                     than a category-shaped screen of its own: one grid to
+                     maintain, and every other filter still works from there. */
+                  onSelectCategory={browseCategory}
+                  onSelectType={browseType}
                 />
               )}
 

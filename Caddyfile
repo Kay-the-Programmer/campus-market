@@ -61,6 +61,21 @@
 	# the app has loaded.
 	handle {
 		root * /srv
+
+		# Caching, split by whether the filename changes when the bytes do.
+		# Vite hashes everything under /assets, so those are safe to pin for a
+		# year; index.html and the service worker are not, and a stale copy of
+		# either keeps a browser on the previous release - the html because it
+		# names the hashed bundles, the worker because it handles push.
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		@images path /images/*
+		header @images Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+
+		@entry path / /index.html /firebase-messaging-sw.js /manifest.webmanifest /offline.html
+		header @entry Cache-Control "public, max-age=0, must-revalidate"
+
 		try_files {path} /index.html
 		file_server
 	}

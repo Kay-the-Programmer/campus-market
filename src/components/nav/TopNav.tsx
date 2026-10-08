@@ -3,6 +3,7 @@ import {
   Search, Plus, MessageSquare, ShoppingBag, Heart, Bell, X, Package } from 'lucide-react';
 import { AuthSession, ViewType } from '../../types';
 import { AccountMenu } from './AccountMenu';
+import { CategoryMenu } from './CategoryMenu';
 import { badgeText, canSell, GUEST_ALLOWED, isSellerState } from './navShared';
 
 export type FeedType = 'All' | 'Product' | 'Service' | 'Food';
@@ -43,6 +44,17 @@ interface TopNavProps {
    * that had to be kept in step.
    */
   onOpenSearchOverlay: () => void;
+
+  /**
+   * The desktop category menu's three actions.
+   *
+   * <p>Handed down rather than assembled here from onCategoryChange and
+   * onFeedTypeChange: choosing a category also has to clear the query, the
+   * type and the deals filter, and App already owns that reset for the
+   * categories page. Two copies of it would drift.
+   */
+  onBrowseCategory: (categoryId: string) => void;
+  onBrowseType: (type: FeedType) => void;
 }
 
 const PLACEHOLDERS = ['Search textbooks…', 'Find a tutor…', 'Search meals near you…'];
@@ -73,7 +85,9 @@ export const TopNav: React.FC<TopNavProps> = ({
   onSearchChange,
   onFeedTypeChange,
   onCategoryChange,
-  onOpenSearchOverlay }) => {
+  onOpenSearchOverlay,
+  onBrowseCategory,
+  onBrowseType }) => {
   const isGuest = currentUser.role === 'guest';
   const isSeller = isSellerState(currentUser);
   /* Same rule as the bottom bar's Sell button: offered only to accounts that
@@ -179,6 +193,15 @@ export const TopNav: React.FC<TopNavProps> = ({
                   replaces this on lg+, and mobile doesn't show text. */}
             </div>
           </button>
+
+          {/* The catalogue's shape, desktop only. Left of the search box
+              because it answers the question people have before they know
+              what to type - see the note on the component. */}
+          <CategoryMenu
+            onSelectCategory={onBrowseCategory}
+            onSelectType={onBrowseType}
+            onSeeAll={() => onNavigate('categories')}
+          />
 
           {/* Search - the dominant element of the row */}
           <div data-onboarding="nav-search" className="flex-1 min-w-0 relative">

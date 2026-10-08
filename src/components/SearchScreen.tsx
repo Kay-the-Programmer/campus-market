@@ -12,6 +12,7 @@ import { FilterPill } from './search/FilterPill';
 import { formatPrice } from '../utils/currency';
 import { Breadcrumbs, Crumb } from './shared/Breadcrumbs';
 import { ListingGallery } from './shared/ListingGallery';
+import { VerifiedBadge } from './shared/VerifiedBadge';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 import { CtaBanner, useCtaBanners, placeCtaBanners, CTA_INLINE_AFTER } from './shared/CtaBanner';
 
@@ -460,6 +461,10 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           >
             <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500' : ''}`} />
           </button>
+          {/* Trust, on the surface where the choice between strangers is made */}
+          {!unavailable && item.seller?.verified && (
+            <VerifiedBadge className="absolute bottom-2.5 left-2.5" />
+          )}
           {item.gallery && item.gallery.length > 1 && (
             <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#0b1c30]/60 backdrop-blur-sm">
               <Images className="w-3 h-3 text-white" />

@@ -30,6 +30,7 @@ import {
 import { PriceRangeSlider, DEFAULT_PRICE_CEILING, niceCeiling } from './search/PriceRangeSlider';
 import { FilterPill } from './search/FilterPill';
 import { ListingImage } from './shared/ListingImage';
+import { VerifiedBadge } from './shared/VerifiedBadge';
 import { ListingGallery } from './shared/ListingGallery';
 import { PriceTag, DiscountFlag } from './shared/PriceTag';
 
@@ -1664,6 +1665,11 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       <div className="absolute top-2 right-2">
                         <DiscountFlag percent={unavailable ? undefined : item.discountPercent} />
                       </div>
+                      {/* Shield only: a rail card is too narrow to spend
+                          half its width on the word. */}
+                      {!unavailable && item.seller?.verified && (
+                        <VerifiedBadge compact className="absolute bottom-2 left-2" />
+                      )}
                       {unavailable && (
                         <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1">
                           <span className="block text-center text-[10px] font-bold text-white uppercase tracking-widest">
@@ -1748,6 +1754,11 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                       <div className="absolute top-2 right-2">
                         <DiscountFlag percent={unavailable ? undefined : item.discountPercent} />
                       </div>
+                      {/* Shield only: a rail card is too narrow to spend
+                          half its width on the word. */}
+                      {!unavailable && item.seller?.verified && (
+                        <VerifiedBadge compact className="absolute bottom-2 left-2" />
+                      )}
                       {unavailable && (
                         <div className="absolute inset-x-0 bottom-0 bg-[#0b1c30]/75 backdrop-blur-[2px] py-1">
                           <span className="block text-center text-[10px] font-bold text-white uppercase tracking-widest">
@@ -2426,6 +2437,14 @@ export const BrowseScreen: React.FC<BrowseScreenProps> = ({
                         >
                           <Heart className={`w-4 h-4 transition-all ${item.isSaved ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
                         </button>
+
+                        {/* Trust, on the surface where the choice between
+                            strangers is actually made. The flag was already on
+                            the wire and shown on the detail page - by then the
+                            buyer has committed a tap to find out. */}
+                        {!unavailable && item.seller?.verified && (
+                          <VerifiedBadge className="absolute bottom-2.5 left-2.5" />
+                        )}
 
                         {/* More-photos hint, so extra images aren't hidden behind a tap */}
                         {item.gallery && item.gallery.length > 1 && (
